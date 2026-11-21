@@ -3,7 +3,6 @@ import {
   aiModelDisplayName,
   aiProviderKindLabel,
   catalogByRole,
-  nextCatalogProviderAndModel,
   selectCatalogModel,
   selectCatalogProvider,
   selectCatalogProviderAndModel,
@@ -83,7 +82,7 @@ describe('AI model catalog', () => {
 
   it('selects explicit and next-provider models together', () => {
     expect(selectCatalogProviderAndModel(catalog, 'planner-only', 'p-extra').model?.id).toBe('p-extra')
-    expect(nextCatalogProviderAndModel(catalog, 'vision-only').model?.id).toBe('v-default')
+    expect(selectCatalogProviderAndModel(catalog, 'vision-only', '').model?.id).toBe('v-default')
   })
 
   it('keeps a shared planner and vision model paired when available', () => {

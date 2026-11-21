@@ -9,8 +9,7 @@ export const useAiDraftModelSelection = (permitted: boolean) => {
   const aiEnabled = permitted && isFeatureEnabled('feature.ai')
   const [models, setModels] = useState<AutomationAiModelCatalogProvider[]>([])
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [providerId, setProviderId] = useState('')
-  const [modelId, setModelId] = useState('')
+  const [{ providerId, modelId }, setSelection] = useState({ providerId: '', modelId: '' })
   const { catalog, provider, model } = useMemo(
     () => selectAiDraftProviderAndModel(models, providerId, modelId),
     [models, modelId, providerId]
@@ -41,10 +40,8 @@ export const useAiDraftModelSelection = (permitted: boolean) => {
     catalog,
     catalogStatus,
     model,
-    modelId,
     provider,
-    providerId,
-    setModelId,
-    setProviderId
+    selectModel: (nextProviderId: string, nextModelId: string) =>
+      setSelection({ providerId: nextProviderId, modelId: nextModelId })
   }
 }

@@ -83,9 +83,8 @@ export const AiAgentConversation = ({
     selectedVisionModel,
     selectedVisionProvider,
     selectionMessage,
-    setModelId,
+    selectPrimaryModel,
     setPrompt,
-    setProviderId,
     setVisionModelId,
     setVisionProviderId,
     setTimeoutMinutesInput,
@@ -278,8 +277,7 @@ export const AiAgentConversation = ({
                 selectedProvider={selectedProvider}
                 selectedVisionModel={selectedVisionModel}
                 selectedVisionProvider={selectedVisionProvider}
-                setModelId={setModelId}
-                setProviderId={setProviderId}
+                selectPrimaryModel={selectPrimaryModel}
                 setVisionModelId={setVisionModelId}
                 setVisionProviderId={setVisionProviderId}
                 setTimeoutMinutesInput={setTimeoutMinutesInput}

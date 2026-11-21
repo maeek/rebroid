@@ -154,8 +154,8 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             selectedProvider={modelSelection.selectedProvider}
             selectedModel={modelSelection.selectedModel}
             isLoadingCatalog={modelSelection.isLoadingCatalog}
-            onProviderChange={modelSelection.setProviderId}
-            onModelChange={modelSelection.setModelId}
+            onProviderChange={modelSelection.selectPrimaryModel}
+            onModelChange={nextModelId => patchInput({ modelId: nextModelId })}
           />
           <AiModelCatalogFields
             vision

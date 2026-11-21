@@ -40,9 +40,8 @@ export const AiDraftDialog = ({
   onCancelDraft,
   onDraft,
   onClarificationAnswerChange,
-  onModelChange,
+  onSelectModel,
   onOpenChange,
-  onProviderChange,
   onPromptChange,
   onSubmitClarification
 }: {
@@ -64,9 +63,8 @@ export const AiDraftDialog = ({
   onCancelDraft: () => void
   onDraft: () => void
   onClarificationAnswerChange: (answer: string) => void
-  onModelChange: (modelId: string) => void
+  onSelectModel: (providerId: string, modelId: string) => void
   onOpenChange: (open: boolean) => void
-  onProviderChange: (providerId: string) => void
   onPromptChange: (prompt: string) => void
   onSubmitClarification: () => void
 }) => {
@@ -140,8 +138,7 @@ export const AiDraftDialog = ({
                     catalog={catalog}
                     selectedProvider={selectedProvider}
                     selectedModel={selectedModel}
-                    onProviderChange={onProviderChange}
-                    onModelChange={onModelChange}
+                    onSelectModel={onSelectModel}
                   />
                 </fieldset>
               }

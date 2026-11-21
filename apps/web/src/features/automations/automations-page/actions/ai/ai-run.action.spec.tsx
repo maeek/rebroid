@@ -19,8 +19,7 @@ describe('AI run capability overrides', () => {
       isLoadingCatalog: false,
       health: null,
       isCheckingHealth: false,
-      setProviderId: vi.fn(),
-      setModelId: vi.fn(),
+      selectPrimaryModel: vi.fn(),
       setVisionProviderId: vi.fn(),
       setVisionModelId: vi.fn(),
       recheckHealth: vi.fn()

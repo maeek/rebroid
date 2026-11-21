@@ -91,23 +91,20 @@ describe('AiPromptComposer', () => {
 
 describe('AiModelPicker', () => {
   it('selects a model and its provider directly and closes the menu', async () => {
-    const onProviderChange = vi.fn()
-    const onModelChange = vi.fn()
+    const onSelectModel = vi.fn()
     render(
       <AiModelPicker
         catalog={catalog}
         selectedProvider={catalog[0]}
         selectedModel={catalog[0]?.models[0]}
-        onProviderChange={onProviderChange}
-        onModelChange={onModelChange}
+        onSelectModel={onSelectModel}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: 'Agent settings: Qwen' }))
     const choice = await screen.findByRole('button', { name: 'Fast' })
     expect(screen.getByRole('button', { name: 'Qwen', pressed: true })).toBeTruthy()
     fireEvent.click(choice)
-    expect(onProviderChange).toHaveBeenCalledWith('cloud')
-    expect(onModelChange).toHaveBeenCalledWith('fast')
+    expect(onSelectModel).toHaveBeenCalledExactlyOnceWith('cloud', 'fast')
   })
   it('shows the selected model chip', () => {
     render(
@@ -116,8 +113,7 @@ describe('AiModelPicker', () => {
         selectedProvider={catalog[0]}
         selectedModel={catalog[0]?.models[0]}
         defaultOpen
-        onProviderChange={vi.fn()}
-        onModelChange={vi.fn()}
+        onSelectModel={vi.fn()}
       />
     )
 
@@ -130,8 +126,7 @@ describe('AiModelPicker', () => {
       <AiModelPicker
         catalog={[]}
         defaultOpen
-        onProviderChange={vi.fn()}
-        onModelChange={vi.fn()}
+        onSelectModel={vi.fn()}
       />
     )
 
@@ -146,8 +141,7 @@ describe('AiModelPicker', () => {
         selectedProvider={catalog[0]}
         selectedModel={catalog[0]?.models[0]}
         defaultOpen
-        onProviderChange={vi.fn()}
-        onModelChange={vi.fn()}
+        onSelectModel={vi.fn()}
       />
     )
 
@@ -178,8 +172,7 @@ describe('AiModelPicker', () => {
         selectedProvider={provider}
         selectedModel={provider.models[0]}
         defaultOpen
-        onProviderChange={vi.fn()}
-        onModelChange={vi.fn()}
+        onSelectModel={vi.fn()}
       />
     )
 

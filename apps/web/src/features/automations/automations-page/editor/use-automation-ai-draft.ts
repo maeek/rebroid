@@ -53,8 +53,7 @@ export const useAutomationAiDraft = ({
     catalogStatus,
     model: selectedAiDraftModel,
     provider: selectedAiDraftProvider,
-    setModelId: setAiDraftModelId,
-    setProviderId: setAiDraftProviderId
+    selectModel
   } = useAiDraftModelSelection(canUseAi)
 
   const appendLog = (type: AiDraftLogItem['type'], message: string) => {
@@ -184,18 +183,14 @@ export const useAutomationAiDraft = ({
     selectedAiDraftModel,
     selectedAiDraftProvider,
     setAiDraftClarificationAnswer,
-    setAiDraftModelId: (modelId: string) => {
-      if (modelId !== selectedAiDraftModel?.id) resetDraftState()
-      setAiDraftModelId(modelId)
+    selectAiDraftModel: (providerId: string, modelId: string) => {
+      if (providerId !== selectedAiDraftProvider?.id || modelId !== selectedAiDraftModel?.id) resetDraftState()
+      selectModel(providerId, modelId)
     },
     setAiDraftOpen,
     setAiDraftPrompt: (prompt: string) => {
       if (aiDraftStatus !== 'idle') resetDraftState()
       setAiDraftPrompt(prompt)
-    },
-    setAiDraftProviderId: (providerId: string) => {
-      if (providerId !== selectedAiDraftProvider?.id) resetDraftState()
-      setAiDraftProviderId(providerId)
     },
     submitClarification
   }

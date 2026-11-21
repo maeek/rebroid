@@ -22,8 +22,7 @@ export const AiModelPicker = ({
   defaultOpen,
   trigger,
   advanced,
-  onProviderChange,
-  onModelChange,
+  onSelectModel,
   onVisionProviderChange,
   onVisionModelChange,
   onRecheckHealth
@@ -39,8 +38,7 @@ export const AiModelPicker = ({
   defaultOpen?: boolean
   trigger?: ReactNode
   advanced?: ReactNode
-  onProviderChange: (providerId: string) => void
-  onModelChange: (modelId: string) => void
+  onSelectModel: (providerId: string, modelId: string) => void
   onVisionProviderChange?: (providerId: string) => void
   onVisionModelChange?: (modelId: string) => void
   onRecheckHealth?: () => void
@@ -94,8 +92,7 @@ export const AiModelPicker = ({
             providerId={selectedProvider?.id}
             modelId={selectedModel?.id}
             onSelect={(providerId, modelId) => {
-              onProviderChange(providerId)
-              onModelChange(modelId)
+              onSelectModel(providerId, modelId)
               setOpen(false)
             }}
           />

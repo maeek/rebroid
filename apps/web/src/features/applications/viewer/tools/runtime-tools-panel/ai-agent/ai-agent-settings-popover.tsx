@@ -14,8 +14,7 @@ export const AiAgentSettingsPopover = ({
   selectedProvider,
   selectedVisionModel,
   selectedVisionProvider,
-  setModelId,
-  setProviderId,
+  selectPrimaryModel,
   setVisionModelId,
   setVisionProviderId,
   setTimeoutMinutesInput,
@@ -31,8 +30,7 @@ export const AiAgentSettingsPopover = ({
   selectedProvider: AutomationAiModelCatalogProvider | undefined
   selectedVisionModel: AutomationAiModelCatalogProvider['models'][number] | undefined
   selectedVisionProvider: AutomationAiModelCatalogProvider | undefined
-  setModelId: (modelId: string) => void
-  setProviderId: (providerId: string) => void
+  selectPrimaryModel: (providerId: string, modelId: string) => void
   setVisionModelId: (modelId: string) => void
   setVisionProviderId: (providerId: string) => void
   setTimeoutMinutesInput: (value: string) => void
@@ -48,8 +46,7 @@ export const AiAgentSettingsPopover = ({
     visionCatalog={visionCatalog}
     health={health}
     isCheckingHealth={isCheckingHealth}
-    onProviderChange={setProviderId}
-    onModelChange={setModelId}
+    onSelectModel={selectPrimaryModel}
     onVisionProviderChange={setVisionProviderId}
     onVisionModelChange={setVisionModelId}
     onRecheckHealth={onRecheckHealth}

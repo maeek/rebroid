@@ -133,10 +133,9 @@ export function AutomationEditorPage({
     selectedAiDraftModel,
     selectedAiDraftProvider,
     setAiDraftClarificationAnswer,
-    setAiDraftModelId,
+    selectAiDraftModel,
     setAiDraftOpen,
     setAiDraftPrompt,
-    setAiDraftProviderId,
     submitClarification
   } = useAutomationAiDraft({
     canUseAi,
@@ -361,9 +360,8 @@ export function AutomationEditorPage({
         onCancelDraft={cancelDraft}
         onDraft={() => void draftFromPrompt()}
         onClarificationAnswerChange={setAiDraftClarificationAnswer}
-        onModelChange={setAiDraftModelId}
+        onSelectModel={selectAiDraftModel}
         onOpenChange={setAiDraftOpen}
-        onProviderChange={setAiDraftProviderId}
         onPromptChange={setAiDraftPrompt}
         onSubmitClarification={() => void submitClarification()}
       />

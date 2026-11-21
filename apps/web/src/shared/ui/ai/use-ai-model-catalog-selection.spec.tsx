@@ -22,6 +22,32 @@ const catalog = [
 ] satisfies AutomationAiModelCatalogProvider[]
 
 describe('useAiModelCatalogSelection', () => {
+  it('matches vision against the provider chosen in the model menu', async () => {
+    const secondProvider = { ...catalog[0], id: 'second' }
+    const onSelectionChange = vi.fn()
+    const loadCatalog = () => Promise.resolve([...catalog, secondProvider])
+    const { result } = renderHook(() =>
+      useAiModelCatalogSelection({
+        role: 'planner',
+        loadCatalog,
+        modelId: 'qwen',
+        providerId: 'local',
+        visionModelId: 'qwen',
+        visionProviderId: 'local',
+        onSelectionChange
+      })
+    )
+    await waitFor(() => expect(result.current.catalog).toHaveLength(2))
+    act(() => {
+      result.current.selectPrimaryModel('second', 'qwen')
+    })
+    expect(onSelectionChange).toHaveBeenCalledExactlyOnceWith({
+      providerId: 'second',
+      modelId: 'qwen',
+      visionProviderId: 'second',
+      visionModelId: 'qwen'
+    })
+  })
   it('keeps configured and omitted workflow model settings until explicitly edited', async () => {
     const onSelectionChange = vi.fn()
     const loadCatalog = () => Promise.resolve(catalog)
@@ -43,7 +69,7 @@ describe('useAiModelCatalogSelection', () => {
     expect(result.current.selectedProvider).toBeUndefined()
     expect(result.current.selectedModel).toBeUndefined()
     expect(result.current.selectedVisionModel).toBeUndefined()
-    act(() => result.current.setProviderId('local'))
+    act(() => result.current.selectPrimaryModel('local'))
     expect(onSelectionChange).toHaveBeenCalledExactlyOnceWith({ providerId: 'local', modelId: 'qwen' })
   })
 
@@ -116,7 +142,7 @@ describe('useAiModelCatalogSelection', () => {
 
     await waitFor(() => expect(result.current.catalog).toHaveLength(1))
 
-    act(() => result.current.setProviderId('local'))
+    act(() => result.current.selectPrimaryModel('local'))
 
     expect(onSelectionChange).toHaveBeenCalledWith({
       providerId: 'local',

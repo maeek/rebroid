@@ -68,17 +68,6 @@ export const selectCatalogProviderAndModel = <TProvider extends AiModelCatalogPr
   return { provider, model }
 }
 
-export const nextCatalogProviderAndModel = <TProvider extends AiModelCatalogProvider>(
-  catalog: TProvider[],
-  providerId: string,
-  role?: AiModelRole
-): AiCatalogSelection<TProvider> => {
-  const provider = selectCatalogProvider(catalog, providerId)
-  const model = selectCatalogModel(provider, '', role)
-
-  return { provider, model }
-}
-
 export const selectRoleVisionCatalog = <TProvider extends AiModelCatalogProvider>({
   catalog,
   modelId,
