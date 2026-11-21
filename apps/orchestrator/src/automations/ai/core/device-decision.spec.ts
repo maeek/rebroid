@@ -2,6 +2,8 @@ import { strict as assert } from 'node:assert';
 import {
   buildDeviceDecisionTool,
   deviceDecisionJsonSchema,
+} from './device-decision-schema';
+import {
   DEVICE_DECISION_TOOL_NAME,
   parseDeviceAgentDecision,
 } from './device-decision';

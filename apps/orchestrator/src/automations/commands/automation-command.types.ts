@@ -54,11 +54,6 @@ export interface AutomationCommandResult {
   snapshotMatches?: { snapshotId: string; matches: VisionDetection[] };
 }
 
-export interface AutomationCommandEditorExample {
-  label: string;
-  input: Record<string, unknown>;
-}
-
 export type AutomationCommandEditorMetadataOverride =
   Partial<AutomationCommandEditorMetadata>;
 
@@ -77,11 +72,6 @@ export interface AutomationCommandDefinition<
     context: AutomationCommandContext,
   ) => Promise<AutomationCommandResult>;
 }
-
-export type AutomationCommandCatalogEntry = Pick<
-  AutomationCommandDefinition,
-  'uses' | 'label' | 'description' | 'requiredPermissions'
->;
 
 export type { AutomationCommandEditorMetadata };
 export type { AutomationCommandOutputMetadata };

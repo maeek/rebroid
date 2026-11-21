@@ -42,6 +42,15 @@ type GappsStaging = {
   temporaryPackage: string | null;
 };
 
+const gappsRuntimeMetadata = (androidVersion: string) =>
+  ({
+    runtimeKind: 'redroid',
+    androidVersion,
+    architecture: 'amd64',
+    gmsMode: 'gapps',
+    signatureSpoofing: 'not_applicable',
+  }) as const;
+
 const setupWizardProperty = 'ro.setupwizard.mode=';
 const gappsQueueRetryMs = 5_000;
 
@@ -100,11 +109,7 @@ export class ContainerImageGappsBuilderService
       recipeId: null,
       targetImage,
       baseImage: preset.baseImage,
-      runtimeKind: 'redroid',
-      androidVersion: dto.androidVersion,
-      architecture: 'amd64',
-      gmsMode: 'gapps',
-      signatureSpoofing: 'not_applicable',
+      ...gappsRuntimeMetadata(dto.androidVersion),
       dockerfile,
       contextFileIds: [],
       buildKind: 'redroid_gapps_patch',
@@ -303,11 +308,7 @@ export class ContainerImageGappsBuilderService
     await this.metadata.upsert({
       imageRef: job.targetImage,
       imageId: inspect.Id,
-      runtimeKind: 'redroid',
-      androidVersion,
-      architecture: 'amd64',
-      gmsMode: 'gapps',
-      signatureSpoofing: 'not_applicable',
+      ...gappsRuntimeMetadata(androidVersion),
     });
     await this.cache.retainOnly(androidVersion, revision).catch((error) => {
       this.logger.warn(
@@ -368,13 +369,9 @@ export class ContainerImageGappsBuilderService
       );
     }
     const labels = inspect.Config?.Labels ?? {};
-    const expected = requiredRuntimeImageLabels({
-      runtimeKind: 'redroid',
-      androidVersion,
-      architecture: 'amd64',
-      gmsMode: 'gapps',
-      signatureSpoofing: 'not_applicable',
-    });
+    const expected = requiredRuntimeImageLabels(
+      gappsRuntimeMetadata(androidVersion),
+    );
     for (const [key, value] of Object.entries(expected)) {
       if (labels[key] !== value) {
         throw new Error(`Built image is missing required label ${key}.`);
@@ -392,13 +389,6 @@ export class ContainerImageGappsBuilderService
     androidVersion: string,
     startup?: GappsImageStartup,
   ) {
-    const metadata = {
-      runtimeKind: 'redroid' as const,
-      androidVersion,
-      architecture: 'amd64',
-      gmsMode: 'gapps' as const,
-      signatureSpoofing: 'not_applicable' as const,
-    };
     const instructions = [
       `FROM ${baseImage}`,
       'USER 0:0',
@@ -413,7 +403,7 @@ export class ContainerImageGappsBuilderService
     }
     return dockerfileWithRequiredLabels(
       instructions.join('\n'),
-      requiredRuntimeImageLabels(metadata),
+      requiredRuntimeImageLabels(gappsRuntimeMetadata(androidVersion)),
     );
   }
 }

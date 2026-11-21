@@ -43,7 +43,6 @@ describe('automation AI screen-state policy', () => {
         summary: 'Android Settings app opened.',
       },
       candidates: [],
-      confirmedFacts: [],
     });
 
     assert.equal(reconciled.screenKind, 'unknown');
@@ -74,7 +73,6 @@ describe('automation AI screen-state policy', () => {
           bounds: { left: 0.86, top: 0.84, width: 0.08, height: 0.08 },
         },
       ],
-      confirmedFacts: [],
     });
 
     assert.equal(reconciled.screenKind, 'quick_settings');
@@ -101,7 +99,6 @@ describe('automation AI screen-state policy', () => {
         summary: 'Launcher app drawer is open.',
       },
       candidates: [],
-      confirmedFacts: [],
     });
 
     assert.equal(reconciled.screenKind, 'app_drawer');

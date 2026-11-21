@@ -64,14 +64,7 @@ export interface AutomationVisionDescription {
 }
 
 export interface AutomationVisionContext {
-  goal?: string;
-  lastAction?: string;
-  expectedOutcome?: string;
-  confirmedFacts?: string[];
-  latestHypothesis?: Pick<
-    AutomationVisionScreenState,
-    'screenKind' | 'confidence' | 'summary'
-  >;
+  goal: string;
 }
 
 export interface AutomationVisionLocateInput {

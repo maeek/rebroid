@@ -147,11 +147,9 @@ export const correctScreenStateHypothesis = (
 export const reconcileScreenStateHypothesis = ({
   state,
   candidates = [],
-  confirmedFacts = [],
 }: {
   state: AiScreenStateHypothesis;
   candidates?: AiObservationCandidate[];
-  confirmedFacts?: string[];
 }): ScreenStateReconciliationResult => {
   const corrected = correctScreenStateHypothesis(state);
   const rawScreenKind = state.rawScreenKind ?? state.screenKind;
@@ -167,9 +165,7 @@ export const reconcileScreenStateHypothesis = ({
   const homeMatches = homeLandmarks.filter((landmark) =>
     combinedHaystack.includes(landmark),
   );
-  const settingsConfirmed =
-    hasConfirmedSettingsFact(confirmedFacts) ||
-    hasSettingsAppLandmarks(combinedHaystack);
+  const settingsConfirmed = hasSettingsAppLandmarks(combinedHaystack);
 
   if (
     corrected.screenKind === 'settings_app' &&
@@ -377,13 +373,6 @@ export const summarizeVisualAffordances = ({
     ...lines,
   ].join('\n');
 };
-
-const hasConfirmedSettingsFact = (confirmedFacts: string[]) =>
-  confirmedFacts.some((fact) =>
-    /android\.(openSystemSettings|launchPackage).*opened|opened the android settings|launched com\.android\.settings/i.test(
-      fact,
-    ),
-  );
 
 const hasSettingsAppLandmarks = (haystack: string) => {
   const matches = strongSettingsAppLandmarks.filter((landmark) =>

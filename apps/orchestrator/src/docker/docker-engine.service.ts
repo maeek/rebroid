@@ -40,7 +40,7 @@ export class DockerEngineService implements DockerEnginePort {
       engineConfig,
     ),
     private readonly errors: DockerErrorClassifier = new DockerErrorClassifier(),
-    private readonly observer: DockerMetricsObserver = new DockerMetricsObserver(
+    observer: DockerMetricsObserver = new DockerMetricsObserver(
       metrics,
       errors,
     ),

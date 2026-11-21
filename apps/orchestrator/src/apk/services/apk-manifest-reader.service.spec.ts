@@ -68,6 +68,17 @@ const startElement = (
   return chunk;
 };
 
+const binaryManifest = (...chunks: Buffer[]) => {
+  const header = Buffer.alloc(8);
+  header.writeUInt16LE(0x0003, 0);
+  header.writeUInt16LE(header.length, 2);
+  header.writeUInt32LE(
+    chunks.reduce((size, chunk) => size + chunk.length, header.length),
+    4,
+  );
+  return Buffer.concat([header, ...chunks]);
+};
+
 describe('ApkManifestReaderService', () => {
   const reader = new ApkManifestReaderService();
 
@@ -104,28 +115,44 @@ describe('ApkManifestReaderService', () => {
         data: 0x7f080001,
       },
     ]);
-    const header = Buffer.alloc(8);
-    const size =
-      header.length +
-      pool.length +
-      manifestElement.length +
-      applicationElement.length;
-    header.writeUInt16LE(0x0003, 0);
-    header.writeUInt16LE(8, 2);
-    header.writeUInt32LE(size, 4);
-    const manifest = Buffer.concat([
-      header,
-      pool,
-      manifestElement,
-      applicationElement,
-    ]);
+    const manifest = binaryManifest(pool, manifestElement, applicationElement);
 
     expect(reader.readPackageName(manifest)).toBe('com.example.app');
-    expect(reader.readApplicationLabel(manifest)).toEqual({
-      value: 'Example App',
+    expect(reader.readMetadata(manifest)).toEqual({
+      packageName: 'com.example.app',
+      label: { value: 'Example App' },
+      declaredIcons: { iconResourceId: 0x7f080001 },
     });
-    expect(reader.readIconReferences(manifest)).toEqual({
-      iconResourceId: 0x7f080001,
+  });
+
+  it('retains the first application element while searching for the package', () => {
+    const pool = stringPool([
+      'application',
+      'label',
+      'later label',
+      'manifest',
+      'package',
+      'example.app',
+    ]);
+    const manifest = binaryManifest(
+      pool,
+      startElement(0, []),
+      startElement(0, [
+        { nameIndex: 1, rawValueIndex: 2, dataType: typedValueString, data: 2 },
+      ]),
+      startElement(3, [
+        {
+          nameIndex: 4,
+          rawValueIndex: noEntry,
+          dataType: typedValueString,
+          data: 5,
+        },
+      ]),
+    );
+    expect(reader.readMetadata(manifest)).toEqual({
+      packageName: 'example.app',
+      label: {},
+      declaredIcons: {},
     });
   });
 
@@ -136,7 +163,10 @@ describe('ApkManifestReaderService', () => {
   ])('fails closed for truncated or adversarial manifests', (manifest) => {
     expect(() => reader.readStrings(manifest)).not.toThrow();
     expect(reader.readPackageName(manifest)).toBeNull();
-    expect(reader.readApplicationLabel(manifest)).toEqual({});
-    expect(reader.readIconReferences(manifest)).toEqual({});
+    expect(reader.readMetadata(manifest)).toEqual({
+      packageName: null,
+      label: {},
+      declaredIcons: {},
+    });
   });
 });

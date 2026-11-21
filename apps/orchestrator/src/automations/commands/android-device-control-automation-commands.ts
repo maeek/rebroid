@@ -1,9 +1,9 @@
+import { screenshotCommand } from './screenshot-command';
 import { setTimeout as delay } from 'node:timers/promises';
 import { z } from 'zod';
 import {
   emptyInputSchema,
   rotateSchema,
-  screenshotSchema,
   viewerCommandSchema,
   waitSchema,
 } from './android-automation-command-schemas';
@@ -90,41 +90,6 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       label: 'Screenshot',
       description: 'Captures a PNG screenshot artifact.',
       requiredPermissions: ['automations:run'],
-      schema: screenshotSchema,
-      outputs: [
-        {
-          key: 'mimeType',
-          label: 'MIME type',
-          type: 'string',
-          description: 'Screenshot media type.',
-          example: 'image/png',
-        },
-        {
-          key: 'capturedAt',
-          label: 'Captured at',
-          type: 'string',
-          description: 'Timestamp when the screenshot was captured.',
-        },
-        {
-          key: 'dataUrl',
-          label: 'Image data',
-          type: 'string',
-          description: 'Screenshot encoded as a data URL.',
-        },
-      ],
-      execute: async (
-        _input: Record<string, never>,
-        { app, adb, abortSignal }: AutomationCommandContext,
-      ) => {
-        const result = await adb.screenshot(app, abortSignal);
-        return {
-          summary: 'Screenshot captured.',
-          data: {
-            mimeType: result.mimeType,
-            capturedAt: result.capturedAt,
-            dataUrl: result.dataUrl,
-          },
-        };
-      },
+      ...screenshotCommand('Screenshot captured.'),
     },
   ] as unknown as AutomationCommandDefinition[];

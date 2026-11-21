@@ -30,10 +30,6 @@ export interface DockerNetworkRuntimePort {
     containerId: string,
     networkName: string,
   ): Promise<string | null>;
-  getContainerIp(
-    containerId: string,
-    networkName: string,
-  ): Promise<string | null>;
   getNetworkGateway(networkName: string): Promise<string | null>;
   getManagedIpv4Subnet(
     applicationId: string,
@@ -51,5 +47,4 @@ export interface DockerNetworkRuntimePort {
     networkName: string,
   ): Promise<void>;
   removeNetwork(networkName: string, applicationId?: string): Promise<void>;
-  listNetworkContainerIds(networkName: string): Promise<string[]>;
 }

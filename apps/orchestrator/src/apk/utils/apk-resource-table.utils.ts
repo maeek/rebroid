@@ -22,7 +22,7 @@ interface BinaryXmlAttribute {
   data: number;
 }
 
-interface NamedBinaryXmlAttribute extends BinaryXmlAttribute {
+export interface NamedBinaryXmlAttribute extends BinaryXmlAttribute {
   name?: string;
   rawValue?: string;
   resourceId?: number;
@@ -87,8 +87,9 @@ export function* readBinaryXmlAttributes(
 
 export const readBinaryXmlElementAttributes = (
   buffer: Buffer,
-  elementName: string,
-): NamedBinaryXmlAttribute[] => {
+  elementNames: readonly string[],
+): Map<string, NamedBinaryXmlAttribute[]> => {
+  const elements = new Map<string, NamedBinaryXmlAttribute[]>();
   let strings: string[] = [];
   let resourceMap: number[] = [];
   for (const chunk of readBinaryResourceChunks(buffer)) {
@@ -102,20 +103,25 @@ export const readBinaryXmlElementAttributes = (
     }
     if (chunk.type !== resXmlStartElementType || chunk.size < 36) continue;
     const nameIndex = buffer.readUInt32LE(chunk.offset + 20);
-    if (strings[nameIndex] !== elementName) continue;
+    const name = strings[nameIndex];
+    if (!elementNames.includes(name) || elements.has(name)) continue;
 
-    return [...readBinaryXmlAttributes(buffer, chunk)].map((attribute) => ({
-      ...attribute,
-      name: strings[attribute.nameIndex],
-      rawValue:
-        attribute.rawValueIndex === noEntry
-          ? undefined
-          : strings[attribute.rawValueIndex],
-      resourceId: resourceMap[attribute.nameIndex],
-      strings,
-    }));
+    const attributes = [...readBinaryXmlAttributes(buffer, chunk)].map(
+      (attribute) => ({
+        ...attribute,
+        name: strings[attribute.nameIndex],
+        rawValue:
+          attribute.rawValueIndex === noEntry
+            ? undefined
+            : strings[attribute.rawValueIndex],
+        resourceId: resourceMap[attribute.nameIndex],
+        strings,
+      }),
+    );
+    elements.set(name, attributes);
+    if (elements.size === elementNames.length) break;
   }
-  return [];
+  return elements;
 };
 
 export const readResourceTableHeader = (buffer: Buffer) => {

@@ -10,7 +10,7 @@ import {
   normalizeDefaultModel,
   text,
 } from './ai-provider-settings';
-import { AiProviderHealthService } from './ai-provider-health.service';
+import { aiProviderErrorMessage } from './utils/ai-provider-health.utils';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import type { AutomationAiProviderModelDownloadDto } from './dto/automation-ai-provider-download.dto';
 import { downloadOllamaModel } from './ollama-model-download';
@@ -34,10 +34,7 @@ export class AiProviderModelDownloadService {
     AutomationAiProviderModelDownloadJob
   >();
 
-  constructor(
-    private readonly store: OrchestratorSettingsStore,
-    private readonly health: AiProviderHealthService,
-  ) {}
+  constructor(private readonly store: OrchestratorSettingsStore) {}
 
   async download(providerId: string, modelId: string, label?: string) {
     const settings = await this.store.getStoredSettings();
@@ -142,7 +139,7 @@ export class AiProviderModelDownloadService {
     } catch (error) {
       this.updateDownload(job, {
         status: 'failed',
-        message: this.health.errorMessage(error),
+        message: aiProviderErrorMessage(error),
         finishedAt: new Date().toISOString(),
       });
     } finally {

@@ -6,10 +6,6 @@ import type { DockerPlatformPrunePort } from '../../contracts/docker-platform-pr
 export class DockerPlatformPruneService implements DockerPlatformPrunePort {
   constructor(private readonly engine: DockerEngineService) {}
 
-  isBusy() {
-    return this.engine.hasPendingDockerWork;
-  }
-
   async pruneImages(danglingOnly = true) {
     return this.engine.mutate(
       () =>

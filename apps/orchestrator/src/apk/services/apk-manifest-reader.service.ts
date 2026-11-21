@@ -8,6 +8,7 @@ import {
   typedValueString,
 } from '../types/apk.types';
 import {
+  type NamedBinaryXmlAttribute,
   readBinaryResourceChunks,
   readBinaryXmlElementAttributes,
   readBinaryXmlStringPool,
@@ -24,74 +25,58 @@ export class ApkManifestReaderService {
     return [];
   }
 
-  readIconReferences(manifest: Buffer) {
-    const result: {
+  readPackageName(manifest: Buffer) {
+    const elements = readBinaryXmlElementAttributes(manifest, ['manifest']);
+    return packageNameFromAttributes(elements.get('manifest') ?? []);
+  }
+
+  readMetadata(manifest: Buffer) {
+    const elements = readBinaryXmlElementAttributes(manifest, [
+      'manifest',
+      'application',
+    ]);
+    const label: { value?: string; resourceId?: number } = {};
+    const declaredIcons: {
       iconResourceId?: number;
       roundIconResourceId?: number;
       iconPath?: string;
       roundIconPath?: string;
     } = {};
-    for (const attribute of readBinaryXmlElementAttributes(
-      manifest,
-      'application',
-    )) {
-      const isIcon =
-        attribute.name === 'icon' || attribute.resourceId === androidIconAttr;
+    for (const attribute of elements.get('application') ?? []) {
+      const { name, resourceId, dataType, data, rawValue } = attribute;
+      if (name === 'label' || resourceId === androidLabelAttr) {
+        if (dataType === typedValueReference) label.resourceId = data;
+        else if (dataType === typedValueString) {
+          label.value = rawValue || attribute.strings[data];
+        }
+      }
+
+      const isIcon = name === 'icon' || resourceId === androidIconAttr;
       const isRoundIcon =
-        attribute.name === 'roundIcon' ||
-        attribute.resourceId === androidRoundIconAttr;
-      if (!isIcon && !isRoundIcon) continue;
-
-      if (attribute.dataType === typedValueReference) {
-        if (isIcon) result.iconResourceId = attribute.data;
-        if (isRoundIcon) result.roundIconResourceId = attribute.data;
-      } else if (
-        attribute.dataType === typedValueString &&
-        attribute.rawValue
-      ) {
-        if (isIcon) result.iconPath = attribute.rawValue;
-        if (isRoundIcon) result.roundIconPath = attribute.rawValue;
+        name === 'roundIcon' || resourceId === androidRoundIconAttr;
+      if (dataType === typedValueReference) {
+        if (isIcon) declaredIcons.iconResourceId = data;
+        if (isRoundIcon) declaredIcons.roundIconResourceId = data;
+      } else if (dataType === typedValueString && rawValue) {
+        if (isIcon) declaredIcons.iconPath = rawValue;
+        if (isRoundIcon) declaredIcons.roundIconPath = rawValue;
       }
     }
 
-    return result;
+    return {
+      packageName: packageNameFromAttributes(elements.get('manifest') ?? []),
+      label,
+      declaredIcons,
+    };
   }
+}
 
-  readPackageName(manifest: Buffer) {
-    for (const attribute of readBinaryXmlElementAttributes(
-      manifest,
-      'manifest',
-    )) {
-      if (attribute.name !== 'package') continue;
-      const typedValue =
-        attribute.dataType === typedValueString
-          ? attribute.strings[attribute.data]
-          : undefined;
-      return attribute.rawValue || typedValue || null;
-    }
-
-    return null;
-  }
-
-  readApplicationLabel(manifest: Buffer) {
-    const result: { value?: string; resourceId?: number } = {};
-    for (const attribute of readBinaryXmlElementAttributes(
-      manifest,
-      'application',
-    )) {
-      if (
-        attribute.name !== 'label' &&
-        attribute.resourceId !== androidLabelAttr
-      ) {
-        continue;
-      }
-      if (attribute.dataType === typedValueReference) {
-        result.resourceId = attribute.data;
-      } else if (attribute.dataType === typedValueString) {
-        result.value = attribute.rawValue || attribute.strings[attribute.data];
-      }
-    }
-
-    return result;
-  }
+function packageNameFromAttributes(attributes: NamedBinaryXmlAttribute[]) {
+  const attribute = attributes.find(({ name }) => name === 'package');
+  if (!attribute) return null;
+  const typedValue =
+    attribute.dataType === typedValueString
+      ? attribute.strings[attribute.data]
+      : undefined;
+  return attribute.rawValue || typedValue || null;
 }

@@ -13,8 +13,8 @@ import {
   buildDeviceDecisionTool,
   deviceDecisionJsonSchema,
   nativeDeviceDecisionJsonSchema,
-  parseDeviceAgentDecision,
-} from './core/device-decision';
+} from './core/device-decision-schema';
+import { parseDeviceAgentDecision } from './core/device-decision';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { aiProviderErrorMessage } from './utils/ai-provider-health.utils';
 import { isOfficialOpenAiProvider } from '../common/ai-provider-request';
 import { getOpenAiBillingIssue } from '../common/openai-billing';
 import {
@@ -150,7 +151,7 @@ export class AiProviderSettingsService {
     try {
       return await this.aiProviderHealth.listRemoteModels(provider);
     } catch (error) {
-      throw new BadRequestException(this.aiProviderHealth.errorMessage(error));
+      throw new BadRequestException(aiProviderErrorMessage(error));
     }
   }
 

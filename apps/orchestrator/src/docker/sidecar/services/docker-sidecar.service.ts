@@ -139,22 +139,6 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
   }
 
   /**
-   * Ensures the sidecar can reach the app network and then opens the ADB connection.
-   */
-  async prepareViewerTarget(
-    networkName: string,
-    adbHost: string,
-    adbPort: number,
-  ): Promise<ViewerTargetStatus> {
-    const networkTarget = await this.ensureSidecarOnNetwork(networkName);
-    if (!networkTarget.configured || !networkTarget.connected) {
-      return networkTarget;
-    }
-
-    return this.connectAdb(adbHost, adbPort);
-  }
-
-  /**
    * Creates or starts the sidecar if needed, then attaches it to the app network.
    */
   async ensureSidecarOnNetwork(

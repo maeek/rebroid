@@ -78,7 +78,6 @@ export class AutomationVisionFusionService {
       ? reconcileScreenStateHypothesis({
           state: described.screenState,
           candidates,
-          confirmedFacts: visionContext?.confirmedFacts ?? [],
         })
       : null;
     const screenState = reconcileDescription(

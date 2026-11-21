@@ -242,7 +242,7 @@ export class AiProviderHealthService {
         'error',
         isProviderTimeoutError(error)
           ? `${roleLabel} role check timed out after ${MODEL_ROLE_PROBE_TIMEOUT_MS / 1000}s while probing model "${model.id}". The provider may still be loading the model; retry the health check when it is ready.`
-          : `${roleLabel} role check failed: ${this.errorMessage(error)}`,
+          : `${roleLabel} role check failed: ${aiProviderErrorMessage(error)}`,
       );
     }
   }
@@ -326,7 +326,7 @@ export class AiProviderHealthService {
       return `Provider model list check timed out after ${PROVIDER_MODEL_LIST_TIMEOUT_MS / 1000}s.`;
     }
 
-    return this.errorMessage(error);
+    return aiProviderErrorMessage(error);
   }
 
   private async detectServerFlavor(provider: AutomationAiProvider) {
@@ -413,10 +413,6 @@ export class AiProviderHealthService {
       finishMetrics(isProviderTimeoutError(error) ? 'timeout' : 'error');
       throw error;
     }
-  }
-
-  errorMessage(error: unknown) {
-    return aiProviderErrorMessage(error);
   }
 
   private healthResult(

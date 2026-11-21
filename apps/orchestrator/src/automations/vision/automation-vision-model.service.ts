@@ -113,15 +113,11 @@ export class AutomationVisionModelService {
               'Describe this Android screen for a separate automation planner.',
               request.visionContext
                 ? `Task context: ${JSON.stringify({
-                    goal: request.visionContext.goal ?? null,
-                    lastAction: request.visionContext.lastAction ?? null,
-                    expectedOutcome:
-                      request.visionContext.expectedOutcome ?? null,
-                    confirmedFacts: (
-                      request.visionContext.confirmedFacts ?? []
-                    ).slice(-8),
-                    latestHypothesis:
-                      request.visionContext.latestHypothesis ?? null,
+                    goal: request.visionContext.goal,
+                    lastAction: null,
+                    expectedOutcome: null,
+                    confirmedFacts: [],
+                    latestHypothesis: null,
                   })}`
                 : '',
               'JSON shape: {"screenKind":"home|app_drawer|quick_settings|notification_shade|settings_app|app_screen|unknown","confidence":0.0,"visibleText":["..."],"controls":[{"label":"...","role":"button|icon|text|field|tile|unknown","bounds":{"left":0,"top":0,"width":0,"height":0},"confidence":0.0,"evidence":["..."]}],"evidence":["..."],"uncertainty":["..."],"summary":"one concise factual sentence"}.',

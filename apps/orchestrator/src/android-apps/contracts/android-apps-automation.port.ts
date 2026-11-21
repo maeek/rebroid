@@ -131,10 +131,6 @@ export interface AndroidAutomationAdbPort {
     path: string,
     signal?: AbortSignal,
   ): Promise<string[]>;
-  logcat(
-    app: AndroidAutomationApplication,
-    tail: number,
-  ): Promise<{ source: 'adb'; collectedAt: string; output: string }>;
   screenshot(
     app: AndroidAutomationApplication,
     signal?: AbortSignal,
@@ -165,16 +161,6 @@ export interface AndroidAutomationUiDumpAttempt {
 }
 
 export interface AndroidAutomationDisplayPort {
-  createSessionForPreparedTarget(
-    app: AndroidAutomationApplication,
-    udid: string,
-    capabilities?: string[],
-  ): Promise<AndroidAutomationDisplaySession>;
-  tryCreateSessionForPreparedTarget(
-    app: AndroidAutomationApplication,
-    udid: string,
-    capabilities?: string[],
-  ): Promise<AndroidAutomationDisplaySession | null>;
   viewerControl(
     app: AndroidAutomationApplication,
     command: ApplicationViewerControlCommand,
@@ -184,23 +170,6 @@ export interface AndroidAutomationDisplayPort {
     command: ApplicationViewerControlCommand;
     executed: boolean;
   }>;
-  setClipboard(
-    app: AndroidAutomationApplication,
-    text: string,
-  ): Promise<{
-    session: AndroidAutomationDisplaySession;
-    text: string;
-    supported: boolean;
-  }>;
-  releaseSessionsForApp(appId: string): Promise<void>;
-  createVirtualSurface(
-    app: AndroidAutomationApplication,
-    input?: { name?: string; width?: number; height?: number; dpi?: number },
-  ): Promise<AndroidAutomationDisplaySession>;
-  releaseVirtualSurface(
-    app: AndroidAutomationApplication,
-    surfaceId: string,
-  ): Promise<AndroidAutomationDisplaySession>;
 }
 
 export interface AndroidAutomationNetworkPolicyPort {

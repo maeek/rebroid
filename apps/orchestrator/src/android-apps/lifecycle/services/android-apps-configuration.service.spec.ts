@@ -1,3 +1,4 @@
+import { KeyedSerialQueue } from '../../../common/keyed-serial-queue';
 import { AndroidAppsConfigurationService } from './android-apps-configuration.service';
 
 describe('APK owner authorization', () => {
@@ -38,7 +39,7 @@ describe('resolved application image authorization', () => {
     jest.clearAllMocks();
     Object.assign(service, {
       features: { assertEnabled: jest.fn() },
-      ownerConfiguration: new Map(),
+      ownerConfiguration: new KeyedSerialQueue<string | null>(),
       applications: { findOwnerAppNames: jest.fn().mockResolvedValue([]) },
       settings: {
         getSettings: jest.fn().mockResolvedValue({
@@ -110,7 +111,7 @@ describe('owner-scoped application names', () => {
     ];
     const reconcileOne = jest.fn();
     Object.assign(service, {
-      ownerConfiguration: new Map(),
+      ownerConfiguration: new KeyedSerialQueue<string | null>(),
       applications: {
         findOwnerAppNames: async (owner: string) =>
           apps.filter((app) => app.ownerUserId === owner),

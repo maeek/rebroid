@@ -77,18 +77,6 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
   }
 
   /**
-   * Reads the container IP from a specific Docker network attachment.
-   */
-  async getContainerIp(containerId: string, networkName: string) {
-    const inspect = await this.engine.coalesceRead(
-      `container-inspect:${containerId}`,
-      () => this.engine.docker.getContainer(containerId).inspect(),
-      `Inspect container ${containerId} on network ${networkName}`,
-    );
-    return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
-  }
-
-  /**
    * Returns the gateway IP advertised by the app network, if Docker exposed one.
    */
   async getNetworkGateway(networkName: string) {
@@ -307,11 +295,6 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
         throw error;
       }
     }
-  }
-
-  async listNetworkContainerIds(networkName: string) {
-    const inspect = await this.inspectNetworkIfPresent(networkName);
-    return Object.keys(inspect?.Containers ?? {});
   }
 
   private async observeNetworkMembership(

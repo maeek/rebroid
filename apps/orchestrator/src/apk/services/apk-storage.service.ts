@@ -6,23 +6,17 @@ import { link, mkdir, readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { KeyedSerialQueue } from '../../common/keyed-serial-queue';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 
 @Injectable()
 export class ApkStorageService {
   private readonly logger = new Logger(ApkStorageService.name);
-  private readonly pending = new Map<string, Promise<unknown>>();
+  private readonly hashOperations = new KeyedSerialQueue<string>();
   private readonly activeUploads = new Set<string>();
 
-  async withHash<T>(sha256: string, operation: () => Promise<T>): Promise<T> {
-    const previous = this.pending.get(sha256) ?? Promise.resolve();
-    const current = previous.catch(() => undefined).then(operation);
-    this.pending.set(sha256, current);
-    try {
-      return await current;
-    } finally {
-      if (this.pending.get(sha256) === current) this.pending.delete(sha256);
-    }
+  withHash<T>(sha256: string, operation: () => Promise<T>): Promise<T> {
+    return this.hashOperations.run(sha256, operation);
   }
 
   constructor(

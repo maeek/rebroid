@@ -20,13 +20,6 @@ interface PixelPoint {
   y: number;
 }
 
-interface PixelBox {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}
-
 const clampUnit = (value: number) =>
   Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
 
@@ -63,20 +56,6 @@ export const normalizedPointToPixels = (
     x: Math.round(normalized.x * Math.max(0, image.width - 1)),
     y: Math.round(normalized.y * Math.max(0, image.height - 1)),
   };
-};
-
-export const pixelBoxToNormalized = (
-  box: PixelBox,
-  image: VisionImageSize,
-): NormalizedBox => {
-  const width = Math.max(1, image.width);
-  const height = Math.max(1, image.height);
-  return normalizeBox({
-    left: box.left / width,
-    top: box.top / height,
-    width: box.width / width,
-    height: box.height / height,
-  });
 };
 
 export const pointWithinBox = (point: NormalizedPoint, box: NormalizedBox) => {

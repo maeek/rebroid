@@ -2,7 +2,6 @@ import { setImmediate } from 'node:timers/promises';
 import { ConfigService } from '@nestjs/config';
 import { maximumProviderJsonBytes } from '../common/ai-provider-http';
 import { providerStreamLimits } from '../common/ai-provider-stream';
-import { AiProviderHealthService } from './ai-provider-health.service';
 import { AiProviderModelDownloadService } from './ai-provider-model-download.service';
 import { normalizeAiProvider } from './ai-provider-normalization';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
@@ -19,7 +18,6 @@ const setup = (response: Response) => {
   };
   const service = new AiProviderModelDownloadService(
     store as unknown as OrchestratorSettingsStore,
-    new AiProviderHealthService(),
   );
   return { service, store };
 };
@@ -115,10 +113,7 @@ describe('AiProviderModelDownloadService', () => {
       settings = await update(settings);
       return settings;
     });
-    const service = new AiProviderModelDownloadService(
-      store,
-      new AiProviderHealthService(),
-    );
+    const service = new AiProviderModelDownloadService(store);
 
     const job = await service.download('local', 'preferred');
     await setImmediate();

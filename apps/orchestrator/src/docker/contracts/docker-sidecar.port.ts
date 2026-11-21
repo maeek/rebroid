@@ -18,11 +18,6 @@ export const DOCKER_SIDECAR = Symbol('DOCKER_SIDECAR');
 
 export interface DockerSidecarPort {
   readonly adbTargetGeneration: number;
-  prepareViewerTarget(
-    networkName: string,
-    adbHost: string,
-    adbPort: number,
-  ): Promise<ViewerTargetStatus>;
   ensureSidecarOnNetwork(
     networkName: string,
     deadline?: OperationDeadline,

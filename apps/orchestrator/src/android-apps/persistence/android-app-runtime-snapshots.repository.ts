@@ -13,6 +13,7 @@ import {
 } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { KeyedSerialQueue } from '../../common/keyed-serial-queue';
 import { snapshotRuntimeKey } from '../common/utils/android-runtime-identity';
 import { AndroidApplicationStatus } from '../contracts/android-application-status';
 import { AndroidApplicationsRepository } from './android-applications.repository';
@@ -42,7 +43,7 @@ export class AndroidAppRuntimeSnapshotsRepository {
     AndroidAppRuntimeSnapshotsRepository.name,
   );
   private readonly directory: string;
-  private readonly pending = new Map<string, Promise<void>>();
+  private readonly writes = new KeyedSerialQueue<string>();
 
   constructor(
     config: ConfigService,
@@ -115,7 +116,7 @@ export class AndroidAppRuntimeSnapshotsRepository {
     { content, ...metadata }: Omit<RuntimeSnapshot, 'recordId'>,
     isCurrent: () => Promise<boolean>,
   ) {
-    return this.serialize(id, async () => {
+    return this.writes.run(id, async () => {
       if (content.length === 0 || content.length > maximumSnapshotBytes) {
         throw new Error('Invalid snapshot thumbnail size.');
       }
@@ -181,7 +182,7 @@ export class AndroidAppRuntimeSnapshotsRepository {
       const id = match?.[1];
       if (!id || !appIdPattern.test(id)) continue;
       if (match[2]) {
-        await this.serialize(id, () =>
+        await this.writes.run(id, () =>
           rm(join(this.directory, filename), { force: true }),
         );
       } else if (!runningIds.has(id)) {
@@ -192,7 +193,7 @@ export class AndroidAppRuntimeSnapshotsRepository {
 
   private deleteWhen(id: string, shouldDelete: () => Promise<boolean>) {
     // Validate under the same per-app queue that publishes replacement records.
-    return this.serialize(id, async () => {
+    return this.writes.run(id, async () => {
       try {
         await this.checkDirectory();
         if (await shouldDelete()) await rm(this.path(id), { force: true });
@@ -215,18 +216,6 @@ export class AndroidAppRuntimeSnapshotsRepository {
     if (!stats.isDirectory() || (stats.mode & 0o077) !== 0) {
       throw new Error('The runtime snapshots directory must be private.');
     }
-  }
-
-  private serialize(id: string, operation: () => Promise<void>) {
-    const previous = this.pending.get(id) ?? Promise.resolve();
-    const current = previous
-      .catch(() => undefined)
-      .then(operation)
-      .finally(() => {
-        if (this.pending.get(id) === current) this.pending.delete(id);
-      });
-    this.pending.set(id, current);
-    return current;
   }
 
   private path(id: string) {

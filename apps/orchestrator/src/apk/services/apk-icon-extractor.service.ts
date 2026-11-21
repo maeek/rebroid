@@ -75,9 +75,8 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
       };
     }
 
-    const packageName = this.manifestReader.readPackageName(manifest);
-    const label = this.manifestReader.readApplicationLabel(manifest);
-    const declaredIcons = this.manifestReader.readIconReferences(manifest);
+    const { packageName, label, declaredIcons } =
+      this.manifestReader.readMetadata(manifest);
     let resources: Buffer | null | undefined;
     const getResources = async () => {
       if (resources === undefined) {

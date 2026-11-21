@@ -1,3 +1,4 @@
+import { screenshotCommand } from './screenshot-command';
 import { Injectable } from '@nestjs/common';
 import {
   findUiTextTarget,
@@ -155,42 +156,7 @@ export class GenericAutomationCommandsService {
         label: 'Save screenshot artifact',
         description: 'Captures a screenshot into the run step output.',
         requiredPermissions: ['automations:run'],
-        schema: z.object({}),
-        outputs: [
-          {
-            key: 'mimeType',
-            label: 'MIME type',
-            type: 'string',
-            description: 'Screenshot media type.',
-            example: 'image/png',
-          },
-          {
-            key: 'capturedAt',
-            label: 'Captured at',
-            type: 'string',
-            description: 'Timestamp when the screenshot was captured.',
-          },
-          {
-            key: 'dataUrl',
-            label: 'Image data',
-            type: 'string',
-            description: 'Screenshot encoded as a data URL.',
-          },
-        ],
-        execute: async (
-          _input: Record<string, never>,
-          { app, adb, abortSignal }: AutomationCommandContext,
-        ) => {
-          const result = await adb.screenshot(app, abortSignal);
-          return {
-            summary: 'Screenshot artifact saved.',
-            data: {
-              mimeType: result.mimeType,
-              capturedAt: result.capturedAt,
-              dataUrl: result.dataUrl,
-            },
-          };
-        },
+        ...screenshotCommand('Screenshot artifact saved.'),
       },
     ];
     return commands as unknown as AutomationCommandDefinition[];

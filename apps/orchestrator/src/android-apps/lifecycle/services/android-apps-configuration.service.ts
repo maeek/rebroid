@@ -5,6 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { KeyedSerialQueue } from '../../../common/keyed-serial-queue';
 import { resolveContainerImage } from '../../../common/container-image-reference';
 import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-config.service';
 import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
@@ -55,10 +56,7 @@ const unavailableApk = () =>
 
 @Injectable()
 export class AndroidAppsConfigurationService {
-  private readonly ownerConfiguration = new Map<
-    string | null,
-    Promise<unknown>
-  >();
+  private readonly ownerConfiguration = new KeyedSerialQueue<string | null>();
 
   constructor(
     private readonly applications: AndroidApplicationsRepository,
@@ -99,7 +97,7 @@ export class AndroidAppsConfigurationService {
     );
     const ownerUserId = dto.ownerUserId?.trim() || null;
     const name = dto.name.trim();
-    return this.withOwnerConfiguration(ownerUserId, async () => {
+    return this.ownerConfiguration.run(ownerUserId, async () => {
       assertAppNameAvailable(name, await this.ownerNameKeys(ownerUserId));
       const provision = (apk: UploadedApkReference | null) =>
         this.provision(
@@ -182,7 +180,7 @@ export class AndroidAppsConfigurationService {
       this.redroidConfig.privileged,
     );
     const ownerUserId = dto.ownerUserId?.trim() || null;
-    return this.withOwnerConfiguration(ownerUserId, async () => {
+    return this.ownerConfiguration.run(ownerUserId, async () => {
       const names = await this.ownerNameKeys(ownerUserId);
       const name = dto.name?.trim() ?? availableCloneName(source.name, names);
       assertAppNameAvailable(name, names);
@@ -212,7 +210,7 @@ export class AndroidAppsConfigurationService {
 
   async update(id: string, dto: UpdateAndroidApplicationDto) {
     const { ownerUserId } = await this.queries.getStored(id);
-    return this.withOwnerConfiguration(ownerUserId, () =>
+    return this.ownerConfiguration.run(ownerUserId, () =>
       this.updateConfiguration(id, dto),
     );
   }
@@ -270,23 +268,6 @@ export class AndroidAppsConfigurationService {
         .filter((app) => app.id !== exceptId)
         .map((app) => appNameKey(app.name)),
     );
-  }
-
-  private async withOwnerConfiguration<T>(
-    ownerUserId: string | null,
-    operation: () => Promise<T>,
-  ) {
-    const previous =
-      this.ownerConfiguration.get(ownerUserId) ?? Promise.resolve();
-    const current = previous.catch(() => undefined).then(operation);
-    this.ownerConfiguration.set(ownerUserId, current);
-    try {
-      return await current;
-    } finally {
-      if (this.ownerConfiguration.get(ownerUserId) === current) {
-        this.ownerConfiguration.delete(ownerUserId);
-      }
-    }
   }
 
   async switchProfile(id: string, dto: SwitchApplicationProfileDto) {

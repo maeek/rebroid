@@ -74,17 +74,13 @@ export class ApplicationCommandResultDto {
   @ApiPropertyOptional({ type: () => ApplicationCommandApkDto })
   apk?: ApplicationCommandApkDto;
 
-  static fromEntity(
-    app: AndroidApplication,
-    options: { operationId?: string } = {},
-  ): ApplicationCommandResultDto {
+  static fromEntity(app: AndroidApplication): ApplicationCommandResultDto {
     return {
       id: app.id,
       name: app.name,
       status: app.status,
       lifecycleStage: app.lifecycleStage,
       message: app.statusMessage,
-      operationId: options.operationId,
       networkPolicy: {
         enabled: app.networkPolicyEnabled,
         allowCidrs: parseJsonStringArray(app.networkPolicyAllowCidrs),
