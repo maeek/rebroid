@@ -248,7 +248,7 @@ export class AndroidApplication {
   profileName!: string | null;
 
   @ApiPropertyOptional({ example: '[{"mode":"persistent","name":"default"}]' })
-  @Column({ type: 'text', default: "'[]'" })
+  @Column({ type: 'text', default: '[]' })
   savedProfilesJson!: string;
 
   @ApiPropertyOptional({ example: 2048, nullable: true })

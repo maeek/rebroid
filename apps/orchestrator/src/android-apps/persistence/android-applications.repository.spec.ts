@@ -102,7 +102,6 @@ describe('Android application runtime observations', () => {
         networkName: 'runtime-fixture',
         volumeName: 'runtime-fixture',
         networkPolicyAllowCidrs: '[]',
-        savedProfilesJson: '[]',
         status: AndroidApplicationStatus.Running,
         lastStartedAt: new Date('2026-01-01T00:00:00Z'),
       }),

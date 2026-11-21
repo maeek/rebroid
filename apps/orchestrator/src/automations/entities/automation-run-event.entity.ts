@@ -31,7 +31,7 @@ export class AutomationRunEvent {
   @Column({ type: 'text' })
   message!: string;
 
-  @Column({ type: 'text', nullable: false, default: "'{}'" })
+  @Column({ type: 'text', nullable: false, default: '{}' })
   dataJson!: string;
 
   @CreateDateColumn()

@@ -29,7 +29,6 @@ it('projects the original prompt and terminal outcome past the first event page'
     const base = {
       runId: 'run',
       ownerUserId: 'owner',
-      dataJson: '{}',
       message: 'fixture',
     };
     const rows = [

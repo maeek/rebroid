@@ -98,7 +98,7 @@ export class ContainerImageBuildJob {
   cacheState!: ContainerImageBuildCacheState;
 
   @ApiProperty({ type: 'object', additionalProperties: true })
-  @Column({ type: 'simple-json', default: "'{}'" })
+  @Column({ type: 'simple-json', default: '{}' })
   validationResults!: Record<string, unknown>;
 
   @ApiProperty()
@@ -106,11 +106,11 @@ export class ContainerImageBuildJob {
   dockerfile!: string;
 
   @ApiProperty()
-  @Column({ type: 'text', default: "'[]'" })
+  @Column({ type: 'text', default: '[]' })
   contextFileIdsJson!: string;
 
   @ApiProperty({ example: 'Step 1/4 : FROM redroid/redroid:14.0.0-latest' })
-  @Column({ type: 'text', default: "''" })
+  @Column({ type: 'text', default: '' })
   logTail!: string;
 
   @ApiPropertyOptional({ type: String, nullable: true })

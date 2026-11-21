@@ -62,7 +62,7 @@ export class ContainerImageBuildRecipe {
   dockerfile!: string;
 
   @ApiProperty()
-  @Column({ type: 'text', default: "'[]'" })
+  @Column({ type: 'text', default: '[]' })
   contextFileIdsJson!: string;
 
   @ApiProperty()

@@ -3,13 +3,14 @@ import type { Repository } from 'typeorm';
 import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
 import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
+import { ContainerImageBuildRecipe } from '../entities/container-image-build-recipe.entity';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
 
 const openDatabase = () =>
   new SerializedSqliteDataSource({
     type: 'better-sqlite3',
     database: ':memory:',
-    entities: [ContainerImageBuildJob],
+    entities: [ContainerImageBuildJob, ContainerImageBuildRecipe],
     migrations: [InitializeSqliteSchema1800000005000],
     migrationsRun: true,
   }).initialize();
@@ -29,6 +30,36 @@ const insertJob = (
   );
 
 describe('ContainerImageBuildJobService', () => {
+  it('persists build definitions using their repository defaults', async () => {
+    const database = await openDatabase();
+    try {
+      const definition = {
+        targetImage: 'test:image',
+        baseImage: 'test:base',
+        dockerfile: 'FROM test:base',
+      };
+      const recipes = database.getRepository(ContainerImageBuildRecipe);
+      const recipe = await recipes.save({ ...definition, name: 'test recipe' });
+      const jobs = database.getRepository(ContainerImageBuildJob);
+      const job = await jobs.save({ ...definition, recipeId: recipe.id });
+
+      await expect(
+        recipes.findOneByOrFail({ id: recipe.id }),
+      ).resolves.toMatchObject({
+        contextFileIdsJson: '[]',
+      });
+      await expect(jobs.findOneByOrFail({ id: job.id })).resolves.toMatchObject(
+        {
+          contextFileIdsJson: '[]',
+          logTail: '',
+          validationResults: {},
+        },
+      );
+    } finally {
+      await database.destroy();
+    }
+  });
+
   it('prunes old build logs and results while keeping the latest result per image and active jobs', async () => {
     const database = await openDatabase();
     try {
