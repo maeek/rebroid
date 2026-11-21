@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { link, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import 'server-only'
+import { KeyedSerialQueue } from '@/server/concurrency/keyed-serial-queue'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { logger } from '@/server/observability/logger'
 
@@ -27,25 +28,11 @@ type StoredIconMetadata = {
 const dataUrlPattern = /^data:([^;,]+);base64,([\s\S]+)$/
 const maxIconBytes = 2 * 1024 * 1024
 export const maxAppIconRequestBytes = Math.ceil(maxIconBytes / 3) * 4 + 1024
-const iconWrites = new Map<string, Promise<void>>()
+const iconWrites = new KeyedSerialQueue()
 const revisionPattern = /^[a-f0-9]{32}$/
 
 const getRevision = (metadata: StoredIconMetadata) =>
   typeof metadata.revision === 'string' && revisionPattern.test(metadata.revision) ? metadata.revision : undefined
-
-const withIconWrite = async <T>(path: string, write: () => Promise<T>) => {
-  const operation = (iconWrites.get(path) ?? Promise.resolve()).then(write)
-  const settled = operation.then(
-    () => undefined,
-    () => undefined
-  )
-  iconWrites.set(path, settled)
-  try {
-    return await operation
-  } finally {
-    if (iconWrites.get(path) === settled) iconWrites.delete(path)
-  }
-}
 
 const unlinkIfPresent = (path: string) =>
   unlink(path).catch((error: NodeJS.ErrnoException) => {
@@ -98,7 +85,7 @@ export const getStoredAppIcon = async (appId: string) => {
   const metadata = await readMetadata(appId)
   if (typeof metadata?.icon !== 'string' || !metadata.icon.startsWith('data:')) return publishedIconUrl(appId, metadata)
 
-  return withIconWrite(iconPath(appId), async () => {
+  return iconWrites.run(iconPath(appId), async () => {
     const current = await readMetadata(appId)
     if (typeof current?.icon !== 'string' || !current.icon.startsWith('data:')) return publishedIconUrl(appId, current)
     return writeStoredAppIcon(appId, current.icon, current)
@@ -162,14 +149,14 @@ const writeStoredAppIcon = async (
 }
 
 export const setStoredAppIcon = (appId: string, icon: string) =>
-  withIconWrite(iconPath(appId), async () => writeStoredAppIcon(appId, icon, await readMetadata(appId)))
+  iconWrites.run(iconPath(appId), async () => writeStoredAppIcon(appId, icon, await readMetadata(appId)))
 
 export const setInitialStoredAppIcon = (appId: string, icon: string) =>
-  withIconWrite(iconPath(appId), () => writeStoredAppIcon(appId, icon, null, true))
+  iconWrites.run(iconPath(appId), () => writeStoredAppIcon(appId, icon, null, true))
 
 export const removeStoredAppIcon = (appId: string) => {
   const path = iconPath(appId)
-  return withIconWrite(path, async () => {
+  return iconWrites.run(path, async () => {
     await unlinkIfPresent(path)
     const files = await readdir(dirname(path)).catch((error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT') return []

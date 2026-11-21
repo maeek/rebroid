@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import 'server-only'
 import { removeStoredAppIcon } from '@/server/app-icons/store'
+import { KeyedSerialQueue } from '@/server/concurrency/keyed-serial-queue'
 import { logger } from '@/server/observability/logger'
 import { forgetDeletedApplication } from '@/server/persistence/recent-applications-repository'
 import {
@@ -30,15 +31,10 @@ const discardRejectedApplicationDeletion = (id: string, error: unknown) => {
   }
 }
 
-const deletionCommands = new Map<string, Promise<void>>()
+const deletionCommands = new KeyedSerialQueue()
 
-export const requestTrackedApplicationDeletion = async (
-  applicationId: string,
-  removeData: boolean,
-  requestId: string
-) => {
-  const previous = deletionCommands.get(applicationId) ?? Promise.resolve()
-  const command = previous.then(async () => {
+export const requestTrackedApplicationDeletion = (applicationId: string, removeData: boolean, requestId: string) =>
+  deletionCommands.run(applicationId, async () => {
     const jobId = trackApplicationDeletion(applicationId, requestId)
     try {
       const acknowledgement = await orchestratorAppCatalogClient.deleteApplication(applicationId, removeData)
@@ -54,17 +50,6 @@ export const requestTrackedApplicationDeletion = async (
       throw error
     }
   })
-  const settled = command.then(
-    () => undefined,
-    () => undefined
-  )
-  deletionCommands.set(applicationId, settled)
-  try {
-    return await command
-  } finally {
-    if (deletionCommands.get(applicationId) === settled) deletionCommands.delete(applicationId)
-  }
-}
 
 export const cleanDeletedApplicationMetadata = async (
   { applicationId, requestId, createdAt }: AppDeletionJob & { createdAt: number },
