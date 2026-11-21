@@ -27,8 +27,7 @@ import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeFilePreviewService } from './runtime-file-preview.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
-
-type RuntimeEntryType = 'file' | 'directory';
+import { runtimeFileEntry } from '../utils/android-apps-runtime-file.utils';
 
 const previewRuntimeKey = (app: AndroidApplication) =>
   JSON.stringify([
@@ -80,20 +79,13 @@ export class RuntimeDataFilesService {
       .filter(Boolean)
       .map((line) => {
         const [type, name = '', modified = '', value = '0'] = line.split('\t');
-        const modifiedSeconds = Number(modified);
-        const numericValue = Number(value) || 0;
-        return {
+        return runtimeFileEntry(
           name,
-          path: posix.join(directory, name),
-          type:
-            type === 'directory' ? ('directory' as const) : ('file' as const),
-          sizeBytes: type === 'directory' ? null : numericValue,
-          itemCount: null,
-          modifiedAt:
-            Number.isFinite(modifiedSeconds) && modifiedSeconds > 0
-              ? new Date(modifiedSeconds * 1000).toISOString()
-              : null,
-        };
+          posix.join(directory, name),
+          type === 'directory' ? 'directory' : 'file',
+          Number(value) || 0,
+          Number(modified),
+        );
       })
       .filter((entry) => entry.name.length > 0)
       .sort((left, right) => {
@@ -143,7 +135,7 @@ export class RuntimeDataFilesService {
       '[ ! -e "$target" ] && [ ! -L "$target" ] || exit 43',
       'mkdir "$target"',
     ]);
-    return this.runtimeEntry(name, path, 'directory', null);
+    return runtimeFileEntry(name, path, 'directory', null);
   }
 
   async renameFile(id: string, requestedPath: string, value: string) {
@@ -169,7 +161,7 @@ export class RuntimeDataFilesService {
       'printf "%s\\t%s\\t%s" "$type" "$modified" "$size"',
     ]).finally(() => this.previews.invalidate(app.containerId));
     const [type = 'file', modified = '0', size = '0'] = stdout.split('\t');
-    return this.runtimeEntry(
+    return runtimeFileEntry(
       name,
       destinationPath,
       type === 'directory' ? 'directory' : 'file',
@@ -459,25 +451,5 @@ export class RuntimeDataFilesService {
       }
       throw error;
     }
-  }
-
-  private runtimeEntry(
-    name: string,
-    path: string,
-    type: RuntimeEntryType,
-    sizeBytes: number | null,
-    modifiedSeconds = Math.floor(Date.now() / 1000),
-  ) {
-    return {
-      name,
-      path,
-      type,
-      sizeBytes: type === 'file' ? sizeBytes : null,
-      itemCount: null,
-      modifiedAt:
-        modifiedSeconds > 0
-          ? new Date(modifiedSeconds * 1000).toISOString()
-          : null,
-    };
   }
 }

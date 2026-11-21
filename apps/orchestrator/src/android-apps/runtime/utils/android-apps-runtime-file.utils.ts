@@ -17,28 +17,31 @@ export const sanitizeRuntimeFileName = (fileName: string) => {
   return normalized;
 };
 
-export const parseDownloadFiles = (
-  stdout: string,
-  downloadDirectory: string,
-) => {
-  return stdout
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name, size, modified] = line.split('\t');
-      const modifiedSeconds = Number(modified);
-      return {
-        name: name ?? '',
-        path: `${downloadDirectory}/${name ?? ''}`,
-        type: 'file' as const,
-        sizeBytes: Number(size) || 0,
-        itemCount: null,
-        modifiedAt:
-          Number.isFinite(modifiedSeconds) && modifiedSeconds > 0
-            ? new Date(modifiedSeconds * 1000).toISOString()
-            : null,
-      };
-    })
-    .filter((file) => file.name.length > 0);
-};
+export const runtimeFileEntry = (
+  name: string,
+  path: string,
+  type: 'file' | 'directory',
+  sizeBytes: number | null,
+  modifiedSeconds = Math.floor(Date.now() / 1000),
+) => ({
+  name,
+  path,
+  type,
+  sizeBytes: type === 'file' ? sizeBytes : null,
+  itemCount: null,
+  modifiedAt:
+    modifiedSeconds > 0 ? new Date(modifiedSeconds * 1000).toJSON() : null,
+});
+
+export const parseDownloadFiles = (stdout: string, downloadDirectory: string) =>
+  stdout.split('\n').flatMap((line) => {
+    const [name, size, modified] = line.split('\t');
+    if (!name || !isRuntimeDownloadFileName(name)) return [];
+    return runtimeFileEntry(
+      name,
+      `${downloadDirectory}/${name}`,
+      'file',
+      Number(size) || 0,
+      Number(modified),
+    );
+  });

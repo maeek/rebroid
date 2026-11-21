@@ -56,7 +56,7 @@ describe('RuntimeDataFilesService', () => {
   it('lists one directory level without recursively counting children', async () => {
     exec.execInContainerWithOutput.mockResolvedValue({
       stdout:
-        'directory\tPictures\t1700000000\t0\nfile\treadme.txt\t1700000100\t12\n',
+        'directory\tPictures\t1700000000\t0\nfile\treadme.txt\t999999999999999\t12\n',
       stderr: '',
       exitCode: 0,
     });
@@ -73,6 +73,7 @@ describe('RuntimeDataFilesService', () => {
       }),
       expect.objectContaining({
         name: 'readme.txt',
+        modifiedAt: null,
         type: 'file',
         sizeBytes: 12,
       }),
