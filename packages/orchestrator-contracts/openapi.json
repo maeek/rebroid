@@ -5766,6 +5766,9 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "The maintenance task is already running."
           }
         },
         "tags": [
@@ -5857,9 +5860,6 @@
                 }
               }
             }
-          },
-          "409": {
-            "description": "The maintenance task is already running."
           }
         },
         "tags": [
