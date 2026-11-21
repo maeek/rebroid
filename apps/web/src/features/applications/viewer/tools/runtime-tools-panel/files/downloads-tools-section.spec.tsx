@@ -11,13 +11,12 @@ import { actionOk } from '@/shared/actions/action-result'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { DownloadsToolsSection } from './downloads-tools-section'
-import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
+import type { ApplicationRuntimeFile, ApplicationRuntimeFileDownload } from '@/shared/contracts/application'
 
 vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/runtime/file-actions', () => ({
   createApplicationRuntimeDirectoryAction: vi.fn(),
   deleteApplicationRuntimeFileAction: vi.fn(),
-  downloadApplicationRuntimeFileAction: vi.fn(),
   renameApplicationRuntimeFileAction: vi.fn()
 }))
 
@@ -31,6 +30,45 @@ const file = (name: string): ApplicationRuntimeFile => ({
 })
 
 describe('file action focus', () => {
+  it('shares a pending download between the row and inspector while other files remain usable', async () => {
+    const pending = Promise.withResolvers<ApplicationRuntimeFileDownload>()
+    vi.mocked(getBff).mockImplementation((url: string) =>
+      url.includes('/files/download?') ? pending.promise : Promise.resolve([file('manual.txt'), file('notes.txt')])
+    )
+    const app = {
+      ...mapAndroidApplicationToAppDefinition(applicationPreview),
+      status: 'running' as const,
+      running: true
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <DownloadsToolsSection
+          app={app}
+          permissions={fullPermissions}
+        />
+      </QueryClientProvider>
+    )
+    const download = await screen.findByRole('button', { name: 'Download manual.txt' })
+    fireEvent.click(download)
+    expect(download).toBeDisabled()
+    expect(within(screen.getByRole('button', { name: 'manual.txt' })).getByText('Preparing download…')).toBeVisible()
+    expect(screen.getByText('Preparing download for manual.txt.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Download notes.txt' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'manual.txt' }))
+    const details = await screen.findByRole('dialog', { name: 'File details' })
+    const inspectorDownload = within(details).getByRole('button', { name: 'Preparing download…' })
+    expect(inspectorDownload).toBeDisabled()
+    fireEvent.click(inspectorDownload)
+    expect(vi.mocked(getBff).mock.calls.filter(([url]) => url.includes('/files/download?'))).toEqual([
+      [
+        `/api/bff/applications/${app.id}/runtime/files/download?${new URLSearchParams({ path: file('manual.txt').path })}`
+      ]
+    ])
+    pending.reject(new Error('Download temporarily unavailable'))
+    expect(await within(details).findByRole('button', { name: 'Download' })).toBeEnabled()
+  })
+
   it('returns to the renamed row, then the next row or the folder when nothing remains', async () => {
     vi.mocked(getBff).mockResolvedValue([file('a.txt'), file('z.txt')])
     vi.mocked(renameApplicationRuntimeFileAction).mockResolvedValue(actionOk(file('b.txt')))

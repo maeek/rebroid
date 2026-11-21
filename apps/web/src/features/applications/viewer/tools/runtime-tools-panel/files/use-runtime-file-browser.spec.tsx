@@ -13,7 +13,6 @@ vi.mock('@/hooks/use-toast', () => ({ toast: mocks.toast }))
 vi.mock('@/server/orchestrator/applications/actions/runtime/file-actions', () => ({
   createApplicationRuntimeDirectoryAction: vi.fn(),
   deleteApplicationRuntimeFileAction: vi.fn(),
-  downloadApplicationRuntimeFileAction: vi.fn(),
   renameApplicationRuntimeFileAction: vi.fn()
 }))
 

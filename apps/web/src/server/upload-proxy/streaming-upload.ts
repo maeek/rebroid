@@ -10,7 +10,7 @@ interface StreamingUploadOptions {
 
 export class StreamingUploadTooLargeError extends Error {}
 
-const enforceStreamingLimit = (body: ReadableStream<Uint8Array>, maximumBytes: number, message: string) => {
+export const enforceStreamingLimit = (body: ReadableStream<Uint8Array>, maximumBytes: number, message: string) => {
   const reader = body.getReader()
   let receivedBytes = 0
   return new ReadableStream<Uint8Array>({

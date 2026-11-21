@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { link, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import 'server-only'
 import { PublicActionError } from '@/server/errors/public-action-error'
@@ -26,6 +26,7 @@ type StoredIconMetadata = {
 
 const dataUrlPattern = /^data:([^;,]+);base64,([\s\S]+)$/
 const maxIconBytes = 2 * 1024 * 1024
+export const maxAppIconRequestBytes = Math.ceil(maxIconBytes / 3) * 4 + 1024
 const iconWrites = new Map<string, Promise<void>>()
 const revisionPattern = /^[a-f0-9]{32}$/
 
@@ -104,7 +105,12 @@ export const getStoredAppIcon = async (appId: string) => {
   })
 }
 
-const writeStoredAppIcon = async (appId: string, icon: string, previous: StoredIconMetadata | null) => {
+const writeStoredAppIcon = async (
+  appId: string,
+  icon: string,
+  previous: StoredIconMetadata | null,
+  initialize: boolean = false
+) => {
   const path = iconPath(appId)
   const parsed = typeof icon === 'string' ? parseIconDataUrl(icon) : null
 
@@ -134,10 +140,19 @@ const writeStoredAppIcon = async (appId: string, icon: string, previous: StoredI
         mode: 0o600
       }
     )
-    await rename(temporaryMetadata, path)
+    if (initialize) {
+      // A delayed Create app upload must never replace an icon set on the app page.
+      await link(temporaryMetadata, path)
+    } else {
+      await rename(temporaryMetadata, path)
+    }
   } catch (error) {
     await Promise.allSettled([unlinkIfPresent(filePath), unlinkIfPresent(temporaryMetadata)])
+    if (initialize && (error as NodeJS.ErrnoException).code === 'EEXIST') return null
     throw error
+  }
+  if (initialize) {
+    await unlinkIfPresent(temporaryMetadata).catch(() => logger.warn('application.icon_cleanup_failed', { appId }))
   }
   const previousFile = storedIconFile(appId, previous)
   if (previousFile) {
@@ -148,6 +163,9 @@ const writeStoredAppIcon = async (appId: string, icon: string, previous: StoredI
 
 export const setStoredAppIcon = (appId: string, icon: string) =>
   withIconWrite(iconPath(appId), async () => writeStoredAppIcon(appId, icon, await readMetadata(appId)))
+
+export const setInitialStoredAppIcon = (appId: string, icon: string) =>
+  withIconWrite(iconPath(appId), () => writeStoredAppIcon(appId, icon, null, true))
 
 export const removeStoredAppIcon = (appId: string) => {
   const path = iconPath(appId)

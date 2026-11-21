@@ -71,10 +71,11 @@ export const orchestratorAppRuntimeClient = {
     )
   },
 
-  downloadRuntimeFile(id: string, path: string) {
+  downloadRuntimeFile(id: string, path: string, signal?: AbortSignal) {
     const query = new URLSearchParams({ path })
     return emptyRequest<ApplicationRuntimeFileDownload>(
-      `${applicationPath(id)}/runtime/data-files/download?${query.toString()}`
+      `${applicationPath(id)}/runtime/data-files/download?${query.toString()}`,
+      { signal }
     )
   },
 

@@ -3,8 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { toast } from '@/hooks/use-toast'
-import { getBff } from '@/lib/http/bff'
-import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
+import { getBff, sendBff } from '@/lib/http/bff'
 import { submitCreateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { actionError, actionOk } from '@/shared/actions/action-result'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
@@ -15,20 +14,20 @@ import { CreateAppForm } from './create-app-form'
 import type { UploadedApk } from '@/shared/contracts/application'
 import type { PlatformImage } from '@/shared/contracts/platform'
 
-const { push, topLoader } = vi.hoisted(() => ({
+const { push, refresh, topLoader } = vi.hoisted(() => ({
   push: vi.fn(),
+  refresh: vi.fn(),
   topLoader: { start: vi.fn(), setProgress: vi.fn(), done: vi.fn() }
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
-vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn(), sendBff: vi.fn() }))
 vi.mock('nextjs-toploader', () => ({
   useTopLoader: () => topLoader
 }))
 vi.mock('@/server/orchestrator/applications/actions/configuration/create-update-actions', () => ({
   submitCreateApplicationAction: vi.fn()
 }))
-vi.mock('@/server/app-icons/actions/set-app-icon-action', () => ({ setAppIconAction: vi.fn() }))
 vi.mock('@/features/applications/apks/upload-apk-with-feedback', () => ({ uploadApkWithFeedback: vi.fn() }))
 vi.mock('@/shared/model/media/icon-metadata', () => ({ optimizeIconFile: vi.fn() }))
 vi.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
@@ -335,7 +334,8 @@ describe('Create app failure feedback', () => {
     vi.mocked(submitCreateApplicationAction)
       .mockResolvedValueOnce(actionOk({ id: 'undefined' }, 'create-456'))
       .mockResolvedValueOnce(actionOk({ id: appId }))
-    vi.mocked(setAppIconAction).mockResolvedValueOnce(actionOk(customIcon))
+    const iconWrite = Promise.withResolvers<string>()
+    vi.mocked(sendBff).mockReturnValueOnce(iconWrite.promise)
 
     renderForm()
     fireEvent.click(screen.getByRole('button', { name: 'Saved APKs' }))
@@ -360,7 +360,7 @@ describe('Create app failure feedback', () => {
     expect(name).toHaveValue('Tablet landscape')
     expect(screen.getByText('stockroom.apk')).toBeVisible()
     expect(screen.getByText('Custom icon')).toBeVisible()
-    expect(setAppIconAction).not.toHaveBeenCalled()
+    expect(sendBff).not.toHaveBeenCalled()
     expect(push).not.toHaveBeenCalled()
     expect(toast).not.toHaveBeenCalled()
 
@@ -371,7 +371,16 @@ describe('Create app failure feedback', () => {
       2,
       expect.objectContaining({ name: 'Tablet landscape', uploadedApkId: savedApk.id })
     )
-    expect(setAppIconAction).toHaveBeenCalledExactlyOnceWith(appId, customIcon)
+    expect(sendBff).toHaveBeenCalledExactlyOnceWith(
+      `/api/bff/applications/${appId}/icon`,
+      { icon: customIcon },
+      'PATCH'
+    )
+    expect(screen.getByRole('button', { name: 'Opening app…' })).toBeDisabled()
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'App icon saved' }))
+
+    iconWrite.resolve(`/api/app-icons/${appId}?v=revision`)
+    await waitFor(() => expect(toast).toHaveBeenCalledWith({ title: 'App icon saved', variant: 'success' }))
   })
 
   it('opens the app page only after receiving a valid app ID', async () => {

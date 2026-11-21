@@ -1,13 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/use-toast'
 import { getBff } from '@/lib/http/bff'
 import {
   createApplicationRuntimeDirectoryAction,
   deleteApplicationRuntimeFileAction,
-  downloadApplicationRuntimeFileAction,
   renameApplicationRuntimeFileAction
 } from '@/server/orchestrator/applications/actions/runtime/file-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
@@ -18,7 +17,7 @@ import {
   type RuntimeFileSort,
   type RuntimeFileSortDirection
 } from './downloads-tools-section-model'
-import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
+import type { ApplicationRuntimeFile, ApplicationRuntimeFileDownload } from '@/shared/contracts/application'
 
 export const runtimeFilesQueryKey = (appId: string, path: string) => ['runtime-files', appId, path] as const
 
@@ -26,6 +25,10 @@ export const runtimeFilesUrl = (appId: string, path: string) => {
   const query = new URLSearchParams({ path })
   return `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files?${query.toString()}`
 }
+
+type PendingDownload = { appId: string; name: string }
+
+const downloadKey = (appId: string, path: string) => JSON.stringify([appId, path])
 
 export const useRuntimeFileBrowser = ({
   appId,
@@ -42,6 +45,8 @@ export const useRuntimeFileBrowser = ({
   const [selectedFile, setSelectedFile] = useState<ApplicationRuntimeFile | null>(null)
   const [sort, setSort] = useState<RuntimeFileSort>('name')
   const [sortDirection, setSortDirection] = useState<RuntimeFileSortDirection>('asc')
+  const inFlightDownloads = useRef(new Map<string, PendingDownload>())
+  const [pendingDownloads, setPendingDownloads] = useState(() => new Map<string, PendingDownload>())
 
   useEffect(() => {
     setCurrentPath(runtimeDownloadsPath)
@@ -159,14 +164,30 @@ export const useRuntimeFileBrowser = ({
 
   const downloadFile = useCallback(
     async (entry: ApplicationRuntimeFile) => {
+      if (entry.type !== 'file' || !canTransferFiles || !runtimeAvailable) return
+      const key = downloadKey(appId, entry.path)
+      const inFlight = inFlightDownloads.current
+      if (inFlight.has(key)) return
+      inFlight.set(key, { appId, name: entry.name })
+      setPendingDownloads(new Map(inFlight))
       try {
-        const download = unwrapActionResult(await downloadApplicationRuntimeFileAction(appId, entry.path))
+        const query = new URLSearchParams({ path: entry.path })
+        const download = await getBff<ApplicationRuntimeFileDownload>(
+          `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files/download?${query.toString()}`
+        )
         downloadDataUrl(download.dataUrl, download.name)
       } catch (error) {
         runtimeActionErrorToast('Could not download file', error)
+      } finally {
+        inFlight.delete(key)
+        setPendingDownloads(new Map(inFlight))
       }
     },
-    [appId]
+    [appId, canTransferFiles, runtimeAvailable]
+  )
+  const isDownloading = useCallback(
+    (path: string) => pendingDownloads.has(downloadKey(appId, path)),
+    [appId, pendingDownloads]
   )
 
   return {
@@ -177,6 +198,8 @@ export const useRuntimeFileBrowser = ({
     error: filesQuery.error,
     files,
     hasLoadedFiles: filesQuery.data !== undefined,
+    isDownloading,
+    downloadingNames: [...pendingDownloads.values()].filter(entry => entry.appId === appId).map(entry => entry.name),
     isLoading: filesQuery.isLoading,
     isRefreshing: filesQuery.isFetching && filesQuery.data !== undefined,
     navigateTo,

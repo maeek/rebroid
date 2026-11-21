@@ -16,10 +16,10 @@ import { parseOutboundDestinations } from '@/features/applications/components/ou
 import { useAppRuntimeValidation } from '@/features/applications/hooks/use-app-runtime-validation'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
-import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { submitCreateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
-import { isActionResult, unwrapActionResult } from '@/shared/actions/action-result'
+import { isActionResult } from '@/shared/actions/action-result'
 import { unconfirmedAppCreationMessage } from '@/shared/contracts/application'
 import { isApplicationId } from '@/shared/model/application-id'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
@@ -78,7 +78,8 @@ export const CreateAppForm = ({
       containerImage: initialContainerImage?.trim() || settings.defaultContainerImage
     }
   })
-  const [isCreating, setIsCreating] = useState(false)
+  const [creationPhase, setCreationPhase] = useState<'idle' | 'creating' | 'opening'>('idle')
+  const isCreating = creationPhase !== 'idle'
   const [nameEdited, setNameEdited] = useState(false)
   const [destinationDraft, setDestinationDraft] = useState('')
   const [failure, setFailure] = useState<{
@@ -215,7 +216,7 @@ export const CreateAppForm = ({
 
     setFailure(null)
     submitting.current = true
-    setIsCreating(true)
+    setCreationPhase('creating')
     topLoader.start()
     topLoader.setProgress(0.1)
 
@@ -251,33 +252,37 @@ export const CreateAppForm = ({
         setFailure({ message: unconfirmedAppCreationMessage, requestId: result.requestId })
         return
       }
-      topLoader.setProgress(iconPreview ? 0.65 : 0.9)
-
-      if (iconPreview) {
-        try {
-          unwrapActionResult(await setAppIconAction(createdApp.id, iconPreview))
-        } catch (error) {
-          toast({
-            title: 'App created without icon',
-            description: getDisplayErrorMessage(error, 'Could not save the icon.'),
-            variant: 'danger'
-          })
-        }
-      }
-
+      const destination = `/app/${createdApp.id}`
+      setCreationPhase('opening')
       topLoader.setProgress(1)
       toast({
         title: 'App creation started',
-        description: 'Track provisioning on the app page.',
+        description: iconPreview ? 'Saving the app icon in the background.' : 'Track provisioning on the app page.',
         variant: 'success'
       })
-      router.push(`/app/${createdApp.id}`)
+      router.push(destination)
+      if (iconPreview) {
+        void sendBff<string | null>(`/api/bff/applications/${createdApp.id}/icon`, { icon: iconPreview }, 'PATCH').then(
+          savedIcon => {
+            if (!savedIcon) return
+            if (window.location.pathname === destination) router.refresh()
+            toast({ title: 'App icon saved', variant: 'success' })
+          },
+          error => {
+            toast({
+              title: 'Could not save the app icon',
+              description: getDisplayErrorMessage(error, 'You can add an icon from the app’s Configuration page.'),
+              variant: 'danger'
+            })
+          }
+        )
+      }
     } catch {
       topLoader.done(true)
       setFailure({ message: unconfirmedAppCreationMessage })
     } finally {
       submitting.current = false
-      setIsCreating(false)
+      setCreationPhase(current => (current === 'opening' ? current : 'idle'))
     }
   }
 
@@ -292,7 +297,7 @@ export const CreateAppForm = ({
             form={createFormId}
             type='submit'
             pending={isCreating}
-            pendingLabel='Creating…'
+            pendingLabel={creationPhase === 'opening' ? 'Opening app…' : 'Creating…'}
             disabled={loading || isBusy || isDraftInvalid}
             className={cn(compactPageActionClassName, 'max-sm:px-3')}
           >

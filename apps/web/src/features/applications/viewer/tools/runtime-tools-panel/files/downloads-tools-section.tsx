@@ -36,7 +36,11 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
   const browser = useRuntimeFileBrowser({ appId: app.id, canTransferFiles, runtimeAvailable })
   const uploads = useRuntimeFileUploads(app.id)
 
-  const { currentPath, navigateTo, prefetchPath, setSelectedFile } = browser
+  const { currentPath, downloadingNames, navigateTo, prefetchPath, setSelectedFile } = browser
+  const downloadStatus =
+    downloadingNames.length > 1
+      ? `Preparing ${downloadingNames.length} downloads.`
+      : downloadingNames[0] && `Preparing download for ${downloadingNames[0]}.`
   const navigateToFolder = useCallback(
     (path: string) => {
       focusFolderOnNavigation.current = path !== currentPath
@@ -166,12 +170,20 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
                 ? ''
                 : `Loading ${browser.currentPath}.`}
           </span>
+          <span
+            role='status'
+            aria-atomic='true'
+            className='sr-only'
+          >
+            {downloadStatus}
+          </span>
           <RuntimeFileList
             key={browser.currentPath}
             onUpload={() => fileInputRef.current?.click()}
             canManageFiles={canManageFiles}
             error={browser.error}
             files={browser.files}
+            isDownloading={browser.isDownloading}
             focusRequest={
               fileActionFocus?.appId === app.id && fileActionFocus.folder === currentPath ? fileActionFocus : null
             }
@@ -221,6 +233,7 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
               appId={app.id}
               canManageFiles={canManageFiles}
               entry={browser.selectedFile}
+              downloading={browser.isDownloading(browser.selectedFile.path)}
               onDelete={openDelete}
               onDownload={entry => void browser.downloadFile(entry)}
               onRename={openRename}

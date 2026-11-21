@@ -2,35 +2,8 @@
 
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
-import { PublicActionError } from '@/server/errors/public-action-error'
-import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppRuntimeClient } from '../../runtime-client'
-import { assertCanManageApplicationFiles, assertCanTransferApplicationFiles } from '../../runtime-file-access'
-
-export const downloadApplicationRuntimeFileAction = async (id: string, path: string) =>
-  runSafeAction(
-    async () => {
-      const { app, user } = await assertCanTransferApplicationFiles(id)
-      const result = await orchestratorAppRuntimeClient.downloadRuntimeFile(id, path).catch((error: unknown) => {
-        if (error instanceof OrchestratorRequestError && error.status === 413) {
-          throw new PublicActionError('File downloads are limited to 25 MiB.', { code: 'validation', status: 413 })
-        }
-        throw error
-      })
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.file.download',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: app.name,
-        details: { path, name: result.name, type: 'file' }
-      })
-      return result
-    },
-    { fallbackMessage: 'Could not download the file.', logLabel: 'downloadApplicationRuntimeFileAction failed' }
-  )
+import { assertCanManageApplicationFiles } from '../../runtime-file-access'
 
 export const createApplicationRuntimeDirectoryAction = async (id: string, parentPath: string, name: string) =>
   runSafeAction(

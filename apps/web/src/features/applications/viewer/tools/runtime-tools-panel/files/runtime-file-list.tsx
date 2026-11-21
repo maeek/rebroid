@@ -18,6 +18,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { RowActionButton } from '@/components/ui/row-actions'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatDateLocale } from '@/lib/format'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -56,6 +57,7 @@ export const RuntimeFileList = ({
   error,
   files,
   focusRequest,
+  isDownloading,
   loading,
   refreshing,
   searchQuery,
@@ -76,6 +78,7 @@ export const RuntimeFileList = ({
   error: Error | null
   files: ApplicationRuntimeFile[]
   focusRequest?: { path?: string } | null
+  isDownloading?: (path: string) => boolean
   loading: boolean
   refreshing?: boolean
   searchQuery: string
@@ -158,6 +161,9 @@ export const RuntimeFileList = ({
               <Icon className={isDirectory ? 'size-4 text-primary' : 'size-4 text-foreground-muted'} />
               <span className='grid min-w-0'>
                 <span className='truncate'>{entry.name}</span>
+                {isDownloading?.(entry.path) ? (
+                  <span className='text-xs font-normal text-foreground-muted'>Preparing download…</span>
+                ) : null}
                 {compact ? (
                   <span className='truncate text-xs font-normal text-foreground-muted'>
                     {runtimeFileEntryDetail(entry)}
@@ -192,7 +198,7 @@ export const RuntimeFileList = ({
         )
       }
     ],
-    [compact, nameWidth, onOpen, onPrefetch]
+    [compact, isDownloading, nameWidth, onOpen, onPrefetch]
   )
   const changeSort = (nextSort: RuntimeFileSort, direction: RuntimeFileSortDirection) => {
     setPage(0)
@@ -278,8 +284,12 @@ export const RuntimeFileList = ({
           rowContextMenu={({ original: entry }) => (
             <>
               {entry.type === 'file' ? (
-                <ContextMenuItem onSelect={() => onDownload(entry)}>
-                  <IconDownload className='size-4' /> Download
+                <ContextMenuItem
+                  disabled={isDownloading?.(entry.path)}
+                  onSelect={() => onDownload(entry)}
+                >
+                  <IconDownload className='size-4' />
+                  {isDownloading?.(entry.path) ? 'Preparing download…' : 'Download'}
                 </ContextMenuItem>
               ) : (
                 <ContextMenuItem onSelect={() => onOpen(entry)}>
@@ -301,14 +311,43 @@ export const RuntimeFileList = ({
               ) : null}
             </>
           )}
-          rowQuickAction={({ original: entry }) => (
-            <RowActionButton
-              label={entry.type === 'file' ? `Download ${entry.name}` : `Open ${entry.name}`}
-              onClick={() => (entry.type === 'file' ? onDownload(entry) : onOpen(entry))}
-            >
-              {entry.type === 'file' ? <IconDownload className='size-4' /> : <IconFolderOpen className='size-4' />}
-            </RowActionButton>
-          )}
+          rowQuickAction={({ original: entry }) => {
+            if (entry.type !== 'file') {
+              return (
+                <RowActionButton
+                  label={`Open ${entry.name}`}
+                  onClick={() => onOpen(entry)}
+                >
+                  <IconFolderOpen
+                    aria-hidden
+                    className='size-4'
+                  />
+                </RowActionButton>
+              )
+            }
+            const label = `Download ${entry.name}`
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <MutationButton
+                    type='button'
+                    variant='ghost'
+                    size='icon-sm'
+                    aria-label={label}
+                    pending={isDownloading?.(entry.path)}
+                    pendingLabel={<span className='sr-only'>Preparing download…</span>}
+                    onClick={() => onDownload(entry)}
+                  >
+                    <IconDownload
+                      aria-hidden
+                      className='size-4'
+                    />
+                  </MutationButton>
+                </TooltipTrigger>
+                <TooltipContent>{label}</TooltipContent>
+              </Tooltip>
+            )
+          }}
           emptyState={
             error ? (
               <StateView

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { IconDownload, IconFile, IconPencil, IconTrash } from '@tabler/icons-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { runtimeFileCanPreview, runtimeFileEntryDetail } from './downloads-tools-section-model'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 
@@ -11,6 +12,7 @@ export const RuntimeFileInspector = ({
   appId,
   canManageFiles,
   entry,
+  downloading,
   onDelete,
   onDownload,
   onRename
@@ -18,6 +20,7 @@ export const RuntimeFileInspector = ({
   appId: string
   canManageFiles: boolean
   entry: ApplicationRuntimeFile
+  downloading: boolean
   onDelete: (entry: ApplicationRuntimeFile) => void
   onDownload: (entry: ApplicationRuntimeFile) => void
   onRename: (entry: ApplicationRuntimeFile) => void
@@ -67,14 +70,16 @@ export const RuntimeFileInspector = ({
 
       <div className='grid gap-2 [&_button]:min-h-11'>
         {entry.type === 'file' ? (
-          <Button
+          <MutationButton
             type='button'
             className='w-full'
+            pending={downloading}
+            pendingLabel='Preparing download…'
             onClick={() => onDownload(entry)}
           >
             <IconDownload className='size-4' />
             Download
-          </Button>
+          </MutationButton>
         ) : null}
         {canManageFiles ? (
           <div className='grid grid-cols-2 gap-2'>

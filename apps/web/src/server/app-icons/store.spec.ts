@@ -7,6 +7,7 @@ import {
   getStoredAppIcon,
   getStoredAppIconFile,
   removeStoredAppIcon,
+  setInitialStoredAppIcon,
   setStoredAppIcon
 } from './store'
 
@@ -106,5 +107,17 @@ it('serializes removal and replacement for the same app', async () => {
     setStoredAppIcon(appId, 'data:image/png;base64,AQ==')
   ])
   await expect(getStoredAppIcon(appId)).resolves.toBe(latest)
+  await expect(readdir(storage)).resolves.toHaveLength(2)
+})
+
+it('publishes a creation icon once and leaves an existing icon intact', async () => {
+  const appId = 'new-app'
+  const first = await setInitialStoredAppIcon(appId, 'data:image/png;base64,AA==')
+  expect(first).toMatch(/^\/api\/app-icons\/new-app\?v=/)
+
+  vi.resetModules()
+  const writer = await import('./store')
+  await expect(writer.setInitialStoredAppIcon(appId, 'data:image/png;base64,AQ==')).resolves.toBeNull()
+  await expect(getStoredAppIcon(appId)).resolves.toBe(first)
   await expect(readdir(storage)).resolves.toHaveLength(2)
 })
