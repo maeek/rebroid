@@ -1,12 +1,12 @@
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { ActionResultError, isActionFailure, isActionResult } from './action-result'
+import { ActionResultError, isActionFailure } from './action-result'
 import type { ActionResult } from './action-result'
 
 type BulkResult = PromiseSettledResult<unknown> | ActionResult<unknown>
 
 const bulkFailure = (result: BulkResult): { error: unknown } | undefined => {
-  if (!isActionResult(result) && result.status === 'rejected') return { error: result.reason }
-  const value = isActionResult(result) ? result : result.value
+  if ('status' in result && result.status === 'rejected') return { error: result.reason }
+  const value = 'status' in result ? result.value : result
   return isActionFailure(value) ? { error: new ActionResultError(value.error) } : undefined
 }
 

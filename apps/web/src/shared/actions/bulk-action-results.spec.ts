@@ -23,3 +23,14 @@ it('returns the operation title on complete success', () => {
     title: 'Selected triggers deleted'
   })
 })
+
+it.each([
+  ['Failed to fetch', 'Could not reach the server.'],
+  ['An error occurred in the Server Components render', 'The server did not return details for this failure.'],
+  ['   ', 'The server did not return details for this failure.']
+])('preserves a support reference when normalizing %j', (message, display) => {
+  expect(summarizeBulkResults([actionError({ message }, 'support-id')], 'Done', 'Failed').description).toBe(
+    display + ' Reference: support-id'
+  )
+  expect(summarizeBulkResults([actionError({ message })], 'Done', 'Failed').description).toBe(display)
+})
