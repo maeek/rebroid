@@ -1,23 +1,15 @@
-import { androidApplicationResourceLimits } from '@rebroid/android-application-core/redroid-runtime';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import {
-  IsNumber,
-  IsInt,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Max,
-  MaxLength,
-  Min,
-  MinLength,
-} from 'class-validator';
+  InactivityTimeout,
+  MemoryLimit,
+  CpuLimit,
+  ContainerArgs,
+} from './application-runtime-properties';
 import {
   OptionalNetworkPolicyAllowCidrs,
   OptionalNetworkPolicyEnabled,
 } from '../../../network-policy/network-policy-validation';
-
-const { memoryLimitMb, cpuLimitCpus } = androidApplicationResourceLimits;
 
 export class CreateAndroidApplicationDto {
   @ApiProperty({ example: 'Signal Android' })
@@ -38,51 +30,16 @@ export class CreateAndroidApplicationDto {
   @IsString()
   containerImage?: string;
 
-  @ApiPropertyOptional({
-    default: 900,
-    minimum: -1,
-    maximum: 86400,
-    description: 'Use -1 to keep the session running until manually stopped.',
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(-1)
-  @Max(86400)
+  @InactivityTimeout({ default: 900 })
   inactivityTimeoutSeconds?: number;
 
-  @ApiPropertyOptional({
-    example: 2048,
-    minimum: memoryLimitMb.min,
-    maximum: memoryLimitMb.max,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(memoryLimitMb.min)
-  @Max(memoryLimitMb.max)
+  @MemoryLimit()
   memoryLimitMb?: number;
 
-  @ApiPropertyOptional({
-    example: 2,
-    minimum: cpuLimitCpus.min,
-    maximum: cpuLimitCpus.max,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(cpuLimitCpus.min)
-  @Max(cpuLimitCpus.max)
+  @CpuLimit()
   cpuLimitCpus?: number;
 
-  @ApiPropertyOptional({
-    description:
-      'Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.',
-    example: 'sleep infinity',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(2048)
+  @ContainerArgs()
   containerArgs?: string;
 
   @ApiPropertyOptional({
