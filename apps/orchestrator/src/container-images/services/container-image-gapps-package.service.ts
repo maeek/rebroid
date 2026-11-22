@@ -54,8 +54,13 @@ export class ContainerImageGappsPackageService {
     );
     await rm(workDirectory, { recursive: true, force: true });
     await mkdir(workDirectory, { recursive: true, mode: 0o700 });
-    await this.extractSystemTree(packagePath, workDirectory);
-    return workDirectory;
+    try {
+      await this.extractSystemTree(packagePath, workDirectory);
+      return workDirectory;
+    } catch (error) {
+      await this.cleanup(workDirectory);
+      throw error;
+    }
   }
 
   cleanup(workDirectory: string) {
@@ -103,70 +108,32 @@ export class ContainerImageGappsPackageService {
     };
   }
 
-  private extractSystemTree(packagePath: string, workDirectory: string) {
-    return new Promise<void>((resolve, reject) => {
-      yauzl.open(
-        packagePath,
-        { lazyEntries: true, autoClose: false },
-        (openError, archive) => {
-          if (openError || !archive) {
-            reject(openError ?? new Error('Could not open GApps package.'));
-            return;
-          }
-          let entryCount = 0;
-          let extractedBytes = 0;
-          let settled = false;
-          const symlinkPaths = new Set<string>();
-          const extractedPaths = new Set<string>();
-          const finish = (callback: () => void) => {
-            if (settled) return;
-            settled = true;
-            archive.close();
-            callback();
-          };
-          archive.on('error', (error) => finish(() => reject(error)));
-          archive.on('entry', (entry: Entry) => {
-            entryCount += 1;
-            if (entryCount > maxArchiveEntries) {
-              finish(() =>
-                reject(new Error('GApps package has too many entries.')),
-              );
-              return;
-            }
-            void this.extractEntry({
-              archive,
-              entry,
-              workDirectory,
-              symlinkPaths,
-              extractedPaths,
-              extractedBytes,
-            })
-              .then((bytes) => {
-                extractedBytes += bytes;
-                if (extractedBytes > maxExtractedBytes) {
-                  throw new Error('Extracted GApps payload exceeds 4 GB.');
-                }
-                archive.readEntry();
-              })
-              .catch((error) => finish(() => reject(error)));
-          });
-          archive.on('end', () => {
-            const systemPath = join(workDirectory, 'system');
-            void lstat(systemPath)
-              .then((value) => {
-                if (!value.isDirectory()) {
-                  throw new Error(
-                    'GApps package does not contain a system tree.',
-                  );
-                }
-                finish(resolve);
-              })
-              .catch((error) => finish(() => reject(error)));
-          });
-          archive.readEntry();
-        },
-      );
-    });
+  private async extractSystemTree(packagePath: string, workDirectory: string) {
+    let entryCount = 0;
+    let extractedBytes = 0;
+    const symlinkPaths = new Set<string>();
+    const extractedPaths = new Set<string>();
+    const archive = await yauzl.openPromise(packagePath);
+    for await (const entry of archive.eachEntry()) {
+      if (++entryCount > maxArchiveEntries) {
+        throw new Error('GApps package has too many entries.');
+      }
+      extractedBytes += await this.extractEntry({
+        archive,
+        entry,
+        workDirectory,
+        symlinkPaths,
+        extractedPaths,
+        extractedBytes,
+      });
+      if (extractedBytes > maxExtractedBytes) {
+        throw new Error('Extracted GApps payload exceeds 4 GB.');
+      }
+    }
+    const system = await lstat(join(workDirectory, 'system'));
+    if (!system.isDirectory()) {
+      throw new Error('GApps package does not contain a system tree.');
+    }
   }
 
   private async extractEntry(input: {
@@ -229,7 +196,7 @@ export class ContainerImageGappsPackageService {
       );
     }
 
-    const source = await this.openEntry(archive, entry);
+    const source = await archive.openReadStreamPromise(entry);
     await pipeline(
       source,
       createWriteStream(destination, { flags: 'wx', mode: safeMode }),
@@ -239,23 +206,11 @@ export class ContainerImageGappsPackageService {
     return entry.uncompressedSize;
   }
 
-  private openEntry(archive: ZipFile, entry: Entry) {
-    return new Promise<NodeJS.ReadableStream>((resolve, reject) => {
-      archive.openReadStream(entry, (error, stream) => {
-        if (error || !stream) {
-          reject(error ?? new Error(`Could not read ${entry.fileName}.`));
-          return;
-        }
-        resolve(stream);
-      });
-    });
-  }
-
   private async readEntry(archive: ZipFile, entry: Entry, maxBytes: number) {
     if (entry.uncompressedSize > maxBytes) {
       throw new Error(`GApps entry is too large: ${entry.fileName}`);
     }
-    const stream = await this.openEntry(archive, entry);
+    const stream = await archive.openReadStreamPromise(entry);
     const chunks: Buffer[] = [];
     let size = 0;
     for await (const chunk of stream) {

@@ -1,11 +1,59 @@
 import type { ConfigService } from '@nestjs/config';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  rm,
+  writeFile,
+  readFile,
+  readdir,
+  readlink,
+  stat,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { ApkPackageInspectionPort } from '../../apk/contracts/apk-package-inspection.port';
 import { ContainerImageGappsPackageService } from './container-image-gapps-package.service';
 
+// ZIP containing a regular system file, its relative symlink, and an unrelated file.
+const packageFixture = Buffer.from(
+  'UEsDBBQAAAAIAAAAIQDFoEXlCgAAAAgAAAAaAAAAdmVuZG9yL3N5c3RlbS9ldGMvaW5mby50eHQrTi0pycxLLwYAUEsDBBQAAAAI' +
+    'AAAAIQDAAVsXCgAAAAgAAAAXAAAAdmVuZG9yL3N5c3RlbS9ldGMvYWxpYXPLzEvL1yupKAEAUEsDBBQAAAAIAAAAIQBOQdTWCQAA' +
+    'AAcAAAALAAAAaWdub3JlZC50eHTLTM/LL0pNAQBQSwECFAMUAAAACAAAACEAxaBF5QoAAAAIAAAAGgAAAAAAAAAAAAAAoIEAAAAA' +
+    'dmVuZG9yL3N5c3RlbS9ldGMvaW5mby50eHRQSwECFAMUAAAACAAAACEAwAFbFwoAAAAIAAAAFwAAAAAAAAAAAAAA/6FCAAAAdmVu' +
+    'ZG9yL3N5c3RlbS9ldGMvYWxpYXNQSwECFAMUAAAACAAAACEATkHU1gkAAAAHAAAACwAAAAAAAAAAAAAApIGBAAAAaWdub3JlZC50' +
+    'eHRQSwUGAAAAAAMAAwDGAAAAswAAAAAA',
+  'base64',
+);
+
 describe('ContainerImageGappsPackageService', () => {
+  it('extracts only the system tree, preserves modes, and cleans failed staging', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'rebroid-gapps-extract-'));
+    const service = new ContainerImageGappsPackageService(
+      { getOrThrow: () => directory } as unknown as ConfigService,
+      { extractPackageNameFromFile: jest.fn() },
+    );
+    const path = join(directory, 'package.zip');
+    try {
+      await writeFile(path, packageFixture);
+      const work = await service.extract(path, 'ready');
+      expect(await readdir(work)).toEqual(['system']);
+      const file = join(work, 'system', 'etc', 'info.txt');
+      expect(await readFile(file, 'utf8')).toBe('settings');
+      expect((await stat(file)).mode & 0o777).toBe(0o640);
+      expect(await readlink(join(work, 'system', 'etc', 'alias'))).toBe(
+        'info.txt',
+      );
+      await expect(
+        service.extract(join(directory, 'missing.zip'), 'failed'),
+      ).rejects.toMatchObject({ code: 'ENOENT' });
+      expect(await readdir(join(directory, 'image-build-gapps-work'))).toEqual([
+        'ready',
+      ]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('requires Play Services, Play Store, Google Services Framework, and privileged permissions', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'rebroid-gapps-payload-'));
     try {
