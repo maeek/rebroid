@@ -12,7 +12,7 @@ import { authorizeAutomationExecution } from './authorize-execution'
 vi.mock('@/server/auth/user', () => ({ userService: { getUserById: vi.fn() } }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/catalog-client', () => ({
-  orchestratorAppCatalogClient: { getApplication: vi.fn(), listApplications: vi.fn() }
+  orchestratorAppCatalogClient: { getApplication: vi.fn(), listApplicationGallery: vi.fn() }
 }))
 vi.mock('@/server/orchestrator/automations/client', () => ({
   orchestratorAutomationsClient: { listCommands: vi.fn(), listActiveRuns: vi.fn() }
@@ -132,9 +132,18 @@ describe('execution authorization', () => {
       status: { currentStatus: 'running' },
       runtime: { resources: { memoryLimitMb: 128, cpuLimitCpus: 1 }, inactivityTimeoutSeconds: 60 }
     } as never)
-    vi.mocked(apps.listApplications).mockResolvedValue([])
+    vi.mocked(apps.listApplicationGallery).mockResolvedValue([
+      { id: 'app', ownerUserId: 'user', status: 'running' },
+      { id: 'closed', ownerUserId: 'user', status: 'stopped' },
+      { id: 'foreign', ownerUserId: 'someone-else', status: 'provisioning' }
+    ] as never)
     vi.mocked(workflows.listActiveRuns).mockResolvedValue([{ targetApplicationId: 'other' }] as never)
     await expect(authorizeAutomationExecution({ ...input, operation: 'start' })).rejects.toThrow('quota')
+    vi.mocked(workflows.listActiveRuns).mockResolvedValue([{ targetApplicationId: 'app' }] as never)
+    await expect(authorizeAutomationExecution({ ...input, operation: 'start' })).resolves.toMatchObject({
+      maxOpenApps: 1
+    })
+    expect(apps.listApplicationGallery).toHaveBeenCalledWith('user')
   })
   it('checks permission when the profile was explicitly selected', async () => {
     await expect(authorizeAutomationExecution({ ...input, profileMode: 'persistent' })).rejects.toThrow('profiles')

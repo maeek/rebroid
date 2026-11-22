@@ -44,13 +44,14 @@ export const authorizeAutomationExecution = async (input: {
     const limit = quotas.maxOpenApps
     if (limit !== null) {
       const [apps, runs] = await Promise.all([
-        orchestratorAppCatalogClient.listApplications(account.id),
+        orchestratorAppCatalogClient.listApplicationGallery(account.id),
         orchestratorAutomationsClient.listActiveRuns(account.id)
       ])
-      const reserved = new Set(
-        apps.filter(item => ['running', 'provisioning'].includes(item.status.currentStatus)).map(item => item.id)
-      )
-      runs.forEach(run => reserved.add(run.targetApplicationId))
+      const reserved = new Set(runs.map(run => run.targetApplicationId))
+      for (const item of apps) {
+        if (item.ownerUserId === account.id && (item.status === 'running' || item.status === 'provisioning'))
+          reserved.add(item.id)
+      }
       reserved.add(app.id)
       if (reserved.size > limit)
         throw new PublicActionError('Open application quota exceeded.', { code: 'forbidden', status: 403 })
