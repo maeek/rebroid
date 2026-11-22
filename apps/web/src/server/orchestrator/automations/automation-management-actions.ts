@@ -12,19 +12,11 @@ import {
   assertDefinitionPermissions,
   listPermittedDraftCommands,
   recordAutomationAudit,
-  requireAutomationUser
+  requireAutomationUser,
+  validatePermittedWorkflowYaml
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type { AutomationRunEvent, DraftAutomationYamlInput, SaveAutomationInput } from '@/shared/contracts/automation'
-
-export const validateAutomationYamlAction = async (yaml: string) => {
-  const user = await requireAutomationUser('automations:manage')
-  const validation = await orchestratorAutomationsClient.validateYaml(yaml)
-  if (validation.definition) {
-    await assertDefinitionPermissions(user, validation.definition)
-  }
-  return validation
-}
 
 const draftFromStream = async (input: DraftAutomationYamlInput): Promise<AutomationYamlDraft> => {
   const response = await orchestratorAutomationsClient.draftYamlStream(input)
@@ -149,12 +141,11 @@ export const saveAutomationAction = async (id: string | null, input: SaveAutomat
     async () => {
       const user = await requireAutomationUser('automations:manage')
       const { yaml } = saveWorkflowInput.parse(input)
-      const validation = await orchestratorAutomationsClient.validateYaml(yaml)
+      const validation = await validatePermittedWorkflowYaml(user, yaml)
       if (!validation.valid || !validation.definition) {
         const message = validation.errors[0] ?? 'Automation YAML is invalid.'
         throw new PublicActionError(message, { code: 'validation', status: 400, fieldErrors: { yaml: [message] } })
       }
-      await assertDefinitionPermissions(user, validation.definition)
       const payload = { yaml: validation.yaml ?? yaml }
       const automation = id
         ? await orchestratorAutomationsClient.update(user.ownerUserId, id, payload)

@@ -2,7 +2,9 @@
 
 import { useCallback, type RefObject } from 'react'
 import { toast } from '@/hooks/use-toast'
-import { validateAutomationYamlAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { sendBff } from '@/lib/http/bff'
+import type { AutomationValidation } from '@/shared/contracts/automation'
 import { workflowFileName } from './automation-editor-utils'
 import { definitionToForm, type AutomationStepForm } from './builder-utils'
 import type { EditorSnapshot } from './use-automation-editor-history'
@@ -41,7 +43,7 @@ export const useAutomationWorkflowFiles = ({
       setBusy(true)
       try {
         const yaml = await file.text()
-        const validation = await validateAutomationYamlAction(yaml)
+        const validation = await sendBff<AutomationValidation>('/api/bff/automations/validate-yaml', { yaml })
         if (!validation.valid || !validation.definition) {
           throw new Error(validation.errors[0] ?? 'Workflow YAML is invalid.')
         }
@@ -57,7 +59,7 @@ export const useAutomationWorkflowFiles = ({
       } catch (error) {
         toast({
           title: 'Could not import workflow',
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: getDisplayErrorMessage(error),
           variant: 'danger'
         })
       } finally {

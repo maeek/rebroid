@@ -13,8 +13,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@/lib/http/bff', () => ({ sendBff: vi.fn() }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/automations/automation-management-actions', () => ({
-  saveAutomationAction: vi.fn(),
-  validateAutomationYamlAction: vi.fn()
+  saveAutomationAction: vi.fn()
 }))
 vi.mock('../steps/list/automation-steps-list', () => ({
   AutomationStepsList: ({ onChange }: { onChange: (steps: AutomationStepForm[]) => void }) => (

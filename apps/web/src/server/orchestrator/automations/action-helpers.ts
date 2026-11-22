@@ -89,6 +89,12 @@ export const listPermittedAutomationCommands = async (user: CurrentAutomationUse
   return commands.filter(command => canUseAutomationCommand(user, command))
 }
 
+export const validatePermittedWorkflowYaml = async (user: CurrentAutomationUser, yaml: string) => {
+  const validation = await orchestratorAutomationsClient.validateYaml(yaml)
+  if (validation.definition) await assertDefinitionPermissions(user, validation.definition)
+  return validation
+}
+
 export const listPermittedDraftCommands = async (user: CurrentAutomationUser) =>
   (await listPermittedAutomationCommands(user))
     .filter(command => command.uses !== 'ai.run')
