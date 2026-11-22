@@ -77,6 +77,51 @@ describe('ContainerImageGappsWorkerService package transfer', () => {
     );
   });
 
+  it('drains other files and retains the first package in archive order', async () => {
+    const archive = tar.pack();
+    archive.entry({ name: 'build/output.log' }, 'done');
+    archive.entry({ name: 'build/package.zip' }, 'first');
+    archive.entry({ name: 'extra/package.zip' }, 'second');
+    archive.entry({ name: 'build/info.json' }, '{}');
+    archive.finalize();
+    const service = setup(({ consumeArchive, signal }) =>
+      consumeArchive(Readable.from(archive, { objectMode: false }), signal),
+    );
+    await service.buildPackage(
+      'job',
+      preset,
+      'revision',
+      new AbortController().signal,
+    );
+    await expect(readFile(destination, 'utf8')).resolves.toBe('first');
+  });
+
+  it('propagates a failed archive transfer and cleans its staged output', async () => {
+    const prefix = (await buffer(makeArchive())).subarray(0, 516);
+    const error = new Error('archive transfer failed');
+    const source = Readable.from(
+      (async function* () {
+        yield prefix;
+        throw error;
+      })(),
+    );
+    const service = setup(({ consumeArchive, signal }) =>
+      consumeArchive(source, signal),
+    );
+    await expect(
+      service.buildPackage(
+        'job',
+        preset,
+        'revision',
+        new AbortController().signal,
+      ),
+    ).rejects.toBe(error);
+    await expect(readFile(destination)).rejects.toHaveProperty(
+      'code',
+      'ENOENT',
+    );
+  });
+
   it('removes a partially transferred package on cancellation', async () => {
     const archivePrefix = (await buffer(makeArchive())).subarray(0, 516);
     const abort = new AbortController();

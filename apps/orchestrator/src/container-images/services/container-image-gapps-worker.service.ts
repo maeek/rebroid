@@ -105,39 +105,36 @@ export class ContainerImageGappsWorkerService {
   ) {
     signal.throwIfAborted();
     const extract = tar.extract();
-    let writing: Promise<void> | undefined;
-    extract.on('entry', (header, entry, next) => {
-      if (writing || posix.basename(header.name) !== 'package.zip') {
-        entry.on('end', next);
+    const [copy, transfer] = await Promise.allSettled([
+      this.writePackage(extract, destination, signal),
+      pipeline(source, extract, { signal }),
+    ]);
+    if (copy.status === 'rejected') throw copy.reason;
+    if (transfer.status === 'rejected') throw transfer.reason;
+  }
+
+  private async writePackage(
+    extract: tar.Extract,
+    destination: string,
+    signal: AbortSignal,
+  ) {
+    let written = false;
+    for await (const entry of extract) {
+      const { header } = entry;
+      if (written || posix.basename(header.name) !== 'package.zip') {
         entry.resume();
-        return;
+        continue;
       }
-      if (header.type !== 'file') {
-        extract.destroy(
-          new Error('Generated GApps package is not a regular file.'),
-        );
-        return;
-      }
-      if ((header.size ?? 0) > maxPackageBytes) {
-        extract.destroy(new Error('Generated GApps package exceeds 2 GB.'));
-        return;
-      }
-      writing = pipeline(
-        entry,
-        createWriteStream(destination, { flags: 'wx' }),
-        { signal },
-      );
-      void writing.then(
-        () => next(),
-        (error: Error) => next(error),
-      );
-    });
-    try {
-      await pipeline(source, extract, { signal });
-      if (!writing)
-        throw new Error('GApps patch worker did not return a package.');
-    } finally {
-      await writing?.catch(() => undefined);
+      if (header.type !== 'file')
+        throw new Error('Generated GApps package is not a regular file.');
+      if (header.size > maxPackageBytes)
+        throw new Error('Generated GApps package exceeds 2 GB.');
+      await pipeline(entry, createWriteStream(destination, { flags: 'wx' }), {
+        signal,
+      });
+      written = true;
     }
+    if (!written)
+      throw new Error('GApps patch worker did not return a package.');
   }
 }
