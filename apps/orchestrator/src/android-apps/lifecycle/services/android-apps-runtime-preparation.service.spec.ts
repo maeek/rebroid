@@ -234,6 +234,24 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
     expect(resources.inspectVolume).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    { profileName: 'legacy', volumeName: 'original-volume' },
+    { profileName: 'Work', volumeName: 'rebroid-profile-work' },
+    { profileName: 'temporary', profileMode: ApplicationProfileMode.Temporary },
+    { profileName: 'work', volumeName: 'rebroid-profile-work' },
+  ])(
+    'keeps the stored identity and history on a default start of $profileName',
+    async (patch) => {
+      const { service, resources, state } = makeService();
+      const app = makeApp({ ...patch, containerId: 'existing-container' });
+      const before = { ...app };
+      await service.prepareRuntimeProfile(app, {});
+      expect(app).toEqual(before);
+      expect(state.saveFields).not.toHaveBeenCalled();
+      expect(resources.inspectVolume).not.toHaveBeenCalled();
+    },
+  );
+
   it('admits a new persistent name with an unused volume identity', async () => {
     const { service, resources, state } = makeService();
     const app = makeApp();

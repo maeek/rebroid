@@ -38,6 +38,21 @@ export class ApplicationProfileStorage {
     return { mode, name, volumeName, admission };
   }
 
+  unrecordedCurrentProfile() {
+    const { profileMode, volumeName } = this.app;
+    if (profileMode !== ApplicationProfileMode.Persistent) return null;
+    const name = this.activeName.trim() || 'default';
+    const names = this.savedPersistentNames();
+    if (
+      names.includes(name) ||
+      this.volumeFor(name) !== volumeName ||
+      names.some((other) => this.volumeFor(other) === volumeName)
+    )
+      return null;
+
+    return { mode: profileMode, name };
+  }
+
   planRemoval(profileName: string) {
     const name = profileName.trim();
     if (!name) return 'missing';

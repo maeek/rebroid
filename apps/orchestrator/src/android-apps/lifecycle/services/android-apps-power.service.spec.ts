@@ -132,6 +132,7 @@ describe('Android application power commands', () => {
         logs as never,
         queries as never,
       );
+      const prepareRuntimeProfile = jest.fn();
       const power = new AndroidAppsPowerService(
         docker as never,
         apk as never,
@@ -147,6 +148,7 @@ describe('Android application power commands', () => {
         } as never,
         { releaseDisplaySessions: jest.fn() } as never,
         {
+          prepareRuntimeProfile,
           prepareRuntimeDefaults: jest.fn(),
           prepareFailedContainerForRestart: jest.fn(),
           prepareContainerForRecreationOnStart: jest.fn(),
@@ -164,6 +166,10 @@ describe('Android application power commands', () => {
 
       await commands.start(app.id);
       await creating.promise;
+      expect(prepareRuntimeProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ id: app.id }),
+        {},
+      );
       const [first] = await transitions.listJobs();
       stop = commands.stop(app.id);
       await stopping.promise;

@@ -94,9 +94,7 @@ export class AndroidAppsPowerService {
       return this.queries.decorate(app);
     }
 
-    if (dto.profileMode !== undefined || dto.profileName !== undefined) {
-      await this.runtimePreparation.prepareRuntimeProfile(app, dto);
-    }
+    await this.runtimePreparation.prepareRuntimeProfile(app, dto);
     await this.runtimePreparation.prepareRuntimeDefaults(app);
     await this.runtimePreparation.prepareFailedContainerForRestart(app);
     await this.runtimePreparation.prepareContainerForRecreationOnStart(app);

@@ -91,17 +91,27 @@ export class AndroidAppsRuntimePreparationService {
     app: AndroidApplication,
     dto: StartAndroidApplicationDto,
   ) {
-    const profile = await this.selectProfile(app, dto);
-    const profileChanged =
-      profile.mode !== app.profileMode ||
-      profile.name !== app.profileName ||
-      profile.volumeName !== app.volumeName;
-    const nextSavedProfilesJson = rememberSavedProfile(app.savedProfilesJson, {
-      mode: profile.mode,
-      name: profile.name,
-    });
+    const requested =
+      dto.profileMode !== undefined || dto.profileName !== undefined;
+    const profile = requested ? await this.selectProfile(app, dto) : null;
+    const historyEntry =
+      profile ??
+      new ApplicationProfileStorage(
+        app,
+        this.networkIsolation,
+      ).unrecordedCurrentProfile();
+    if (!historyEntry) return;
+    const nextSavedProfilesJson = rememberSavedProfile(
+      app.savedProfilesJson,
+      historyEntry,
+    );
 
-    if (!profileChanged) {
+    if (
+      !profile ||
+      (profile.mode === app.profileMode &&
+        profile.name === app.profileName &&
+        profile.volumeName === app.volumeName)
+    ) {
       if (nextSavedProfilesJson !== app.savedProfilesJson) {
         app.savedProfilesJson = nextSavedProfilesJson;
         await this.writer.saveFields(app, 'savedProfilesJson');
