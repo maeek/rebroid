@@ -2,7 +2,11 @@ import { ConflictException } from '@nestjs/common';
 import { posix } from 'node:path';
 
 const dataDirectory = '/data';
-export const downloadDirectory = '/data/media/0/Download';
+export const downloadSubdirectories = ['media', '0', 'Download'] as const;
+export const downloadDirectory = posix.join(
+  dataDirectory,
+  ...downloadSubdirectories,
+);
 
 export function normalizeDataPath(requestedPath?: string) {
   const normalized = posix

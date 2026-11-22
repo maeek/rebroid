@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { basename } from 'node:path';
+import { basename, posix } from 'node:path';
 
 export const isRuntimeDownloadFileName = (name: string) =>
   name.length > 0 &&
@@ -31,6 +31,20 @@ export const runtimeFileEntry = (
   itemCount: null,
   modifiedAt:
     modifiedSeconds > 0 ? new Date(modifiedSeconds * 1000).toJSON() : null,
+});
+
+export const uploadedRuntimeFile = (
+  directory: string,
+  name: string,
+  sizeBytes: number,
+) => ({
+  uploaded: true,
+  name,
+  path: posix.join(directory, name),
+  type: 'file' as const,
+  sizeBytes,
+  itemCount: null,
+  modifiedAt: new Date().toISOString(),
 });
 
 export const parseDownloadFiles = (stdout: string, downloadDirectory: string) =>

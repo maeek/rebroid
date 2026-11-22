@@ -17,16 +17,21 @@ import {
 import { DockerEngineConfigService } from '../../../config/docker-engine-config.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
-import { downloadDirectory } from '../utils/runtime-file-path';
+import {
+  downloadDirectory,
+  downloadSubdirectories,
+} from '../utils/runtime-file-path';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
-import { isRuntimeDownloadFileName } from '../utils/android-apps-runtime-file.utils';
+import {
+  isRuntimeDownloadFileName,
+  uploadedRuntimeFile,
+} from '../utils/android-apps-runtime-file.utils';
 import { mapWithConcurrency } from '../../../common/map-with-concurrency';
 import {
   maximumRuntimeDownloadBytes,
   runtimeDownloadTooLarge,
 } from '../utils/runtime-download-limit';
 
-const downloadSubdirectories = ['media', '0', 'Download'];
 const unavailableVolumeMessage =
   'Persistent profile storage is unavailable to the orchestrator.';
 const persistentDownloadRequiredMessage =
@@ -104,7 +109,7 @@ export class RuntimeDownloadVolumeService {
       { directory, mode: 0o644 },
     );
 
-    return this.uploadResult(fileName, sizeBytes);
+    return uploadedRuntimeFile(downloadDirectory, fileName, sizeBytes);
   }
 
   async readFile(
@@ -141,18 +146,6 @@ export class RuntimeDownloadVolumeService {
       chunks.push(bytes);
     }
     return Buffer.concat(chunks, size);
-  }
-
-  uploadResult(fileName: string, sizeBytes: number) {
-    return {
-      uploaded: true,
-      name: fileName,
-      path: `${downloadDirectory}/${fileName}`,
-      type: 'file' as const,
-      sizeBytes,
-      itemCount: null,
-      modifiedAt: new Date().toISOString(),
-    };
   }
 
   private async getDirectory(

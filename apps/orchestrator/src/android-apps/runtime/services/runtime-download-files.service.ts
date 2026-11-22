@@ -18,6 +18,7 @@ import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import {
   parseDownloadFiles,
+  uploadedRuntimeFile,
   sanitizeRuntimeFileName,
 } from '../utils/android-apps-runtime-file.utils';
 import { runtimeDownloadTarget } from '../utils/runtime-download-target';
@@ -158,7 +159,7 @@ export class RuntimeDownloadFilesService {
       },
     );
 
-    return this.volumes.uploadResult(fileName, sizeBytes);
+    return uploadedRuntimeFile(downloadDirectory, fileName, sizeBytes);
   }
 
   private async prepareRunningDownloadFile(

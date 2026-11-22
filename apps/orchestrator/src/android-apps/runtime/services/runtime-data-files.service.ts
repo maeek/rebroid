@@ -32,7 +32,10 @@ import {
 import { RuntimeFilePreviewService } from './runtime-file-preview.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
-import { runtimeFileEntry } from '../utils/android-apps-runtime-file.utils';
+import {
+  runtimeFileEntry,
+  uploadedRuntimeFile,
+} from '../utils/android-apps-runtime-file.utils';
 
 const requireNewUploadTarget = [
   '[ ! -L "$target" ] || exit 43',
@@ -333,15 +336,7 @@ export class RuntimeDataFilesService {
       },
     );
 
-    return {
-      uploaded: true,
-      name: fileName,
-      path: posix.join(directory, fileName),
-      type: 'file',
-      sizeBytes,
-      itemCount: null,
-      modifiedAt: new Date().toISOString(),
-    };
+    return uploadedRuntimeFile(directory, fileName, sizeBytes);
   }
 
   private async createUploadStagingDirectory(
