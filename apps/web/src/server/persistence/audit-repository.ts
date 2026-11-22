@@ -15,8 +15,6 @@ import { getDatabase } from './database'
 import type { AuditEventInput, AuditEventRow } from './audit-model'
 import type { AuditEventFilters, AuditEventOutcome, AuditEventPage, AuditEventSort } from '@/shared/contracts/audit'
 
-let lastRetentionAt = 0
-
 export const appendAuditEvent = (input: AuditEventInput) => {
   getDatabase()
     .prepare(
@@ -128,11 +126,4 @@ export const pruneAuditEventsOlderThan = (retentionDays: number) => {
   const cutoff = auditRetentionCutoff(retentionDays)
   if (!cutoff) return 0
   return getDatabase().prepare('DELETE FROM audit_events WHERE created_at < ?').run(cutoff).changes
-}
-
-export const maybePruneAuditEvents = (retentionDays: number, intervalMs = 60 * 60 * 1000) => {
-  const now = Date.now()
-  if (now - lastRetentionAt < intervalMs) return 0
-  lastRetentionAt = now
-  return pruneAuditEventsOlderThan(retentionDays)
 }

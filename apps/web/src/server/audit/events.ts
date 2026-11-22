@@ -1,10 +1,10 @@
 import { after } from 'next/server'
 import { logger } from '@/server/observability/logger'
-import { appendAuditEvent, maybePruneAuditEvents } from '@/server/persistence/audit-repository'
+import { appendAuditEvent, pruneAuditEventsOlderThan } from '@/server/persistence/audit-repository'
 import { getWebSettings } from '@/server/web-settings/store'
 import type { AuditEventInput } from '@/server/persistence/audit-model'
 
-export type RecordAuditEventInput = AuditEventInput & {
+type RecordAuditEventInput = AuditEventInput & {
   retentionDays?: number
 }
 
@@ -26,33 +26,33 @@ const sanitize = (value: unknown): unknown => {
   )
 }
 
+const retentionIntervalMs = 60 * 60 * 1000
+let nextRetentionCheckAt = 0
+
 const insertAuditEvent = async ({ retentionDays, ...event }: RecordAuditEventInput) => {
   appendAuditEvent({
     ...event,
     details: sanitize(event.details) as Record<string, unknown> | undefined
   })
-  const configuredRetentionDays = retentionDays ?? (await getWebSettings()).auditRetentionDays
-  maybePruneAuditEvents(configuredRetentionDays)
+  const now = Date.now()
+  if (now < nextRetentionCheckAt) return
+  nextRetentionCheckAt = now + retentionIntervalMs
+  try {
+    pruneAuditEventsOlderThan(retentionDays ?? (await getWebSettings()).auditRetentionDays)
+  } catch (error) {
+    nextRetentionCheckAt = 0
+    throw error
+  }
 }
 
 export const recordAuditEvent = (event: RecordAuditEventInput) => {
-  try {
-    after(async () => {
-      try {
-        await insertAuditEvent(event)
-      } catch (error) {
-        logger.error('audit.record_failed', {
-          errorName: error instanceof Error ? error.name : 'UnknownError'
-        })
-      }
+  const persist = () =>
+    insertAuditEvent(event).catch(error => {
+      logger.error('audit.record_failed', { errorName: error instanceof Error ? error.name : 'UnknownError' })
     })
+  try {
+    after(persist)
   } catch {
-    void Promise.resolve()
-      .then(() => insertAuditEvent(event))
-      .catch(error => {
-        logger.error('audit.record_failed', {
-          errorName: error instanceof Error ? error.name : 'UnknownError'
-        })
-      })
+    void Promise.resolve().then(persist)
   }
 }
