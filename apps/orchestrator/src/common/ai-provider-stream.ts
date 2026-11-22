@@ -46,15 +46,6 @@ interface ChatToolCallDelta {
   };
 }
 
-interface PendingToolCall {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: string;
-  };
-}
-
 export interface ChatCompletionStreamResult {
   message: ChatMessage;
   content: string;
@@ -76,7 +67,7 @@ export const consumeChatCompletionStream = async ({
   officialOpenAi?: boolean;
   onContentDelta?: (delta: string) => Promise<void> | void;
 }): Promise<ChatCompletionStreamResult> => {
-  const pendingToolCalls = new Map<number, PendingToolCall>();
+  const pendingToolCalls = new Map<number, ChatToolCall>();
   let content = '';
   let reasoningPresent = false;
   let finishReason: string | undefined;
@@ -166,15 +157,9 @@ const parseOpenAiUpdate = (
       stringValue(deltaRecord?.reasoning_content) ||
       stringValue(deltaRecord?.reasoning),
     toolCallDeltas: parseToolCallDeltas(deltaRecord?.tool_calls),
-    ...(stringValue(choiceRecord?.finish_reason)
-      ? { finishReason: stringValue(choiceRecord?.finish_reason) }
-      : {}),
-    ...(parseOpenAiUsage(parsed.usage)
-      ? { usage: parseOpenAiUsage(parsed.usage) ?? undefined }
-      : {}),
-    ...(parseLlamaTimings(parsed.timings)
-      ? { timings: parseLlamaTimings(parsed.timings) ?? undefined }
-      : {}),
+    finishReason: stringValue(choiceRecord?.finish_reason),
+    usage: readMetrics(parsed.usage, usageFields),
+    timings: readMetrics(parsed.timings, timingFields),
   };
 };
 
@@ -191,9 +176,7 @@ const parseOllamaUpdate = (
     ...(parsed.done === true
       ? { finishReason: stringValue(parsed.done_reason) || 'stop' }
       : {}),
-    ...(parseOllamaUsage(parsed)
-      ? { usage: parseOllamaUsage(parsed) ?? undefined }
-      : {}),
+    usage: parseOllamaUsage(parsed),
   };
 };
 
@@ -317,28 +300,39 @@ const parseOllamaToolCalls = (value: unknown): ChatToolCallDelta[] =>
     type: 'function',
   }));
 
-const parseOpenAiUsage = (value: unknown): ChatCompletionUsage | null => {
-  const usage = asRecord(value);
-  if (!usage) return null;
-  return {
-    ...(numberValue(usage.prompt_tokens) !== undefined
-      ? { promptTokens: numberValue(usage.prompt_tokens) }
-      : {}),
-    ...(numberValue(usage.completion_tokens) !== undefined
-      ? { completionTokens: numberValue(usage.completion_tokens) }
-      : {}),
-    ...(numberValue(usage.total_tokens) !== undefined
-      ? { totalTokens: numberValue(usage.total_tokens) }
-      : {}),
-  };
+const usageFields = {
+  promptTokens: 'prompt_tokens',
+  completionTokens: 'completion_tokens',
+  totalTokens: 'total_tokens',
+} satisfies Record<keyof ChatCompletionUsage, string>;
+
+const timingFields = {
+  promptMs: 'prompt_ms',
+  predictedMs: 'predicted_ms',
+  cacheTokens: 'cache_n',
+} satisfies Record<keyof ChatCompletionTimings, string>;
+
+const readMetrics = <Key extends string>(
+  value: unknown,
+  fields: Record<Key, string>,
+): Partial<Record<Key, number>> | undefined => {
+  const source = asRecord(value);
+  if (!source) return undefined;
+  const metrics: Partial<Record<Key, number>> = {};
+  for (const key in fields) {
+    const metric = numberValue(source[fields[key]]);
+    if (metric !== undefined) metrics[key] = metric;
+  }
+  return metrics;
 };
 
 const parseOllamaUsage = (
   value: Record<string, unknown>,
-): ChatCompletionUsage | null => {
+): ChatCompletionUsage | undefined => {
   const promptTokens = numberValue(value.prompt_eval_count);
   const completionTokens = numberValue(value.eval_count);
-  if (promptTokens === undefined && completionTokens === undefined) return null;
+  if (promptTokens === undefined && completionTokens === undefined)
+    return undefined;
   return {
     ...(promptTokens !== undefined ? { promptTokens } : {}),
     ...(completionTokens !== undefined ? { completionTokens } : {}),
@@ -348,24 +342,8 @@ const parseOllamaUsage = (
   };
 };
 
-const parseLlamaTimings = (value: unknown): ChatCompletionTimings | null => {
-  const timings = asRecord(value);
-  if (!timings) return null;
-  return {
-    ...(numberValue(timings.prompt_ms) !== undefined
-      ? { promptMs: numberValue(timings.prompt_ms) }
-      : {}),
-    ...(numberValue(timings.predicted_ms) !== undefined
-      ? { predictedMs: numberValue(timings.predicted_ms) }
-      : {}),
-    ...(numberValue(timings.cache_n) !== undefined
-      ? { cacheTokens: numberValue(timings.cache_n) }
-      : {}),
-  };
-};
-
 const mergeToolCallDeltas = (
-  pendingToolCalls: Map<number, PendingToolCall>,
+  pendingToolCalls: Map<number, ChatToolCall>,
   deltas: ChatToolCallDelta[],
 ) => {
   for (const delta of deltas) {
@@ -375,7 +353,7 @@ const mergeToolCallDeltas = (
         id: '',
         type: 'function',
         function: { name: '', arguments: '' },
-      } satisfies PendingToolCall);
+      } satisfies ChatToolCall);
     const argumentsText =
       current.function.arguments + (delta.function?.arguments ?? '');
     if (argumentsText.length > providerStreamLimits.toolArgumentsCharacters) {

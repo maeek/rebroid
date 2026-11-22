@@ -28,6 +28,19 @@ describe('provider stream limits', () => {
     expect(frames).toEqual(['α\r\nsecond', 'next', 'last\r']);
   });
 
+  it('reads zero and partial metrics from a trailing usage-only frame', async () => {
+    const event = {
+      choices: [],
+      usage: { prompt_tokens: 0, completion_tokens: '3', total_tokens: 3 },
+      timings: { prompt_ms: 0, predicted_ms: 2.5, cache_n: null },
+    };
+    const result = await consumeChatCompletionStream({
+      body: stream([`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`]),
+    });
+    expect(result.usage).toStrictEqual({ promptTokens: 0, totalTokens: 3 });
+    expect(result.timings).toStrictEqual({ promptMs: 0, predictedMs: 2.5 });
+  });
+
   it.each(['openai-sse', 'ollama-ndjson'] as const)(
     'cancels an unterminated oversized %s frame',
     async (format) => {
