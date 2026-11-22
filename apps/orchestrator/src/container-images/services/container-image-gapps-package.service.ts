@@ -47,7 +47,8 @@ export class ContainerImageGappsPackageService {
     private readonly apkInspection: ApkPackageInspectionPort,
   ) {}
 
-  async extract(packagePath: string, jobId: string) {
+  async extract(packagePath: string, jobId: string, signal?: AbortSignal) {
+    signal?.throwIfAborted();
     const workDirectory = join(
       gappsWorkDirectory(this.config.getOrThrow<string>('app.uploadsDir')),
       jobId,
@@ -55,7 +56,7 @@ export class ContainerImageGappsPackageService {
     await rm(workDirectory, { recursive: true, force: true });
     await mkdir(workDirectory, { recursive: true, mode: 0o700 });
     try {
-      await this.extractSystemTree(packagePath, workDirectory);
+      await this.extractSystemTree(packagePath, workDirectory, signal);
       return workDirectory;
     } catch (error) {
       await this.cleanup(workDirectory);
@@ -108,13 +109,18 @@ export class ContainerImageGappsPackageService {
     };
   }
 
-  private async extractSystemTree(packagePath: string, workDirectory: string) {
+  private async extractSystemTree(
+    packagePath: string,
+    workDirectory: string,
+    signal?: AbortSignal,
+  ) {
     let entryCount = 0;
     let extractedBytes = 0;
     const symlinkPaths = new Set<string>();
     const extractedPaths = new Set<string>();
     const archive = await yauzl.openPromise(packagePath);
     for await (const entry of archive.eachEntry()) {
+      signal?.throwIfAborted();
       if (++entryCount > maxArchiveEntries) {
         throw new Error('GApps package has too many entries.');
       }
@@ -125,11 +131,13 @@ export class ContainerImageGappsPackageService {
         symlinkPaths,
         extractedPaths,
         extractedBytes,
+        signal,
       });
       if (extractedBytes > maxExtractedBytes) {
         throw new Error('Extracted GApps payload exceeds 4 GB.');
       }
     }
+    signal?.throwIfAborted();
     const system = await lstat(join(workDirectory, 'system'));
     if (!system.isDirectory()) {
       throw new Error('GApps package does not contain a system tree.');
@@ -143,6 +151,7 @@ export class ContainerImageGappsPackageService {
     symlinkPaths: Set<string>;
     extractedPaths: Set<string>;
     extractedBytes: number;
+    signal?: AbortSignal;
   }) {
     const { archive, entry, workDirectory, symlinkPaths, extractedPaths } =
       input;
@@ -200,6 +209,7 @@ export class ContainerImageGappsPackageService {
     await pipeline(
       source,
       createWriteStream(destination, { flags: 'wx', mode: safeMode }),
+      { signal: input.signal },
     );
     await chmod(destination, safeMode);
     extractedPaths.add(systemPath);

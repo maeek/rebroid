@@ -264,7 +264,11 @@ export class ContainerImageGappsBuilderService
 
     await this.jobs.updateBuildDetails(id, { phase: 'validating_payload' });
     signal.throwIfAborted();
-    const workDirectory = await this.packages.extract(archive.packagePath, id);
+    const workDirectory = await this.packages.extract(
+      archive.packagePath,
+      id,
+      signal,
+    );
     staging.workDirectory = workDirectory;
     signal.throwIfAborted();
     const payloadValidation = await this.packages.validate(workDirectory);

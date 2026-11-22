@@ -10,6 +10,8 @@ import {
   stat,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { Readable } from 'node:stream';
+import yauzl from 'yauzl';
 import { basename, join } from 'node:path';
 import type { ApkPackageInspectionPort } from '../../apk/contracts/apk-package-inspection.port';
 import { ContainerImageGappsPackageService } from './container-image-gapps-package.service';
@@ -50,6 +52,34 @@ describe('ContainerImageGappsPackageService', () => {
         'ready',
       ]);
     } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('stops writing a cancelled package and releases its partial work tree', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'rebroid-gapps-cancel-'));
+    const service = new ContainerImageGappsPackageService(
+      { getOrThrow: () => directory } as unknown as ConfigService,
+      { extractPackageNameFromFile: jest.fn() },
+    );
+    const controller = new AbortController();
+    const open = jest
+      .spyOn(yauzl.ZipFile.prototype, 'openReadStreamPromise')
+      .mockImplementationOnce(async () => {
+        controller.abort();
+        return Readable.from(['settings']);
+      });
+    try {
+      const path = join(directory, 'package.zip');
+      await writeFile(path, packageFixture);
+      await expect(
+        service.extract(path, 'cancelled', controller.signal),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(await readdir(join(directory, 'image-build-gapps-work'))).toEqual(
+        [],
+      );
+    } finally {
+      open.mockRestore();
       await rm(directory, { recursive: true, force: true });
     }
   });
