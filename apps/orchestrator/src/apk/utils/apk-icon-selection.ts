@@ -8,6 +8,7 @@ interface IconCandidate {
 }
 
 const maxCandidatesToRead = 24;
+const maxDimensionBonus = 512;
 
 function toIconCandidate(entry: ZipEntry): IconCandidate | null {
   const path = entry.name.toLowerCase();
@@ -64,6 +65,7 @@ export async function selectBestIconDataUrl(
 
   let best: { score: number; mimeType: string; content: Buffer } | null = null;
   for (const candidate of candidates) {
+    if (best && candidate.score + maxDimensionBonus <= best.score) break;
     const content = await readEntry(candidate.name);
     if (!content || content.length === 0 || content.length > maxIconBytes) {
       continue;
@@ -73,7 +75,10 @@ export async function selectBestIconDataUrl(
     const score =
       candidate.score +
       (dimensions
-        ? Math.min(Math.max(dimensions.width, dimensions.height), 512)
+        ? Math.min(
+            Math.max(dimensions.width, dimensions.height),
+            maxDimensionBonus,
+          )
         : 0);
     if (!best || score > best.score) {
       best = { score, mimeType: candidate.mimeType, content };

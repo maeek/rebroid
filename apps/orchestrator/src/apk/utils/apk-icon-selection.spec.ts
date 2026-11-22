@@ -6,7 +6,7 @@ it('reads the highest scoring entries first and keeps archive order for tied can
     uncompressedSize: 32,
   }));
   const preferred = {
-    name: 'res/mipmap/ic_launcher.png',
+    name: 'res/mipmap/launcher-round.png',
     uncompressedSize: 32,
   };
   const read = jest.fn(async (name: string) => Buffer.from(name));
@@ -18,4 +18,17 @@ it('reads the highest scoring entries first and keeps archive order for tied can
   expect(result).toBe(
     `data:image/png;base64,${Buffer.from(preferred.name).toString('base64')}`,
   );
+});
+
+it('skips decompression when later images cannot beat the current icon', async () => {
+  const best = 'res/mipmap/ic_launcher.png';
+  const read = jest.fn(async () => Buffer.from('icon'));
+  await selectBestIconDataUrl(
+    [best, 'res/drawable/other.png'].map((name) => ({
+      name,
+      uncompressedSize: 128,
+    })),
+    read,
+  );
+  expect(read.mock.calls).toEqual([[best]]);
 });
