@@ -1,30 +1,33 @@
-export type AutomationRunEventType =
-  | 'run.queued'
-  | 'run.preparing'
-  | 'run.started'
-  | 'run.completed'
-  | 'run.failed'
-  | 'run.canceled'
-  | 'step.started'
-  | 'step.completed'
-  | 'step.failed'
-  | 'step.progress'
-  | 'vision.ocr.exchange'
-  | 'ai.model.started'
-  | 'ai.model.completed'
-  | 'ai.plan.proposed'
-  | 'ai.plan.updated'
-  | 'ai.action.decided'
-  | 'ai.perception.observed'
-  | 'ai.perception.summary'
-  | 'ai.user.message'
-  | 'ai.message.completed'
-  | 'ai.tool.started'
-  | 'ai.tool.arguments'
-  | 'ai.tool.completed'
-  | 'ai.tool.failed'
-  | 'ai.guardrail.triggered'
-  | 'heartbeat';
+export const automationRunEventTypes = [
+  'run.queued',
+  'run.preparing',
+  'run.started',
+  'run.completed',
+  'run.failed',
+  'run.canceled',
+  'step.started',
+  'step.completed',
+  'step.failed',
+  'step.progress',
+  'vision.ocr.exchange',
+  'ai.model.started',
+  'ai.model.completed',
+  'ai.plan.proposed',
+  'ai.plan.updated',
+  'ai.action.decided',
+  'ai.perception.observed',
+  'ai.perception.summary',
+  'ai.user.message',
+  'ai.message.completed',
+  'ai.tool.started',
+  'ai.tool.arguments',
+  'ai.tool.completed',
+  'ai.tool.failed',
+  'ai.guardrail.triggered',
+  'heartbeat',
+] as const;
+
+export type AutomationRunEventType = (typeof automationRunEventTypes)[number];
 
 export interface AutomationRunEventRecord {
   id: string;

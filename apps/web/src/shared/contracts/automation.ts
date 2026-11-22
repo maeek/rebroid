@@ -165,56 +165,10 @@ export interface DraftAutomationYamlInput {
   clarifications?: Array<{ question: string; answer: string }>
 }
 
-export type AutomationRunEventType =
-  | 'run.queued'
-  | 'run.preparing'
-  | 'run.started'
-  | 'run.completed'
-  | 'run.failed'
-  | 'run.canceled'
-  | 'step.started'
-  | 'step.completed'
-  | 'step.failed'
-  | 'step.progress'
-  | 'vision.ocr.exchange'
-  | 'ai.model.started'
-  | 'ai.model.completed'
-  | 'ai.plan.proposed'
-  | 'ai.plan.updated'
-  | 'ai.action.decided'
-  | 'ai.perception.observed'
-  | 'ai.perception.summary'
-  | 'ai.user.message'
-  | 'ai.message.completed'
-  | 'ai.tool.started'
-  | 'ai.tool.arguments'
-  | 'ai.tool.completed'
-  | 'ai.tool.failed'
-  | 'ai.guardrail.triggered'
-  | 'heartbeat'
-
-export interface AutomationRunEvent {
-  id: string
-  runId: string
-  ownerUserId: string
-  sequence: number
-  type: AutomationRunEventType
-  stepId: string | null
-  parentStepId: string | null
-  message: string
-  data: Record<string, unknown>
-  createdAt: string
-}
-
-export interface AutomationRunEventPage {
-  events: AutomationRunEvent[]
-  nextAfter: number | null
-}
-
-export interface AutomationRunEventStreamToken {
-  token: string
-  expiresAt: string
-}
+export type AutomationRunEvent = OrchestratorApiSchemas['AutomationRunEventDto']
+export type AutomationRunEventType = AutomationRunEvent['type']
+export type AutomationRunEventPage = OrchestratorApiSchemas['AutomationRunEventPageDto']
+export type AutomationRunEventStreamToken = OrchestratorApiSchemas['AutomationRunEventStreamTokenDto']
 
 export interface AutomationTrigger {
   id: string

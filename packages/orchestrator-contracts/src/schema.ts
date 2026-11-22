@@ -3282,11 +3282,14 @@ export interface components {
             runId: string;
             ownerUserId: string;
             sequence: number;
-            type: string;
+            /** @enum {string} */
+            type: "run.queued" | "run.preparing" | "run.started" | "run.completed" | "run.failed" | "run.canceled" | "step.started" | "step.completed" | "step.failed" | "step.progress" | "vision.ocr.exchange" | "ai.model.started" | "ai.model.completed" | "ai.plan.proposed" | "ai.plan.updated" | "ai.action.decided" | "ai.perception.observed" | "ai.perception.summary" | "ai.user.message" | "ai.message.completed" | "ai.tool.started" | "ai.tool.arguments" | "ai.tool.completed" | "ai.tool.failed" | "ai.guardrail.triggered" | "heartbeat";
             stepId: string | null;
             parentStepId: string | null;
             message: string;
-            data: Record<string, never>;
+            data: {
+                [key: string]: unknown;
+            };
             createdAt: string;
         };
         AutomationAiRunHistoryDto: {

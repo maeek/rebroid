@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class AutomationRunEventDto {
+import {
+  automationRunEventTypes,
+  type AutomationRunEventType,
+  type AutomationRunEventRecord,
+} from '../events/automation-run-events.types';
+
+export class AutomationRunEventDto implements AutomationRunEventRecord {
   @ApiProperty()
   id!: string;
 
@@ -13,8 +19,8 @@ export class AutomationRunEventDto {
   @ApiProperty()
   sequence!: number;
 
-  @ApiProperty()
-  type!: string;
+  @ApiProperty({ enum: automationRunEventTypes })
+  type!: AutomationRunEventType;
 
   @ApiProperty({ type: String, nullable: true })
   stepId!: string | null;
@@ -25,7 +31,7 @@ export class AutomationRunEventDto {
   @ApiProperty()
   message!: string;
 
-  @ApiProperty({ type: Object })
+  @ApiProperty({ type: Object, additionalProperties: true })
   data!: Record<string, unknown>;
 
   @ApiProperty()
