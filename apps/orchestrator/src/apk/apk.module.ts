@@ -17,7 +17,6 @@ import { ApkIconExtractorService } from './services/apk-icon-extractor.service';
 import { ApkGooglePlayServicesAnalyzerService } from './services/apk-google-play-services-analyzer.service';
 import { ApkIconSelectorService } from './services/apk-icon-selector.service';
 import { ApkManifestReaderService } from './services/apk-manifest-reader.service';
-import { ApkResourceReaderService } from './services/apk-resource-reader.service';
 import { ApkStorageService } from './services/apk-storage.service';
 
 @Module({
@@ -38,7 +37,6 @@ import { ApkStorageService } from './services/apk-storage.service';
     ApkGooglePlayServicesAnalyzerService,
     ApkIconSelectorService,
     ApkManifestReaderService,
-    ApkResourceReaderService,
     ApkStorageService,
     {
       provide: APK_PACKAGE_INSPECTION,

@@ -13,7 +13,7 @@ import {
 } from './apk-archive.service';
 import { ApkIconSelectorService } from './apk-icon-selector.service';
 import { ApkManifestReaderService } from './apk-manifest-reader.service';
-import { ApkResourceReaderService } from './apk-resource-reader.service';
+import { readApkResourceMetadata } from '../utils/apk-resource-metadata';
 
 @Injectable()
 export class ApkIconExtractorService implements ApkPackageInspectionPort {
@@ -24,7 +24,6 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
     private readonly archive: ApkArchiveService,
     private readonly iconSelector: ApkIconSelectorService,
     private readonly manifestReader: ApkManifestReaderService,
-    private readonly resourceReader: ApkResourceReaderService,
   ) {}
 
   async extractMetadataFromFile(filePath: string) {
@@ -62,7 +61,6 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
 
   private async extractMetadata(archive: ApkArchiveReader) {
     const { entries } = archive;
-    const entriesByName = new Map(entries.map((entry) => [entry.name, entry]));
     const manifest = await archive.readEntry(
       'AndroidManifest.xml',
       this.maxMetadataEntryBytes,
@@ -75,30 +73,9 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
       };
     }
 
+    const entriesByName = new Map(entries.map((entry) => [entry.name, entry]));
     const { packageName, label, declaredIcons } =
       this.manifestReader.readMetadata(manifest);
-    let resources: Buffer | null | undefined;
-    const getResources = async () => {
-      if (resources === undefined) {
-        resources = entriesByName.has('resources.arsc')
-          ? await archive.readEntry(
-              'resources.arsc',
-              this.maxMetadataEntryBytes,
-            )
-          : null;
-      }
-      return resources;
-    };
-
-    let displayName = label.value ? normalizeApkDisplayName(label.value) : null;
-    if (!displayName && typeof label.resourceId === 'number') {
-      const content = await getResources();
-      const resolved = content
-        ? this.resourceReader.readString(content, label.resourceId)
-        : null;
-      displayName = resolved ? normalizeApkDisplayName(resolved) : null;
-    }
-
     let extractedIconDataUrl: string | null = null;
     const directPaths = [
       declaredIcons.iconPath,
@@ -116,26 +93,34 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
       }
     }
 
-    const resourceIds = [
-      declaredIcons.iconResourceId,
-      declaredIcons.roundIconResourceId,
-    ].filter((value): value is number => typeof value === 'number');
-    if (!extractedIconDataUrl && resourceIds.length > 0) {
-      const content = await getResources();
-      const candidates = content
-        ? this.resourceReader
-            .readIconCandidates(content, resourceIds)
-            .sort((left, right) => right.score - left.score)
-        : [];
-      for (const candidate of candidates) {
-        extractedIconDataUrl = await this.readIconPathFromArchive(
-          archive,
-          entriesByName,
-          candidate.entryName,
-          candidate.score,
-        );
-        if (extractedIconDataUrl) {
-          break;
+    let displayName = label.value ? normalizeApkDisplayName(label.value) : null;
+    const labelId = displayName ? undefined : label.resourceId;
+    const iconIds = extractedIconDataUrl
+      ? []
+      : [
+          declaredIcons.iconResourceId,
+          declaredIcons.roundIconResourceId,
+        ].filter((id): id is number => id !== undefined);
+    if (
+      (labelId !== undefined || iconIds.length) &&
+      entriesByName.has('resources.arsc')
+    ) {
+      const resources = await archive.readEntry(
+        'resources.arsc',
+        this.maxMetadataEntryBytes,
+      );
+      if (resources) {
+        const metadata = readApkResourceMetadata(resources, labelId, iconIds);
+        if (metadata.label)
+          displayName = normalizeApkDisplayName(metadata.label);
+        for (const candidate of metadata.icons) {
+          extractedIconDataUrl = await this.readIconPathFromArchive(
+            archive,
+            entriesByName,
+            candidate.entryName,
+            candidate.score,
+          );
+          if (extractedIconDataUrl) break;
         }
       }
     }

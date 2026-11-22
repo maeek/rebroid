@@ -9,12 +9,6 @@ export interface IconCandidate {
   mimeType: string;
 }
 
-export interface ResourceIconCandidate {
-  entryName: string;
-  score: number;
-  mimeType: string;
-}
-
 export interface ParsedStringPool {
   strings: string[];
 }
