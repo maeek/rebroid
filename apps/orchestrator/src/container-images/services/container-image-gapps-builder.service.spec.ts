@@ -36,6 +36,7 @@ describe('ContainerImageGappsBuilderService', () => {
       '14',
       'fixture-revision',
       'recorded-sha256',
+      expect.any(AbortSignal),
     );
     expect(build.jobs.markSucceeded).toHaveBeenCalled();
   });

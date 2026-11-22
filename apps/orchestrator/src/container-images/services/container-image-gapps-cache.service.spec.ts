@@ -76,6 +76,41 @@ describe('ContainerImageGappsCacheService', () => {
     );
   });
 
+  it('keeps the verified revision when verification or promotion is cancelled', async () => {
+    const revision = 'a'.repeat(40);
+    const path = await service.createTemporaryPath('job');
+    await writeFile(path, 'original');
+    const original = await service.promote(
+      path,
+      '14',
+      revision,
+      sha256('original'),
+    );
+    await writeFile(path, 'replacement');
+    const reason = new Error('build cancelled');
+    await expect(
+      service.findVerified('14', revision, AbortSignal.abort(reason)),
+    ).rejects.toBe(reason);
+    const controller = new AbortController();
+    jest.spyOn(service, 'calculateSha256').mockImplementationOnce(async () => {
+      controller.abort(reason);
+      return sha256('replacement');
+    });
+    await expect(
+      service.promote(
+        path,
+        '14',
+        revision,
+        sha256('replacement'),
+        controller.signal,
+      ),
+    ).rejects.toBe(reason);
+    await expect(service.findVerified('14', revision)).resolves.toEqual(
+      original,
+    );
+    await expect(readFile(path, 'utf8')).resolves.toBe('replacement');
+  });
+
   it('keeps a verified revision if moving its replacement fails', async () => {
     const revision = 'b'.repeat(40);
     const path = await service.createTemporaryPath('job');

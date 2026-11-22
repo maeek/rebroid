@@ -235,7 +235,11 @@ export class ContainerImageGappsBuilderService
       signal,
     );
     await this.jobs.updateBuildDetails(id, { mindTheGappsRevision: revision });
-    let archive = await this.cache.findVerified(androidVersion, revision);
+    let archive = await this.cache.findVerified(
+      androidVersion,
+      revision,
+      signal,
+    );
     if (archive) {
       await this.jobs.updateBuildDetails(id, {
         cacheState: 'hit',
@@ -257,7 +261,10 @@ export class ContainerImageGappsBuilderService
       signal.throwIfAborted();
       archive = {
         packagePath: staging.temporaryPackage,
-        sha256: await this.cache.calculateSha256(staging.temporaryPackage),
+        sha256: await this.cache.calculateSha256(
+          staging.temporaryPackage,
+          signal,
+        ),
       };
       await this.jobs.updateBuildDetails(id, { packageSha256: archive.sha256 });
     }
@@ -279,6 +286,7 @@ export class ContainerImageGappsBuilderService
         androidVersion,
         revision,
         archive.sha256,
+        signal,
       );
       staging.temporaryPackage = null;
       await this.jobs.updateBuildDetails(id, { cacheState: 'built' });

@@ -24,18 +24,22 @@ export class ContainerImageGappsCacheService {
   async findVerified(
     androidVersion: SupportedGappsAndroidVersion,
     revision: string,
+    signal?: AbortSignal,
   ) {
+    signal?.throwIfAborted();
     const { packagePath, checksumPath } = await this.revisionPaths(
       androidVersion,
       revision,
     );
     try {
       const expected = (await readFile(checksumPath, 'utf8')).trim();
-      const actual = await this.calculateSha256(packagePath);
+      const actual = await this.calculateSha256(packagePath, signal);
+      signal?.throwIfAborted();
       if (expected && expected === actual) {
         return { packagePath, sha256: actual };
       }
     } catch {
+      signal?.throwIfAborted();
       return null;
     }
     await Promise.all([
@@ -58,12 +62,14 @@ export class ContainerImageGappsCacheService {
     androidVersion: SupportedGappsAndroidVersion,
     revision: string,
     expectedSha256: string,
+    signal?: AbortSignal,
   ) {
     const { packagePath, checksumPath } = await this.revisionPaths(
       androidVersion,
       revision,
     );
-    const sha256 = await this.calculateSha256(temporaryPath);
+    const sha256 = await this.calculateSha256(temporaryPath, signal);
+    signal?.throwIfAborted();
     if (sha256 !== expectedSha256)
       throw new Error('GApps package changed during validation.');
     await rename(temporaryPath, packagePath);
@@ -134,9 +140,9 @@ export class ContainerImageGappsCacheService {
     };
   }
 
-  async calculateSha256(path: string) {
+  async calculateSha256(path: string, signal?: AbortSignal) {
     const hash = createHash('sha256');
-    for await (const chunk of createReadStream(path)) {
+    for await (const chunk of createReadStream(path, { signal })) {
       hash.update(chunk as Buffer);
     }
     return hash.digest('hex');
