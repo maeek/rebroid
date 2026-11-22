@@ -1,3 +1,4 @@
+import { runtimeResourceNames } from '../../../network-isolation/runtime-resource-names';
 import { selectApplicationProfile } from '../../common/utils/application-profile-selection';
 import {
   parseSavedProfiles,
@@ -14,19 +15,14 @@ interface ProfileStorageState {
   savedProfilesJson: string | null;
 }
 
-interface VolumeNaming {
-  namesFor(
-    applicationId: string,
-    appName: string,
-    profileName: string,
-  ): { volumeName: string };
-}
-
 export class ApplicationProfileStorage {
+  private readonly volumeFor: (name: string) => string;
   constructor(
     private readonly app: ProfileStorageState,
-    private readonly naming: VolumeNaming,
-  ) {}
+    resourcePrefix: string,
+  ) {
+    this.volumeFor = runtimeResourceNames(app, resourcePrefix).volumeFor;
+  }
 
   select(request: {
     profileMode?: ApplicationProfileMode;
@@ -111,9 +107,5 @@ export class ApplicationProfileStorage {
 
   private get activeName() {
     return selectApplicationProfile(this.app).name;
-  }
-
-  private volumeFor(name: string) {
-    return this.naming.namesFor(this.app.id, this.app.name, name).volumeName;
   }
 }

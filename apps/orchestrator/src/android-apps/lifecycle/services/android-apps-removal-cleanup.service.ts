@@ -12,7 +12,7 @@ import {
   DOCKER_RESOURCE_RUNTIME,
   type DockerResourceRuntimePort,
 } from '../../../docker/contracts/docker-resource-runtime.port';
-import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
+import { DockerEngineConfigService } from '../../../config/docker-engine-config.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileStorage } from '../policies/application-profile-storage';
@@ -30,7 +30,7 @@ export class AndroidAppsRemovalCleanupService {
     private readonly networks: DockerNetworkRuntimePort,
     @Inject(DOCKER_RESOURCE_RUNTIME)
     private readonly resources: DockerResourceRuntimePort,
-    private readonly networkIsolation: NetworkIsolationService,
+    private readonly dockerConfig: DockerEngineConfigService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
@@ -54,7 +54,7 @@ export class AndroidAppsRemovalCleanupService {
 
     const volumeNames = new ApplicationProfileStorage(
       app,
-      this.networkIsolation,
+      this.dockerConfig.resourcePrefix,
     ).trackedVolumes();
     await Promise.all(
       [...volumeNames].map((volumeName) =>

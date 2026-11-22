@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ApkModule } from '../../apk/apk.module';
 import { AppConfigModule } from '../../config/app-config.module';
 import { DockerModule } from '../../docker/docker.module';
-import { NetworkIsolationModule } from '../../network-isolation/network-isolation.module';
 import { NetworkPolicyModule } from '../../network-policy/network-policy.module';
 import { SettingsModule } from '../../settings/settings.module';
 import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
@@ -29,7 +28,6 @@ import { AndroidRuntimeImageResolverService } from './services/android-runtime-i
     AndroidAppsPersistenceModule,
     ApkModule,
     DockerModule,
-    NetworkIsolationModule,
     NetworkPolicyModule,
     SettingsModule,
     FeatureFlagsModule,

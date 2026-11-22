@@ -1,3 +1,4 @@
+import { runtimeResourceNames } from '../../../network-isolation/runtime-resource-names';
 import {
   Inject,
   ConflictException,
@@ -12,7 +13,7 @@ import {
   DOCKER_RESOURCE_RUNTIME,
   type DockerResourceRuntimePort,
 } from '../../../docker/contracts/docker-resource-runtime.port';
-import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
+import { DockerEngineConfigService } from '../../../config/docker-engine-config.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { RuntimeFilePathService } from './runtime-file-path.service';
@@ -33,7 +34,7 @@ const persistentDownloadRequiredMessage =
 @Injectable()
 export class RuntimeDownloadVolumeService {
   constructor(
-    private readonly networkIsolation: NetworkIsolationService,
+    private readonly dockerConfig: DockerEngineConfigService,
     @Inject(DOCKER_RESOURCE_RUNTIME)
     private readonly resources: DockerResourceRuntimePort,
     private readonly paths: RuntimeFilePathService,
@@ -183,11 +184,10 @@ export class RuntimeDownloadVolumeService {
       return null;
     }
 
-    const volumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      profileName,
-    ).volumeName;
+    const volumeName = runtimeResourceNames(
+      app,
+      this.dockerConfig.resourcePrefix,
+    ).volumeFor(profileName);
 
     if (options.create) {
       await this.resources.createVolume(app.id, volumeName);

@@ -167,6 +167,12 @@ mountpoints on the engine host. Start the profile to transfer files through its 
 When the mountpoint is accessible, the orchestrator creates the Android Downloads directory inside
 it and publishes each file after the upload finishes.
 
+Ordinary Start uses the stored volume name for the active profile. Saved-profile selection and
+offline Downloads derive the volume name from the resource prefix, application name, profile
+name, and first eight characters of the application ID. A rename that changes the normalized
+application name can therefore change the volume those operations select. Existing volumes
+keep their original names and contents.
+
 ## Stored state
 
 The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema

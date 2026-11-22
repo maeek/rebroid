@@ -1,6 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { dockerSafeName } from '../common/docker-name';
 import {
   DOCKER_NETWORK_RUNTIME,
   type DockerNetworkRuntimePort,
@@ -10,16 +8,9 @@ import {
   type DockerResourceRuntimePort,
 } from '../docker/contracts/docker-resource-runtime.port';
 
-export interface IsolatedRuntimeNames {
-  containerName: string;
-  networkName: string;
-  volumeName: string;
-}
-
 @Injectable()
 export class NetworkIsolationService {
   constructor(
-    private readonly config: ConfigService,
     @Inject(DOCKER_NETWORK_RUNTIME)
     private readonly networks: DockerNetworkRuntimePort,
     @Inject(DOCKER_RESOURCE_RUNTIME)
@@ -27,35 +18,12 @@ export class NetworkIsolationService {
   ) {}
 
   /**
-   * Derives stable Docker resource names from the app id, name, and optional profile.
-   * Only the first eight id characters are used to keep names deterministic and short.
-   */
-  namesFor(
-    applicationId: string,
-    name: string,
-    profileName?: string | null,
-  ): IsolatedRuntimeNames {
-    const prefix = this.config.getOrThrow<string>('app.docker.resourcePrefix');
-    const safeName = dockerSafeName(name, 'android-app');
-    const safeProfileName = profileName
-      ? `-${dockerSafeName(profileName, 'profile')}`
-      : '';
-    const suffix = applicationId.slice(0, 8);
-
-    return {
-      containerName: `${prefix}-runtime-${safeName}-${suffix}`,
-      networkName: `${prefix}-net-${safeName}-${suffix}`,
-      volumeName: `${prefix}-data-${safeName}${safeProfileName}-${suffix}`,
-    };
-  }
-
-  /**
    * Creates the isolated runtime network and only provisions persistent storage when required.
    */
   async createRuntimeBoundary(
     applicationId: string,
     persistentData: boolean,
-    names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
+    names: { networkName: string; volumeName: string },
   ) {
     if (persistentData) {
       await this.resources.createVolume(applicationId, names.volumeName);

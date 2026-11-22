@@ -9,11 +9,7 @@ const setup = () => {
     {} as never,
     lifecycle as never,
     { inspectVolume: async () => null } as never,
-    {
-      namesFor: (_id: string, _name: string, profile: string) => ({
-        volumeName: profile,
-      }),
-    } as never,
+    { resourcePrefix: 'rebroid' } as never,
     networkPolicy as never,
     {} as never,
     { saveFields: async () => {} } as never,

@@ -39,11 +39,8 @@ describe('RuntimeDownloadVolumeService', () => {
       createVolume: jest.fn(),
       inspectVolume: jest.fn().mockResolvedValue({ Mountpoint: tempDir }),
     };
-    const networkIsolation = {
-      namesFor: jest.fn().mockReturnValue({ volumeName: 'volume-app-1' }),
-    };
     service = new RuntimeDownloadVolumeService(
-      networkIsolation as never,
+      { resourcePrefix: 'rebroid' } as never,
       resources as never,
       paths,
       new RuntimeUploadStreamService({} as never),
@@ -92,7 +89,7 @@ describe('RuntimeDownloadVolumeService', () => {
     ).resolves.toBe('body');
     expect(resources.createVolume).toHaveBeenCalledWith(
       'app-1',
-      'volume-app-1',
+      'rebroid-data-demo-app-default-app-1',
     );
   });
 

@@ -2,20 +2,12 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import type { AndroidApplication } from '../../android-application.entity';
-import { dockerSafeName } from '../../../common/docker-name';
 import { redroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
 
 const makeService = () => {
   const resources = {
     inspectVolume: jest.fn().mockResolvedValue(null),
     removeVolume: jest.fn().mockResolvedValue(undefined),
-  };
-  const networkIsolation = {
-    namesFor: jest
-      .fn()
-      .mockImplementation((_id: string, _name: string, profile: string) => ({
-        volumeName: `rebroid-profile-${dockerSafeName(profile)}`,
-      })),
   };
   const state = {
     saveFields: jest
@@ -26,13 +18,13 @@ const makeService = () => {
     {} as never,
     {} as never,
     resources as never,
-    networkIsolation as never,
+    { resourcePrefix: 'rebroid' } as never,
     {} as never,
     {} as never,
     state as never,
   );
 
-  return { networkIsolation, resources, service, state };
+  return { resources, service, state };
 };
 
 const makeApp = (patch: Partial<AndroidApplication> = {}): AndroidApplication =>
@@ -72,17 +64,14 @@ it('cleans up stored GPU flags without replacing the existing container', async 
 
 describe('AndroidAppsRuntimePreparationService profile deletion', () => {
   it('deletes a non-active saved persistent profile and removes its volume', async () => {
-    const { networkIsolation, resources, service, state } = makeService();
+    const { resources, service, state } = makeService();
     const app = makeApp();
 
     await service.deleteSavedPersistentProfile(app, ' work ');
 
-    expect(networkIsolation.namesFor).toHaveBeenCalledWith(
-      'app-1',
-      'Demo',
-      'work',
+    expect(resources.removeVolume).toHaveBeenCalledWith(
+      'rebroid-data-demo-work-app-1',
     );
-    expect(resources.removeVolume).toHaveBeenCalledWith('rebroid-profile-work');
     expect(app.savedProfilesJson).toBe(
       JSON.stringify([
         { mode: ApplicationProfileMode.Persistent, name: 'default' },
@@ -137,7 +126,9 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
 
     await service.deleteSavedPersistentProfile(app, 'work');
 
-    expect(resources.removeVolume).toHaveBeenCalledWith('rebroid-profile-work');
+    expect(resources.removeVolume).toHaveBeenCalledWith(
+      'rebroid-data-demo-work-app-1',
+    );
     expect(state.saveFields).toHaveBeenCalledWith(app, 'savedProfilesJson');
   });
 
@@ -145,7 +136,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
     const { service, resources, state } = makeService();
     const app = makeApp({
       profileName: 'Work',
-      volumeName: 'rebroid-profile-work',
+      volumeName: 'rebroid-data-demo-work-app-1',
     });
     await expect(
       service.deleteSavedPersistentProfile(app, 'work'),
@@ -201,20 +192,20 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
       profileName: 'Work',
     });
     expect(app.profileName).toBe('Work');
-    expect(app.volumeName).toBe('rebroid-profile-work');
+    expect(app.volumeName).toBe('rebroid-data-demo-work-app-1');
   });
 
   it('preserves an existing volume whose original profile is missing from history', async () => {
     const { service, resources, state } = makeService();
     resources.inspectVolume.mockResolvedValue({
-      Name: 'rebroid-profile-archived',
+      Name: 'rebroid-data-demo-archived-app-1',
     });
     const app = makeApp();
     await expect(
       service.prepareRuntimeProfile(app, { profileName: 'Archived' }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(resources.inspectVolume).toHaveBeenCalledWith(
-      'rebroid-profile-archived',
+      'rebroid-data-demo-archived-app-1',
     );
     expect(app.profileName).toBe('default');
     expect(state.saveFields).not.toHaveBeenCalled();
@@ -236,9 +227,9 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
 
   it.each([
     { profileName: 'legacy', volumeName: 'original-volume' },
-    { profileName: 'Work', volumeName: 'rebroid-profile-work' },
+    { profileName: 'Work', volumeName: 'rebroid-data-demo-work-app-1' },
     { profileName: 'temporary', profileMode: ApplicationProfileMode.Temporary },
-    { profileName: 'work', volumeName: 'rebroid-profile-work' },
+    { profileName: 'work', volumeName: 'rebroid-data-demo-work-app-1' },
   ])(
     'keeps the stored identity and history on a default start of $profileName',
     async (patch) => {
@@ -257,9 +248,9 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
     const app = makeApp();
     await service.prepareRuntimeProfile(app, { profileName: 'archive' });
     expect(resources.inspectVolume).toHaveBeenCalledWith(
-      'rebroid-profile-archive',
+      'rebroid-data-demo-archive-app-1',
     );
-    expect(app.volumeName).toBe('rebroid-profile-archive');
+    expect(app.volumeName).toBe('rebroid-data-demo-archive-app-1');
     expect(state.saveFields).toHaveBeenCalledWith(
       app,
       'profileMode',

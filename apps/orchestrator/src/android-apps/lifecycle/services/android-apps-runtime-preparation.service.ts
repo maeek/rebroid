@@ -15,7 +15,7 @@ import {
   type DockerResourceRuntimePort,
 } from '../../../docker/contracts/docker-resource-runtime.port';
 import { getErrorMessage } from '../../../common/error-message';
-import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
+import { DockerEngineConfigService } from '../../../config/docker-engine-config.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileStorage } from '../policies/application-profile-storage';
@@ -47,7 +47,7 @@ export class AndroidAppsRuntimePreparationService {
     private readonly lifecycle: DockerContainerLifecyclePort,
     @Inject(DOCKER_RESOURCE_RUNTIME)
     private readonly resources: DockerResourceRuntimePort,
-    private readonly networkIsolation: NetworkIsolationService,
+    private readonly dockerConfig: DockerEngineConfigService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly writer: AndroidAppsStateWriter,
@@ -98,7 +98,7 @@ export class AndroidAppsRuntimePreparationService {
       profile ??
       new ApplicationProfileStorage(
         app,
-        this.networkIsolation,
+        this.dockerConfig.resourcePrefix,
       ).unrecordedCurrentProfile();
     if (!historyEntry) return;
     const nextSavedProfilesJson = rememberSavedProfile(
@@ -141,7 +141,7 @@ export class AndroidAppsRuntimePreparationService {
   ) {
     const plan = new ApplicationProfileStorage(
       app,
-      this.networkIsolation,
+      this.dockerConfig.resourcePrefix,
     ).planRemoval(profileName);
     if (plan === 'missing')
       throw new NotFoundException('Saved profile not found.');
@@ -166,7 +166,7 @@ export class AndroidAppsRuntimePreparationService {
   ) {
     const profile = new ApplicationProfileStorage(
       app,
-      this.networkIsolation,
+      this.dockerConfig.resourcePrefix,
     ).select(request);
     if (profile.admission === 'shared') {
       throw new ConflictException(

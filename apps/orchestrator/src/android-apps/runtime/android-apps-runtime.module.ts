@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DockerModule } from '../../docker/docker.module';
-import { NetworkIsolationModule } from '../../network-isolation/network-isolation.module';
+import { AppConfigModule } from '../../config/app-config.module';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
 import { AndroidAppsPersistenceModule } from '../persistence/android-apps-persistence.module';
 import { AndroidAppsViewerModule } from '../viewer/android-apps-viewer.module';
@@ -20,7 +20,7 @@ import { RuntimeUploadStreamService } from './services/runtime-upload-stream.ser
 @Module({
   imports: [
     DockerModule,
-    NetworkIsolationModule,
+    AppConfigModule,
     AndroidAppsCommonModule,
     AndroidAppsPersistenceModule,
     AndroidAppsViewerModule,

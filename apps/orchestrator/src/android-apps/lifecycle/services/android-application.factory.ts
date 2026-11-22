@@ -1,6 +1,7 @@
+import { runtimeResourceNames } from '../../../network-isolation/runtime-resource-names';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-config.service';
-import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
+import { DockerEngineConfigService } from '../../../config/docker-engine-config.service';
 import { SettingsService } from '../../../settings/settings.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
@@ -19,7 +20,7 @@ type ApplicationSettings = Awaited<ReturnType<SettingsService['getSettings']>>;
 export class AndroidApplicationFactory {
   constructor(
     private readonly redroidConfig: RedroidRuntimeConfigService,
-    private readonly networkIsolation: NetworkIsolationService,
+    private readonly dockerConfig: DockerEngineConfigService,
   ) {}
 
   initialFields(
@@ -81,10 +82,15 @@ export class AndroidApplicationFactory {
   }
 
   assignGeneratedNames(app: AndroidApplication) {
-    Object.assign(
+    const { containerName, networkName, volumeFor } = runtimeResourceNames(
       app,
-      this.networkIsolation.namesFor(app.id, app.name, app.profileName),
+      this.dockerConfig.resourcePrefix,
     );
+    Object.assign(app, {
+      containerName,
+      networkName,
+      volumeName: volumeFor(app.profileName),
+    });
   }
 
   applyUploadedApk(app: AndroidApplication, uploadedApk: UploadedApkReference) {
