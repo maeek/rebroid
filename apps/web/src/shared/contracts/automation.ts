@@ -101,9 +101,7 @@ export interface AutomationRun {
   updatedAt: string
 }
 
-export interface SaveAutomationInput {
-  yaml: string
-}
+export type SaveAutomationInput = Pick<OrchestratorApiSchemas['CreateAutomationDto'], 'yaml'>
 
 export interface RunAutomationInput {
   targetApplicationId: string
@@ -127,43 +125,16 @@ export interface RunAdHocAiAutomationInput extends RunAutomationInput {
   timeoutMs?: number
 }
 
-export interface AiPromptSuggestionContextEvent {
-  type: string
-  message: string
-}
-
-export interface SuggestAdHocAiPromptsInput {
-  targetApplicationId: string
-  appName: string
+export type SuggestAdHocAiPromptsInput = Omit<
+  OrchestratorApiSchemas['SuggestAdHocAiPromptsDto'],
+  'ownerUserId' | 'profileMode'
+> & {
   profileMode?: string | null
-  profileName?: string | null
-  currentPrompt?: string
-  conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
-  recentEvents?: AiPromptSuggestionContextEvent[]
-  providerId?: string
-  modelId?: string
-  allowedTools?: string[]
 }
 
-export interface AiPromptSuggestion {
-  id: string
-  label: string
-  prompt: string
-}
-
-export interface AiPromptSuggestions {
-  suggestions: AiPromptSuggestion[]
-}
-
-export interface DraftAutomationYamlInput {
-  prompt: string
-  providerId?: string
-  modelId?: string
-  visionProviderId?: string
-  visionModelId?: string
-  allowedTools?: string[]
-  clarifications?: Array<{ question: string; answer: string }>
-}
+export type AiPromptSuggestion = OrchestratorApiSchemas['AiPromptSuggestionDto']
+export type AiPromptSuggestions = OrchestratorApiSchemas['AiPromptSuggestionsDto']
+export type DraftAutomationYamlInput = OrchestratorApiSchemas['DraftAutomationYamlDto']
 
 export type AutomationRunEvent = OrchestratorApiSchemas['AutomationRunEventDto']
 export type AutomationRunEventType = AutomationRunEvent['type']
