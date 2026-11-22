@@ -49,6 +49,10 @@ describe('ApkArchiveService', () => {
           );
           await expect(readEntry('missing.txt', 5)).resolves.toBeNull();
           await expect(readEntry('entry.txt', 4)).rejects.toThrow('too large');
+          await expect(readEntry('entry.txt', 4, 'skip')).resolves.toBeNull();
+          await expect(readEntry('entry.txt', 5, 'skip')).resolves.toEqual(
+            Buffer.from('first'),
+          );
         },
       );
       expect(open).toHaveBeenCalledTimes(1);

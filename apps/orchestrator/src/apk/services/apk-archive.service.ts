@@ -4,7 +4,11 @@ import { ZipEntry } from '../types/apk.types';
 
 export interface ApkArchiveReader {
   entries: ZipEntry[];
-  readEntry(name: string, maxBytes: number): Promise<Buffer | null>;
+  readEntry(
+    name: string,
+    maxBytes: number,
+    onOversize?: 'skip' | 'reject',
+  ): Promise<Buffer | null>;
 }
 
 @Injectable()
@@ -30,8 +34,13 @@ export class ApkArchiveService {
 
       return await read({
         entries,
-        readEntry: (name, maxBytes) =>
-          readBoundedEntry(archive, firstEntryByName.get(name), maxBytes),
+        readEntry: (name, maxBytes, onOversize) =>
+          readBoundedEntry(
+            archive,
+            firstEntryByName.get(name),
+            maxBytes,
+            onOversize,
+          ),
       });
     } finally {
       archive.close();
@@ -89,11 +98,15 @@ async function readBoundedEntry(
   archive: ZipFile,
   entry: Entry | undefined,
   maxBytes: number,
+  onOversize: 'skip' | 'reject' = 'reject',
 ): Promise<Buffer | null> {
   if (!entry) return null;
   const tooLarge = () =>
     new Error(`APK entry "${entry.fileName}" is too large.`);
-  if (entry.uncompressedSize > maxBytes) throw tooLarge();
+  if (entry.uncompressedSize > maxBytes) {
+    if (onOversize === 'skip') return null;
+    throw tooLarge();
+  }
 
   const stream = await archive.openReadStreamPromise(entry);
   const chunks: Buffer[] = [];
