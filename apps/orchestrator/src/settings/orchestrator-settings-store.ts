@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { isDrmRenderDevice } from '@rebroid/android-application-core/redroid-runtime';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
+import { writePrivateFile } from '../common/write-private-file';
 import { SerialQueue } from '../common/serial-queue';
 import { SettingsSubscribers } from './settings-subscribers';
 import { numberInRange } from '../common/number-range';
@@ -86,13 +87,8 @@ export class OrchestratorSettingsStore {
 
   private async persistSettings(settings: StoredOrchestratorSettings) {
     const path = this.settingsPath();
-    const temporaryPath = `${path}.tmp`;
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(temporaryPath, `${JSON.stringify(settings, null, 2)}\n`, {
-      encoding: 'utf-8',
-      mode: 0o600,
-    });
-    await rename(temporaryPath, path);
+    await writePrivateFile(path, `${JSON.stringify(settings, null, 2)}\n`);
     this.subscribers.notify(settings);
   }
 

@@ -2,17 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import {
-  lstat,
-  mkdir,
-  open,
-  readdir,
-  rename,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { writePrivateFile } from '../../common/write-private-file';
 import { KeyedSerialQueue } from '../../common/keyed-serial-queue';
 import { snapshotRuntimeKey } from '../common/utils/android-runtime-identity';
 import { AndroidApplicationStatus } from '../contracts/android-application-status';
@@ -123,22 +116,12 @@ export class AndroidAppRuntimeSnapshotsRepository {
       await this.ensureDirectory();
       const path = this.path(id);
       const recordId = randomUUID();
-      const temporary = `${path}.${recordId}.tmp`;
-      try {
-        await writeFile(
-          temporary,
-          Buffer.concat([
-            Buffer.from(
-              `${JSON.stringify(metadataSchema.parse({ ...metadata, recordId }))}\n`,
-            ),
-            content,
-          ]),
-          { flag: 'wx', mode: 0o600 },
-        );
-        if (await isCurrent()) await rename(temporary, path);
-      } finally {
-        await rm(temporary, { force: true });
-      }
+      const header = metadataSchema.parse({ ...metadata, recordId });
+      await writePrivateFile(
+        path,
+        Buffer.concat([Buffer.from(`${JSON.stringify(header)}\n`), content]),
+        { revision: recordId, isCurrent },
+      );
     });
   }
 

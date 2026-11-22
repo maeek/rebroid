@@ -1,4 +1,12 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import {
+  chmod,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
@@ -33,6 +41,21 @@ describe('OrchestratorSettingsStore', () => {
 
   afterEach(async () => {
     await rm(directory, { recursive: true, force: true });
+  });
+
+  it('publishes private settings even when an earlier temporary file has different permissions', async () => {
+    const previousTemporary = `${settingsPath}.tmp`;
+    await writeFile(previousTemporary, 'interrupted previous save');
+    await chmod(previousTemporary, 0o644);
+    await store.updateSettings((current) => current);
+    expect((await stat(settingsPath)).mode & 0o777).toBe(0o600);
+    expect(await readFile(previousTemporary, 'utf8')).toBe(
+      'interrupted previous save',
+    );
+    expect((await readdir(directory)).sort()).toEqual([
+      'settings.json',
+      'settings.json.tmp',
+    ]);
   });
 
   it('starts optional runtime features disabled when their deployment support is absent', () => {
