@@ -59,6 +59,32 @@ describe('scheduled task execution reservation', () => {
     await database.destroy();
   });
 
+  it.each(['[]', 'false', '{', ''])(
+    'keeps an invalid stored payload visible and refuses to execute it (%s)',
+    async (payloadJson) => {
+      await tasks.updatePayload(
+        'task-1',
+        ScheduledTaskActionType.CleanOrphanedApkFiles,
+        payloadJson,
+      );
+      const service = new ScheduledTasksService(
+        tasks,
+        {} as never,
+        {} as never,
+        {} as never,
+        runner,
+      );
+      await expect(service.runNow('task-1')).resolves.toMatchObject({
+        id: 'task-1',
+        payload: null,
+        lastStatus: ScheduledTaskLastStatus.Failed,
+        lastError: 'Stored maintenance task payload is invalid.',
+      });
+      await expect(service.list()).resolves.toHaveLength(1);
+      expect(run).not.toHaveBeenCalled();
+    },
+  );
+
   it('retains a concurrent cron edit when updating a task name', async () => {
     const registerTask = jest.fn();
     const service = new ScheduledTasksService(

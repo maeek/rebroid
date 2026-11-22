@@ -70,12 +70,6 @@ const createService = ({
   } as unknown as ScheduledTaskPredefinedSeederService;
   const taskRunner = {
     runTask: jest.fn(async () => undefined),
-    parsePayload: jest.fn(
-      (scheduledTask: Pick<ScheduledTask, 'payloadJson'>) =>
-        scheduledTask.payloadJson
-          ? (JSON.parse(scheduledTask.payloadJson) as Record<string, unknown>)
-          : null,
-    ),
     ...runner,
   } as unknown as ScheduledTaskRunnerService;
   return {

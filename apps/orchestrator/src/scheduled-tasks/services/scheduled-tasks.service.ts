@@ -17,10 +17,13 @@ import {
 } from '../dto/scheduled-task.dto';
 import {
   ScheduledTask,
-  ScheduledTaskActionType,
   ScheduledTaskKind,
   ScheduledTaskLastStatus,
 } from '../entities/scheduled-task.entity';
+import {
+  readScheduledTaskPayload,
+  requireScheduledTaskPayload,
+} from '../persistence/scheduled-task-payload';
 import { ScheduledTasksRepository } from '../persistence/scheduled-tasks.repository';
 import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
 import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
@@ -123,7 +126,7 @@ export class ScheduledTasksService implements OnModuleInit {
         const payload = this.actions.normalizePayload(
           actionType,
           dto.payload === undefined
-            ? this.runner.parsePayload(current)
+            ? requireScheduledTaskPayload(current.payloadJson)
             : dto.payload && { ...dto.payload },
         );
         payloadJson = payload ? JSON.stringify(payload) : null;
@@ -190,10 +193,8 @@ export class ScheduledTasksService implements OnModuleInit {
       kind: task.kind,
       predefinedKey: task.predefinedKey,
       cronExpression: task.cronExpression,
-      actionType: task.actionType as ScheduledTaskActionType,
-      payload: task.payloadJson
-        ? (JSON.parse(task.payloadJson) as Record<string, unknown>)
-        : null,
+      actionType: task.actionType,
+      payload: readScheduledTaskPayload(task.payloadJson) ?? null,
       lastRunAt: toIso(task.lastRunAt),
       nextRunAt: toIso(task.nextRunAt),
       lastStatus: task.lastStatus,

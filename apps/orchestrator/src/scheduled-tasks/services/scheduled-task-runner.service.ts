@@ -6,10 +6,8 @@ import {
 } from '@nestjs/common';
 import { nextCronRun } from '../../common/cron-schedule';
 import { getErrorMessage } from '../../common/error-message';
-import {
-  ScheduledTask,
-  ScheduledTaskLastStatus,
-} from '../entities/scheduled-task.entity';
+import { ScheduledTaskLastStatus } from '../entities/scheduled-task.entity';
+import { requireScheduledTaskPayload } from '../persistence/scheduled-task-payload';
 import { ScheduledTasksRepository } from '../persistence/scheduled-tasks.repository';
 import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
 import {
@@ -59,7 +57,10 @@ export class ScheduledTaskRunnerService {
       let lastStatus = ScheduledTaskLastStatus.Success;
       let lastError: string | null = null;
       try {
-        await this.actions.run(task.actionType, this.parsePayload(task));
+        await this.actions.run(
+          task.actionType,
+          requireScheduledTaskPayload(task.payloadJson),
+        );
       } catch (error) {
         lastStatus = ScheduledTaskLastStatus.Failed;
         lastError = getErrorMessage(error);
@@ -80,12 +81,5 @@ export class ScheduledTaskRunnerService {
     } finally {
       this.runningTasks.delete(id);
     }
-  }
-
-  parsePayload(task: Pick<ScheduledTask, 'payloadJson'>) {
-    if (!task.payloadJson) {
-      return null;
-    }
-    return JSON.parse(task.payloadJson) as Record<string, unknown>;
   }
 }
