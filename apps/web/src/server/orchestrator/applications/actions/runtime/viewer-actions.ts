@@ -8,7 +8,11 @@ import { getCurrentUserContext } from '../../../current-user'
 import { sanitizeScrcpySessionForUser } from '../../safety'
 import { orchestratorAppViewerClient } from '../../viewer-client'
 import { assertViewerRevocationComplete, issueViewerGrant } from '../../viewer-grant-access'
-import { assertCanUseOwnedApplicationRuntime, ownedRuntimeControlMessage } from '../common/action-helpers'
+import {
+  assertCanUseOwnedApplicationRuntime,
+  requireOwnedRuntimeContext,
+  ownedRuntimeControlMessage
+} from '../common/action-helpers'
 import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 export const getScrcpySessionAction = async (id: string) =>
@@ -56,7 +60,7 @@ export const createApplicationVirtualDisplayAction = async (id: string) => {
 }
 
 export const releaseApplicationVirtualDisplayAction = async (id: string, surfaceId: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+  const user = await requireOwnedRuntimeContext(id, ownedRuntimeControlMessage)
   if (!hasPermission(user.permissions, 'applications:control-viewer')) {
     throw new PublicActionError('You do not have permission to close displays for this viewer.', {
       code: 'forbidden',

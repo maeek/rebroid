@@ -19,8 +19,8 @@ export const getSanitizedAccessibleApplication = async (id: string, response?: '
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
-export const assertCanUseOwnedApplicationRuntime = async (id: string, message: string) => {
-  const user = await getCurrentUserContext()
+export const assertCanUseOwnedApplicationRuntime = async (id: string, message: string, response?: 'api') => {
+  const user = await getCurrentUserContext(response)
   const app = await orchestratorAppCatalogClient.getApplication(id)
   if (app.ownerUserId !== user.ownerUserId) {
     throw new PublicActionError(message, { code: 'forbidden', status: 403 })

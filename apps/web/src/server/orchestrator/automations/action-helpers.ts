@@ -4,10 +4,7 @@ import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { allPermissionIds, hasPermission, type PermissionId } from '@/shared/permissions/permissions'
-import {
-  assertCanUseOwnedApplicationRuntime,
-  ownedRuntimeControlMessage
-} from '../applications/actions/common/action-helpers'
+import { requireOwnedRuntimeContext, ownedRuntimeControlMessage } from '../applications/actions/common/action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type { AutomationCommand, RunAutomationInput } from '@/shared/contracts/automation'
 
@@ -105,7 +102,7 @@ export const listPermittedDefaultAiCapabilities = async (user: CurrentAutomation
 
 export const assertTargetApplication = async (targetApplicationId?: string | null) => {
   if (targetApplicationId) {
-    await assertCanUseOwnedApplicationRuntime(targetApplicationId, ownedRuntimeControlMessage)
+    await requireOwnedRuntimeContext(targetApplicationId, ownedRuntimeControlMessage)
   }
 }
 

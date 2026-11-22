@@ -29,7 +29,12 @@ vi.mock('@/server/app-icons/store', () => ({ cloneStoredAppIcon: vi.fn(), remove
 vi.mock('../../../current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('../../../shared', () => ({ revalidateApplicationDetail: vi.fn(), revalidateApplicationList: vi.fn() }))
 vi.mock('../../catalog-client', () => ({
-  orchestratorAppCatalogClient: { getApplication: vi.fn(), deleteApplication: vi.fn(), cloneApplication: vi.fn() }
+  orchestratorAppCatalogClient: {
+    getApplication: vi.fn(),
+    getViewerRuntime: vi.fn(),
+    deleteApplication: vi.fn(),
+    cloneApplication: vi.fn()
+  }
 }))
 vi.mock('../../lifecycle-client', () => ({
   orchestratorAppLifecycleClient: { deleteSavedProfile: vi.fn(), startApplication: vi.fn(), stopApplication: vi.fn() }
@@ -50,6 +55,11 @@ describe('application lifecycle acknowledgements', () => {
       permissions: fullPermissions,
       quotas: { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null }
     })
+    vi.mocked(orchestratorAppCatalogClient.getViewerRuntime).mockResolvedValue({
+      ownerUserId: 'owner',
+      status: 'running',
+      containerId: null
+    })
     vi.mocked(orchestratorAppCatalogClient.getApplication)
       .mockRejectedValue(new Error('Catalog unavailable after command'))
       .mockResolvedValueOnce({
@@ -68,22 +78,25 @@ describe('application lifecycle acknowledgements', () => {
   it.each([
     {
       action: requestApplicationStartAction,
+      fullReads: 1,
       client: orchestratorAppLifecycleClient.startApplication,
       status: 'provisioning',
       lifecycleStage: 'container_starting'
     },
     {
       action: requestApplicationStopAction,
+      fullReads: 0,
       client: orchestratorAppLifecycleClient.stopApplication,
       status: 'stopped',
       lifecycleStage: 'stopped'
     }
   ] as const)(
     'returns the $status acknowledgement without reading the catalog again',
-    async ({ action, client, status, lifecycleStage }) => {
+    async ({ action, client, status, lifecycleStage, fullReads }) => {
       vi.mocked(client).mockResolvedValue({ id, name: 'App', status, lifecycleStage, message: null })
       await expect(action(id)).resolves.toMatchObject({ ok: true, data: { status, lifecycleStage } })
-      expect(orchestratorAppCatalogClient.getApplication).toHaveBeenCalledTimes(1)
+      expect(orchestratorAppCatalogClient.getApplication).toHaveBeenCalledTimes(fullReads)
+      expect(orchestratorAppCatalogClient.getViewerRuntime).toHaveBeenCalledTimes(1 - fullReads)
     }
   )
 

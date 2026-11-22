@@ -27,6 +27,12 @@ describe('runtime file access', () => {
       status: 403
     })
 
+    expect(mocks.assertCanUseOwnedApplicationRuntime).toHaveBeenCalledWith(
+      'app-1',
+      'Open this app as your own copy.',
+      'api'
+    )
+
     mocks.assertCanUseOwnedApplicationRuntime.mockResolvedValue(context({ 'applications:transfer-files': true }))
     await expect(assertCanTransferApplicationFiles('app-1')).resolves.toMatchObject({ app: { id: 'app-1' } })
   })

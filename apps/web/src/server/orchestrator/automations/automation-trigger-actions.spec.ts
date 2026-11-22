@@ -4,13 +4,12 @@ import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { orchestratorAppCatalogClient } from '../applications/catalog-client'
 import { updateAutomationTriggerAction } from './automation-trigger-actions'
 import { orchestratorAutomationsClient } from './client'
-import type { AndroidApplication } from '@/shared/contracts/application'
 import type { Automation, AutomationTrigger } from '@/shared/contracts/automation'
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
-vi.mock('../applications/catalog-client', () => ({ orchestratorAppCatalogClient: { getApplication: vi.fn() } }))
+vi.mock('../applications/catalog-client', () => ({ orchestratorAppCatalogClient: { getViewerRuntime: vi.fn() } }))
 vi.mock('./client', () => ({
   orchestratorAutomationsClient: { getTrigger: vi.fn(), get: vi.fn(), listCommands: vi.fn(), updateTrigger: vi.fn() }
 }))
@@ -28,16 +27,18 @@ beforeEach(() => {
     profileName: 'saved',
     profileMode: 'persistent'
   } as AutomationTrigger)
-  vi.mocked(orchestratorAppCatalogClient.getApplication).mockResolvedValue({
-    ownerUserId: 'owner'
-  } as AndroidApplication)
+  vi.mocked(orchestratorAppCatalogClient.getViewerRuntime).mockResolvedValue({
+    ownerUserId: 'owner',
+    status: 'stopped',
+    containerId: null
+  })
 })
 
 it('checks the saved profile for omitted fields in a trigger patch', async () => {
   await expect(
     updateAutomationTriggerAction('trigger', { enabled: true, profileName: undefined, profileMode: undefined })
   ).resolves.toMatchObject({ ok: false, error: { code: 'forbidden' } })
-  expect(orchestratorAppCatalogClient.getApplication).toHaveBeenCalledWith('app')
+  expect(orchestratorAppCatalogClient.getViewerRuntime).toHaveBeenCalledWith('app')
   expect(orchestratorAutomationsClient.updateTrigger).not.toHaveBeenCalled()
 })
 

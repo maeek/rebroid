@@ -13,6 +13,7 @@ import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
 import { enforceRuntimeQuotas } from '../../resource-quota'
 import {
   assertCanUseOwnedApplicationRuntime,
+  requireOwnedRuntimeContext,
   getAccessibleApplication,
   ownedRuntimeControlMessage
 } from '../common/action-helpers'
@@ -64,7 +65,7 @@ export const requestApplicationStopAction = async (id: string) =>
   runSafeAction<ApplicationPowerAcknowledgement>(
     async () => {
       assertValidApplicationId(id)
-      const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+      const user = await requireOwnedRuntimeContext(id, ownedRuntimeControlMessage)
       if (!hasPermission(user.permissions, 'applications:stop')) {
         throw new PublicActionError('You do not have permission to stop applications.', {
           code: 'forbidden',

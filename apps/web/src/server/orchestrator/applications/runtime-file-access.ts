@@ -3,7 +3,7 @@ import { resolveRuntimeFileAccess } from '@/shared/permissions/runtime-files'
 import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from './actions/common/action-helpers'
 
 export const assertCanTransferApplicationFiles = async (id: string) => {
-  const context = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
+  const context = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage, 'api')
   if (!resolveRuntimeFileAccess(context.user.permissions).canTransferFiles) {
     throw new PublicActionError('You do not have permission to transfer files.', {
       code: 'forbidden',
