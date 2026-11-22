@@ -1,5 +1,4 @@
 import 'server-only'
-
 import { getCurrentUserContext } from '../current-user'
 import { orchestratorAppCatalogClient } from './catalog-client'
 import { sanitizeAndroidApplicationForUser } from './safety'

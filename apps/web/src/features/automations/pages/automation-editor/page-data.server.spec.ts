@@ -34,7 +34,7 @@ it('opens a new draft for the signed-in owner without reading a workflow', async
 
 it('uses the not-found route for missing workflows before fetching commands', async () => {
   vi.mocked(orchestratorAutomationsClient.get).mockRejectedValue(new OrchestratorRequestError('Missing', 404, 'ref'))
-  await expect(loadWorkflowEditor('gone')).rejects.toMatchObject({ digest: expect.stringContaining('404') })
+  await expect(loadWorkflowEditor('gone')).rejects.toHaveProperty('digest', expect.stringContaining('404'))
   expect(orchestratorAutomationsClient.get).toHaveBeenCalledWith('owner', 'gone')
   expect(orchestratorAutomationsClient.listCommands).not.toHaveBeenCalled()
 })

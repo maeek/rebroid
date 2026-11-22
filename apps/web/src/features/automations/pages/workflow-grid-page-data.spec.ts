@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
+import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { applicationPreview } from '@/shared/testing/application-preview'

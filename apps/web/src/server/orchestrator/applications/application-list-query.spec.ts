@@ -27,7 +27,7 @@ it('includes all owners for an authorized platform administrator', async () => {
   vi.mocked(getCurrentUserContext).mockResolvedValue({
     ...owner,
     isPlatformAdmin: true,
-    permissions: { 'applications:view-backend-details': true } as typeof owner.permissions
+    permissions: { 'applications:view-backend-details': true }
   })
   expect(await listVisibleApplications()).toEqual([applicationPreview, other])
   expect(orchestratorAppCatalogClient.listApplications).toHaveBeenCalledWith(undefined)

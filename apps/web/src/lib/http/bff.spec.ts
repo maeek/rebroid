@@ -12,12 +12,12 @@ it.each([
   const body = Promise.withResolvers<unknown>()
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => ({
+    vi.fn().mockResolvedValue({
       json() {
         entered.resolve()
         return body.promise
       }
-    }))
+    })
   )
   const pending = request(controller.signal)
   await entered.promise

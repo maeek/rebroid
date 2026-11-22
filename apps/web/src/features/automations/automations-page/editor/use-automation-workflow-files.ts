@@ -4,10 +4,10 @@ import { useCallback, type RefObject } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { sendBff } from '@/lib/http/bff'
-import type { AutomationValidation } from '@/shared/contracts/automation'
 import { workflowFileName } from './automation-editor-utils'
 import { definitionToForm, type AutomationStepForm } from './builder-utils'
 import type { EditorSnapshot } from './use-automation-editor-history'
+import type { AutomationValidation } from '@/shared/contracts/automation'
 
 export const downloadWorkflowYaml = (name: string, yaml: string) => {
   const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml;charset=utf-8' }))
