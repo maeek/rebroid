@@ -173,3 +173,29 @@ it('defers an idle Stop while runtime work is admitted, leaving manual Stop free
   await gate.runIfIdle(target.id, stop);
   expect(stop).toHaveBeenCalledTimes(1);
 });
+
+it('retains a shared cancellation callback while another operation still needs it', async () => {
+  const gate = new AndroidAppsRuntimeOperationGate({} as never, {} as never);
+  const cancel = jest.fn();
+  let finish!: () => void;
+  const held = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const first = gate.withApplicationOperation(
+    target.id,
+    async () => {},
+    cancel,
+  );
+  const second = gate.withApplicationOperation(target.id, () => held, cancel);
+  await first;
+  const stop = jest.fn();
+  const stopping = gate.interrupt(target.id, stop);
+  try {
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
+  } finally {
+    finish();
+    await Promise.all([second, stopping]);
+  }
+  expect(stop).toHaveBeenCalledTimes(1);
+});

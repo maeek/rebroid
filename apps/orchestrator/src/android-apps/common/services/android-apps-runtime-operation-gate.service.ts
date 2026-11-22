@@ -16,12 +16,13 @@ import {
 } from '../utils/android-runtime-identity';
 import { AndroidAppsQueryService } from './android-apps-query.service';
 
+type ActiveOperations = Map<Promise<unknown>, (() => void) | undefined>;
+
 export class AndroidRuntimeNotRunningError extends ConflictException {}
 
 @Injectable()
 export class AndroidAppsRuntimeOperationGate {
-  private readonly operations = new Map<string, Set<Promise<unknown>>>();
-  private readonly cancellations = new Map<string, Set<() => void>>();
+  private readonly operations = new Map<string, ActiveOperations>();
   private readonly interrupting = new Set<string>();
 
   constructor(
@@ -101,24 +102,15 @@ export class AndroidAppsRuntimeOperationGate {
       throw new ConflictException('An Android runtime change is in progress.');
     }
 
-    const active = this.operations.get(id) ?? new Set<Promise<unknown>>();
+    const active: ActiveOperations = this.operations.get(id) ?? new Map();
     const pending = Promise.resolve().then(operation);
-    active.add(pending);
+    active.set(pending, cancel);
     this.operations.set(id, active);
-    const cancellations = this.cancellations.get(id) ?? new Set();
-    if (cancel) {
-      cancellations.add(cancel);
-      this.cancellations.set(id, cancellations);
-    }
     try {
       return await pending;
     } finally {
       active.delete(pending);
       if (!active.size) this.operations.delete(id);
-      if (cancel) {
-        cancellations.delete(cancel);
-        if (!cancellations.size) this.cancellations.delete(id);
-      }
     }
   }
 
@@ -157,8 +149,9 @@ export class AndroidAppsRuntimeOperationGate {
     }
     this.interrupting.add(id);
     try {
-      for (const cancel of this.cancellations.get(id) ?? []) cancel();
-      await Promise.allSettled(this.operations.get(id) ?? []);
+      const active = this.operations.get(id);
+      for (const cancel of new Set(active?.values())) cancel?.();
+      await Promise.allSettled(active?.keys() ?? []);
       return await operation();
     } finally {
       this.interrupting.delete(id);
