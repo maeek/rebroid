@@ -199,7 +199,7 @@ export class AndroidAppsSidecarAdbService {
     const payload = {
       ...input,
       timeoutMs: remaining,
-      ...(operationId ? { operationId } : {}),
+      operationId,
     } satisfies DisplaySidecarApiSchemas['AdbUiTextDto'];
     const request = this.requestPrepared(target, '/ui-text', {
       signal,

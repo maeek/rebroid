@@ -250,6 +250,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rebroid/adb/{udid}/ui-text/{operationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdbController_cancelUiText"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/rebroid/adb/{udid}/files": {
         parameters: {
             query?: never;
@@ -733,6 +749,8 @@ export interface components {
             y: number | null;
         };
         AdbUiTextDto: {
+            /** Format: uuid */
+            operationId?: string;
             /** @example Żappka */
             text: string;
             /** @enum {string} */
@@ -1636,6 +1654,30 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdbUiTextResultDto"];
                 };
+            };
+        };
+    };
+    AdbController_cancelUiText: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+                operationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

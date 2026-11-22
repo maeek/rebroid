@@ -682,6 +682,48 @@
         "tags": ["adb"]
       }
     },
+    "/rebroid/adb/{udid}/ui-text/{operationId}": {
+      "delete": {
+        "operationId": "AdbController_cancelUiText",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "operationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
     "/rebroid/adb/{udid}/files": {
       "put": {
         "operationId": "AdbController_pushFile",
@@ -2056,6 +2098,10 @@
       "AdbUiTextDto": {
         "type": "object",
         "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "text": {
             "type": "string",
             "example": "Żappka",
