@@ -49,7 +49,7 @@ export class CreateScheduledTaskDto {
   @MaxLength(120)
   name!: string;
 
-  @ApiProperty({ example: true, default: true })
+  @ApiPropertyOptional({ example: true, default: true })
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
@@ -96,8 +96,8 @@ export class ScheduledTaskDto {
   @ApiProperty({ enum: ScheduledTaskActionType })
   actionType!: ScheduledTaskActionType;
 
-  @ApiProperty({ type: Object, nullable: true })
-  payload!: Record<string, unknown> | null;
+  @ApiProperty({ type: ScheduledTaskPayloadDto, nullable: true })
+  payload!: ScheduledTaskPayloadDto | null;
 
   @ApiProperty({ type: String, nullable: true })
   lastRunAt!: string | null;

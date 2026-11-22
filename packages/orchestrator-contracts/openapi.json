@@ -12266,7 +12266,12 @@
           },
           "payload": {
             "type": "object",
-            "nullable": true
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledTaskPayloadDto"
+              }
+            ]
           },
           "lastRunAt": {
             "type": "string",
@@ -12372,7 +12377,6 @@
         },
         "required": [
           "name",
-          "enabled",
           "cronExpression",
           "actionType"
         ]

@@ -3871,7 +3871,7 @@ export interface components {
             cronExpression: string;
             /** @enum {string} */
             actionType: "clean_orphaned_apk_files" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
-            payload: Record<string, never> | null;
+            payload: components["schemas"]["ScheduledTaskPayloadDto"] | null;
             lastRunAt: string | null;
             nextRunAt: string | null;
             /** @enum {string} */

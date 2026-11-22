@@ -1,14 +1,11 @@
-export type ScheduledTaskActionType =
-  | 'clean_orphaned_apk_files'
-  | 'prune_images'
-  | 'prune_containers'
-  | 'prune_networks'
-  | 'prune_volumes'
-  | 'prune_all'
-  | 'clean_runtime_logs'
-  | 'clean_workflow_history'
-  | 'clean_interrupted_image_builds'
-  | 'clean_image_build_history'
+import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
+
+export type ScheduledTask = OrchestratorApiSchemas['ScheduledTaskDto']
+export type ScheduledTaskAction = OrchestratorApiSchemas['ScheduledTaskActionDto']
+export type ScheduledTaskActionType = ScheduledTask['actionType']
+export type SaveScheduledTaskInput = Omit<OrchestratorApiSchemas['CreateScheduledTaskDto'], 'enabled'> & {
+  enabled?: boolean
+}
 
 export const workflowHistoryRetentionKey = 'clean-workflow-history'
 export const defaultWorkflowHistoryRetentionDays = 7
@@ -18,46 +15,7 @@ export interface WorkflowHistoryRetention {
   enabled: boolean
 }
 
-export type ScheduledTaskLastStatus = 'never_run' | 'success' | 'failed'
-export type ScheduledTaskKind = 'predefined' | 'custom'
-
-export type ScheduledTaskPayload = {
-  danglingOnly?: boolean
-  retentionDays?: number
-}
-
-export interface ScheduledTask {
-  id: string
-  name: string
-  enabled: boolean
-  kind: ScheduledTaskKind
-  predefinedKey: string | null
-  cronExpression: string
-  actionType: ScheduledTaskActionType
-  payload: ScheduledTaskPayload | null
-  lastRunAt: string | null
-  nextRunAt: string | null
-  lastStatus: ScheduledTaskLastStatus
-  lastError: string | null
-  createdAt: string
-  updatedAt: string
-}
-
 export const isWorkflowHistoryRetentionTask = (task: ScheduledTask) =>
   task.kind === 'predefined' &&
   task.predefinedKey === workflowHistoryRetentionKey &&
   task.actionType === 'clean_workflow_history'
-
-export interface ScheduledTaskAction {
-  type: ScheduledTaskActionType
-  label: string
-  description: string
-}
-
-export interface SaveScheduledTaskInput {
-  name: string
-  enabled?: boolean
-  cronExpression: string
-  actionType: ScheduledTaskActionType
-  payload?: ScheduledTaskPayload | null
-}
