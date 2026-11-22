@@ -26,8 +26,12 @@ import type {
 } from '@/shared/contracts/automation'
 import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
-const ownerQuery = (ownerUserId: string) => {
+const ownerQuery = (ownerUserId: string, filters: AutomationsGridQuery | AutomationTriggersGridQuery = {}) => {
   const query = new URLSearchParams({ ownerUserId })
+  for (const [key, value] of Object.entries(filters)) {
+    const text = String(value ?? '').trim()
+    if (text && key !== 'ownerUserId') query.set(key, text)
+  }
   return query.toString()
 }
 
@@ -54,12 +58,7 @@ export const orchestratorAutomationsClient = {
   },
 
   listGrid(ownerUserId: string, input: AutomationsGridQuery = {}) {
-    const query = new URLSearchParams({ ownerUserId })
-    for (const [key, value] of Object.entries(input)) {
-      const text = String(value ?? '').trim()
-      if (text && key !== 'ownerUserId') query.set(key, text)
-    }
-    return emptyRequest<AutomationsGridPage>(`/automations/grid?${query.toString()}`)
+    return emptyRequest<AutomationsGridPage>(`/automations/grid?${ownerQuery(ownerUserId, input)}`)
   },
 
   listRunnableOptions(ownerUserId: string) {
@@ -158,12 +157,7 @@ export const orchestratorAutomationsClient = {
   },
 
   listTriggersGrid(ownerUserId: string, input: AutomationTriggersGridQuery = {}) {
-    const query = new URLSearchParams({ ownerUserId })
-    for (const [key, value] of Object.entries(input)) {
-      const text = String(value ?? '').trim()
-      if (text && key !== 'ownerUserId') query.set(key, text)
-    }
-    return emptyRequest<AutomationTriggersGridPage>(`/automations/triggers/grid?${query.toString()}`)
+    return emptyRequest<AutomationTriggersGridPage>(`/automations/triggers/grid?${ownerQuery(ownerUserId, input)}`)
   },
 
   getTrigger(ownerUserId: string, id: string) {
