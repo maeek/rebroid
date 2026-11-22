@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { AutomationRunEventsPanel } from './automation-run-live-events'
@@ -63,6 +63,34 @@ const RunEvents = ({
 }
 
 describe('AutomationRunEventsPanel', () => {
+  it('resumes the same event history at its cursor and starts a different run at zero', async () => {
+    const first = { ...failedEvent, type: 'step.completed' as const }
+    const next = { ...failedEvent, id: 'event-2', sequence: 2 }
+    const other = { ...failedEvent, runId: 'another-run' }
+    vi.mocked(getBff)
+      .mockResolvedValueOnce({ events: [first], nextAfter: null })
+      .mockResolvedValueOnce({ events: [next], nextAfter: null })
+      .mockResolvedValueOnce({ events: [other], nextAfter: null })
+    const { result, rerender } = renderHook(
+      ({ id, enabled }) => useAutomationRunEvents({ id, status: 'success' }, enabled),
+      { initialProps: { id: run.id, enabled: true } }
+    )
+    await waitFor(() => expect(result.current.events).toEqual([first]))
+    rerender({ id: run.id, enabled: false })
+    rerender({ id: run.id, enabled: true })
+    await waitFor(() => expect(result.current.events).toEqual([first, next]))
+    expect(getBff).toHaveBeenLastCalledWith(
+      `/api/bff/automations/runs/${run.id}/events?after=1`,
+      expect.any(AbortSignal)
+    )
+    rerender({ id: other.runId, enabled: true })
+    await waitFor(() => expect(result.current.events).toEqual([other]))
+    expect(getBff).toHaveBeenLastCalledWith(
+      '/api/bff/automations/runs/another-run/events?after=0',
+      expect.any(AbortSignal)
+    )
+  })
+
   it('shows the OCR request and response for the selected step occurrence', async () => {
     const exchange: AutomationRunEvent = {
       ...failedEvent,

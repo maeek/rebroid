@@ -13,11 +13,14 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
   const [connected, setConnected] = useState(false)
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false)
   const statusRef = useRef(serverStatus)
-  const status = state.runId === runId && isActiveRunStatus(serverStatus) ? state.status : serverStatus
+  const cursor = useRef(0)
+  const sameRun = state.runId === runId
+  const status = sameRun && isActiveRunStatus(serverStatus) ? state.status : serverStatus
   const getServerStatus = useEffectEvent(() => serverStatus)
 
   useEffect(() => {
     const initialStatus = getServerStatus()
+    cursor.current = 0
     statusRef.current = initialStatus
     setState({ runId, status: initialStatus })
     setEvents([])
@@ -42,13 +45,11 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
     if (!enabled) return
     return subscribeToRunEvents({
       runId,
+      after: cursor.current,
       isLive: () => isActiveRunStatus(statusRef.current),
       onEvents: nextEvents => {
-        setEvents(current => {
-          const byId = new Map(current.map(event => [event.id, event]))
-          for (const event of nextEvents) byId.set(event.id, event)
-          return [...byId.values()].sort((left, right) => left.sequence - right.sequence)
-        })
+        cursor.current = nextEvents[nextEvents.length - 1].sequence
+        setEvents(current => current.concat(nextEvents))
         for (const event of nextEvents) {
           const next = runStatusFromEvent(event)
           if (next) applyEventStatus(next)
@@ -76,5 +77,11 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
     })
   }, [enabled, runId])
 
-  return { status, events, streamError, hasLoadedEvents, connected }
+  return {
+    status,
+    events: sameRun ? events : [],
+    streamError: sameRun ? streamError : null,
+    hasLoadedEvents: sameRun && hasLoadedEvents,
+    connected: sameRun && isActiveRunStatus(status) && connected
+  }
 }
