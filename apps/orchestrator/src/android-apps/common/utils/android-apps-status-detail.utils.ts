@@ -14,18 +14,6 @@ export const deriveStatusDetail = (
 ): AndroidApplicationStatusDetail => {
   const description = app.statusMessage?.trim() || null;
 
-  if (app.status === AndroidApplicationStatus.Error) {
-    return {
-      code: 'error',
-      title: errorStatusTitle(app),
-      description:
-        app.applicationError?.hint ??
-        description ??
-        'The orchestrator reported an error while preparing the app.',
-      tone: 'error',
-    };
-  }
-
   if (
     app.status === AndroidApplicationStatus.Stopped &&
     app.recreateContainerOnNextStart
@@ -40,136 +28,86 @@ export const deriveStatusDetail = (
     };
   }
 
+  if (
+    app.status === AndroidApplicationStatus.Error ||
+    app.lifecycleStage === AndroidApplicationLifecycleStage.Error
+  ) {
+    return {
+      code: 'error',
+      title: errorStatusTitle(app),
+      description:
+        app.applicationError?.hint ??
+        description ??
+        'The orchestrator reported an error while preparing the app.',
+      tone: 'error',
+    };
+  }
+
+  const detail = (
+    title: string,
+    fallback: string,
+    tone: AndroidApplicationStatusDetail['tone'] = 'progress',
+  ): AndroidApplicationStatusDetail => ({
+    code: app.lifecycleStage,
+    title,
+    description: description ?? fallback,
+    tone,
+  });
+
   switch (app.lifecycleStage) {
     case AndroidApplicationLifecycleStage.Queued:
-      return {
-        code: 'queued',
-        title: 'Queued',
-        description: description ?? 'Provisioning has been queued.',
-        tone: 'progress',
-      };
+      return detail('Queued', 'Provisioning has been queued.');
     case AndroidApplicationLifecycleStage.ImageChecking:
-      return {
-        code: 'image_checking',
-        title: 'Checking image',
-        description:
-          description ??
-          'Checking whether the required container image is already available locally.',
-        tone: 'progress',
-      };
+      return detail(
+        'Checking image',
+        'Checking whether the required container image is already available locally.',
+      );
     case AndroidApplicationLifecycleStage.ImagePulling:
-      return {
-        code: 'image_pulling',
-        title: 'Pulling image',
-        description: description ?? `Pulling ${app.containerImage}.`,
-        tone: 'progress',
-      };
+      return detail('Pulling image', `Pulling ${app.containerImage}.`);
     case AndroidApplicationLifecycleStage.VolumeCreating:
-      return {
-        code: 'volume_creating',
-        title: 'Creating storage',
-        description:
-          description ?? `Creating persistent data volume ${app.volumeName}.`,
-        tone: 'progress',
-      };
+      return detail(
+        'Creating storage',
+        `Creating persistent data volume ${app.volumeName}.`,
+      );
     case AndroidApplicationLifecycleStage.NetworkCreating:
-      return {
-        code: 'network_creating',
-        title: 'Creating network',
-        description:
-          description ??
-          `Creating isolated managed network ${app.networkName}.`,
-        tone: 'progress',
-      };
+      return detail(
+        'Creating network',
+        `Creating isolated managed network ${app.networkName}.`,
+      );
     case AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting:
-      return {
-        code: 'orchestrator_network_connecting',
-        title: 'Connecting network',
-        description:
-          description ?? 'Connecting orchestrator to the isolated app network.',
-        tone: 'progress',
-      };
+      return detail(
+        'Connecting network',
+        'Connecting orchestrator to the isolated app network.',
+      );
     case AndroidApplicationLifecycleStage.ContainerCreating:
-      return {
-        code: 'container_creating',
-        title: 'Creating container',
-        description:
-          description ?? `Creating application container ${app.containerName}.`,
-        tone: 'progress',
-      };
+      return detail(
+        'Creating container',
+        `Creating application container ${app.containerName}.`,
+      );
     case AndroidApplicationLifecycleStage.ContainerStarting:
-      return {
-        code: 'container_starting',
-        title: 'Starting container',
-        description: description ?? 'Starting application container.',
-        tone: 'progress',
-      };
+      return detail('Starting container', 'Starting application container.');
     case AndroidApplicationLifecycleStage.AndroidBooting:
-      return {
-        code: 'android_booting',
-        title:
-          description === 'Preparing Android remote access.'
-            ? 'Preparing Android remote access'
-            : 'Booting Android',
-        description:
-          description ??
-          'Waiting for the Android runtime to finish booting inside the managed container.',
-        tone: 'progress',
-      };
+      return detail(
+        description === 'Preparing Android remote access.'
+          ? 'Preparing Android remote access'
+          : 'Booting Android',
+        'Waiting for the Android runtime to finish booting inside the managed container.',
+      );
     case AndroidApplicationLifecycleStage.ApkInstalling:
-      return {
-        code: 'apk_installing',
-        title: 'Installing APK',
-        description: description ?? 'Installing APK inside Android.',
-        tone: 'progress',
-      };
+      return detail('Installing APK', 'Installing APK inside Android.');
     case AndroidApplicationLifecycleStage.Ready:
-      return {
-        code: 'ready',
-        title: 'Ready',
-        description: description ?? 'Application is running.',
-        tone: 'success',
-      };
+      return detail('Ready', 'Application is running.', 'success');
     case AndroidApplicationLifecycleStage.Stopping:
-      return {
-        code: 'stopping',
-        title: 'Stopping app',
-        description: description ?? 'Stopping application container.',
-        tone: 'progress',
-      };
+      return detail('Stopping app', 'Stopping application container.');
     case AndroidApplicationLifecycleStage.Stopped:
-      return {
-        code: 'stopped',
-        title: 'Stopped',
-        description: description ?? 'Application is stopped.',
-        tone: 'neutral',
-      };
+      return detail('Stopped', 'Application is stopped.', 'neutral');
     case AndroidApplicationLifecycleStage.Removing:
-      return {
-        code: 'removing',
-        title: 'Removing app',
-        description:
-          description ??
-          'Removing application container and network resources.',
-        tone: 'progress',
-      };
+      return detail(
+        'Removing app',
+        'Removing application container and network resources.',
+      );
     case AndroidApplicationLifecycleStage.Removed:
-      return {
-        code: 'removed',
-        title: 'Removed',
-        description: description ?? 'Application has been removed.',
-        tone: 'neutral',
-      };
-    case AndroidApplicationLifecycleStage.Error:
-      return {
-        code: 'error',
-        title: errorStatusTitle(app),
-        description:
-          app.applicationError?.hint ??
-          description ??
-          'The orchestrator reported an error while preparing the app.',
-        tone: 'error',
-      };
+      return detail('Removed', 'Application has been removed.', 'neutral');
     default:
       return {
         code: 'unknown',
