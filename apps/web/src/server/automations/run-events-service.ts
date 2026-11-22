@@ -1,20 +1,17 @@
 import { headers } from 'next/headers'
 import 'server-only'
-import { assertAutomationPermission } from '@/server/orchestrator/automations/action-helpers'
+import { requireAutomationUser } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getOrchestratorBrowserWsUrl } from '@/server/orchestrator/config'
-import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 
-export const readAutomationRunEvents = async (runId: string, after: number) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  return orchestratorAutomationsClient.listRunEventPage(user.ownerUserId, runId, after)
+export const readAutomationRunEvents = async (runId: string, after: number, signal: AbortSignal) => {
+  const user = await requireAutomationUser('automations:run', 'api')
+  return orchestratorAutomationsClient.listRunEventPage(user.ownerUserId, runId, after, signal)
 }
 
-export const subscribeToAutomationRunEvents = async (runId: string, after: number) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  const token = await orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId)
+export const subscribeToAutomationRunEvents = async (runId: string, after: number, signal: AbortSignal) => {
+  const user = await requireAutomationUser('automations:run', 'api')
+  const token = await orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId, signal)
   const query = new URLSearchParams({ token: token.token, after: String(after) })
   const requestHeaders = await headers()
   const isHttps =
@@ -35,7 +32,6 @@ export const subscribeToAutomationRunEvents = async (runId: string, after: numbe
 }
 
 export const cancelAutomationRun = async (runId: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
+  const user = await requireAutomationUser('automations:run', 'api')
   return orchestratorAutomationsClient.cancelRun(user.ownerUserId, runId)
 }

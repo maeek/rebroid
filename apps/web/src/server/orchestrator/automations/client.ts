@@ -115,16 +115,19 @@ export const orchestratorAutomationsClient = {
     )
   },
 
-  listRunEventPage(ownerUserId: string, runId: string, after: number) {
+  listRunEventPage(ownerUserId: string, runId: string, after: number, signal: AbortSignal) {
     const query = new URLSearchParams({ ownerUserId, after: String(after) })
-    return emptyRequest<AutomationRunEventPage>(`/automations/runs/${encodeURIComponent(runId)}/events/page?${query}`)
+    return emptyRequest<AutomationRunEventPage>(`/automations/runs/${encodeURIComponent(runId)}/events/page?${query}`, {
+      signal
+    })
   },
 
-  createRunEventStreamToken(ownerUserId: string, runId: string) {
+  createRunEventStreamToken(ownerUserId: string, runId: string, signal: AbortSignal) {
     return jsonRequest<AutomationRunEventStreamToken>(
       `/automations/runs/${encodeURIComponent(runId)}/events/token`,
       'POST',
-      { ownerUserId }
+      { ownerUserId },
+      { signal }
     )
   },
 

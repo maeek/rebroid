@@ -10,11 +10,11 @@ const afterSequence = (request: Request) => afterSchema.parse(new URL(request.ur
 export const GET = (request: Request, context: { params: Promise<{ runId: string }> }) =>
   runRouteHandler(async () => {
     const { runId } = await context.params
-    return readAutomationRunEvents(runIdSchema.parse(runId), afterSequence(request))
+    return readAutomationRunEvents(runIdSchema.parse(runId), afterSequence(request), request.signal)
   })
 
 export const POST = (request: Request, context: { params: Promise<{ runId: string }> }) =>
   runRouteHandler(async () => {
     const { runId } = await context.params
-    return subscribeToAutomationRunEvents(runIdSchema.parse(runId), afterSequence(request))
+    return subscribeToAutomationRunEvents(runIdSchema.parse(runId), afterSequence(request), request.signal)
   })
