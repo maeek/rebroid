@@ -6,10 +6,8 @@ import { useApplicationViewerContext } from '@/features/applications/detail/appl
 import { useRemoveApplicationProfile } from '@/features/applications/manage/use-remove-application-profile'
 import { usePowerActionProfileState } from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
 import { usePowerActionRuntimeHandlers } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-actions'
-import {
-  getCanRestart,
-  usePowerActionViewState
-} from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-view-state'
+import { createRuntimeMenuActions } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-menu-actions'
+import { getPowerActionViewState } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-view-state'
 import { useApplicationActionRunner } from '@/hooks/use-application-action-runner'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -30,7 +28,6 @@ type RuntimePowerActionContextValue = {
   menuActions: RuntimeMenuAction[]
   menuDisabled: boolean
   open: boolean
-  primaryIcon: ReactNode
   primaryLabel: string
   primaryVariant: 'primary' | 'secondary'
   profileMode: ApplicationProfileMode
@@ -70,9 +67,6 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
     usePowerActionProfileState(app, startDialogOpen)
   const runtimeHandlers = usePowerActionRuntimeHandlers({
     app,
-    canRestart: getCanRestart(canStart, canStop),
-    canStart,
-    canStop,
     canSwitchProfile,
     profileMode,
     profileName,
@@ -81,7 +75,18 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
     setStartDialogOpen,
     setStopDialogOpen
   })
-  const viewState = usePowerActionViewState({
+  const menuActions = createRuntimeMenuActions({
+    app,
+    canStart,
+    canStop,
+    canSwitchProfile,
+    onStartDefaults: () => void runtimeHandlers.startWithDefaults(),
+    onStartProfile: () => setStartDialogOpen(true),
+    onStop: () => setStopDialogOpen(true),
+    onRestart: () => setRestartDialogOpen(true),
+    onRecreate: () => runtimeHandlers.setRecreateDialogOpen(true)
+  })
+  const viewState = getPowerActionViewState({
     actionPhase: runtimeHandlers.actionPhase,
     app,
     canStart,
@@ -113,10 +118,9 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
         isRestartingAction: runtimeHandlers.actionPhase === 'restarting',
         isRunningAction,
         isStoppingAction: runtimeHandlers.actionPhase === 'stopping',
-        menuActions: runtimeHandlers.menuActions,
+        menuActions,
         menuDisabled: viewState.menuDisabled,
         open: startDialogOpen,
-        primaryIcon: viewState.primaryIcon,
         primaryLabel: viewState.primaryLabel,
         primaryVariant: viewState.primaryVariant,
         profileMode,
@@ -134,8 +138,8 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
         onRecreateDialogOpenChange: runtimeHandlers.setRecreateDialogOpen,
         onRestartConfirm: () => void runtimeHandlers.handleRestart(),
         onRestartDialogOpenChange: setRestartDialogOpen,
-        onStart: runtimeHandlers.handleProfileStart,
-        onStopConfirm: runtimeHandlers.handleStopConfirm,
+        onStart: () => void runtimeHandlers.handleProfileStart(),
+        onStopConfirm: () => void runtimeHandlers.handleStopConfirm(),
         onStopDialogOpenChange: setStopDialogOpen
       }}
     >

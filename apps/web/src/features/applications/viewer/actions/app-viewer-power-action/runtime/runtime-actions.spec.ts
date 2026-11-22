@@ -15,9 +15,6 @@ afterEach(() => vi.restoreAllMocks())
 
 const options = (runAction: PowerActionRuntimeHandlersOptions['runAction']): PowerActionRuntimeHandlersOptions => ({
   app: previewApp,
-  canStart: true,
-  canStop: true,
-  canRestart: true,
   canSwitchProfile: true,
   profileMode: 'persistent',
   profileName: ' Work ',

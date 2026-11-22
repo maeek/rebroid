@@ -2,19 +2,19 @@
 
 import { useRef, useState } from 'react'
 import { getNormalizedProfileName } from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
-import { createRuntimeMenuActions } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-menu-actions'
 import {
   recreateApplicationAction,
   requestApplicationStartAction,
   requestApplicationStopAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { rememberApplicationProfile } from '@/shared/model/application-profile/profile-history'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
-import { unwrapActionResult } from '@/shared/actions/action-result'
 import type {
   PowerActionRuntimeHandlersOptions,
   RuntimeActionPhase
 } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
+
 const stopRuntime = async (appId: string) => {
   unwrapActionResult(await requestApplicationStopAction(appId))
   notifyRecentAppsUpdated()
@@ -22,9 +22,6 @@ const stopRuntime = async (appId: string) => {
 
 export const usePowerActionRuntimeHandlers = ({
   app,
-  canRestart,
-  canStart,
-  canStop,
   canSwitchProfile,
   profileMode,
   profileName,
@@ -95,22 +92,9 @@ export const usePowerActionRuntimeHandlers = ({
     else void startWithDefaults()
   }
 
-  const menuActions = createRuntimeMenuActions({
-    app,
-    canStart,
-    canSwitchProfile,
-    canStop,
-    canRestart,
-    onStartDefaults: startWithDefaults,
-    onStartProfile: () => setStartDialogOpen(true),
-    onStop: () => setStopDialogOpen(true),
-    onRestart: () => setRestartDialogOpen(true),
-    onRecreate: () => setRecreateDialogOpen(true)
-  })
-
   return {
     actionPhase,
-    menuActions,
+    startWithDefaults,
     handlePrimaryAction,
     handleProfileStart,
     handleRestart,

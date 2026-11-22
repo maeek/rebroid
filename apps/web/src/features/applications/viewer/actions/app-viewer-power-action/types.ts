@@ -16,9 +16,6 @@ type RuntimeActionRunner = (action: () => Promise<unknown>, title: string) => Pr
 
 export type PowerActionRuntimeHandlersOptions = {
   app?: AppDefinition
-  canRestart: boolean
-  canStart: boolean
-  canStop: boolean
   canSwitchProfile: boolean
   profileMode: ApplicationProfileMode
   profileName: string
