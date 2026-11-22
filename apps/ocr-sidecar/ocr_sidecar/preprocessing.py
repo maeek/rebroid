@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from functools import cached_property
 from typing import Any, Callable, TypedDict
 
 from PIL import Image, ImageEnhance, ImageOps
@@ -33,16 +34,26 @@ def resize_image(image: Image.Image, max_dimension: int) -> Image.Image:
     )
 
 
-def preprocess(image: Image.Image, mode: str) -> Image.Image:
-    if mode == "raw":
-        return image
-    grayscale = ImageOps.grayscale(image)
-    if mode == "grayscale":
-        return grayscale.convert("RGB")
-    contrasted = ImageEnhance.Contrast(ImageOps.autocontrast(grayscale)).enhance(1.8)
-    if mode == "contrast":
-        return contrasted.convert("RGB")
-    return contrasted.point(lambda pixel: 255 if pixel >= 150 else 0).convert("RGB")
+class _CascadeImages:
+    def __init__(self, image: Image.Image):
+        self.image = image
+
+    @cached_property
+    def grayscale(self) -> Image.Image:
+        return ImageOps.grayscale(self.image)
+
+    @cached_property
+    def contrasted(self) -> Image.Image:
+        return ImageEnhance.Contrast(ImageOps.autocontrast(self.grayscale)).enhance(1.8)
+
+    def prepare(self, mode: str) -> Image.Image:
+        if mode == "raw":
+            return self.image
+        if mode == "grayscale":
+            return self.grayscale.convert("RGB")
+        if mode == "contrast":
+            return self.contrasted.convert("RGB")
+        return self.contrasted.point(lambda pixel: 255 if pixel >= 150 else 0).convert("RGB")
 
 
 def select_detections(candidates: list[TextDetection], min_confidence: float):
@@ -86,11 +97,12 @@ def run_cascade(
     target = max(0.65, min_confidence)
     attempts: list[dict[str, Any]] = []
     best: dict[str, Any] | None = None
+    images = _CascadeImages(image)
     for mode in CASCADE_MODES:
         check_active()
         started = time.perf_counter()
         try:
-            prepared = preprocess(image, mode)
+            prepared = images.prepare(mode)
             check_active()
             candidates = infer(prepared)
             check_active()

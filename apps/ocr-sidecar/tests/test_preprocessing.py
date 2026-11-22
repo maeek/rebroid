@@ -2,7 +2,7 @@ import base64
 import io
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageOps
 
 from ocr_sidecar.config import Settings
 from ocr_sidecar.image_input import ImagePayloadError, OcrRequest, decode_image
@@ -38,6 +38,34 @@ def test_cascade_uses_fallbacks_and_returns_best_attempt():
     best, attempts = run_cascade(Image.new("RGB", (100, 50)), lambda _image: next(results), 0.4)
     assert best["mode"] == "grayscale"
     assert [attempt["mode"] for attempt in attempts] == ["raw", "grayscale"]
+
+
+def test_cascade_shares_fallback_transforms_after_an_inference_failure(monkeypatch):
+    gray_calls, contrast_calls = [], []
+    grayscale, autocontrast = ImageOps.grayscale, ImageOps.autocontrast
+
+    def count_grayscale(image):
+        gray_calls.append(image.size)
+        return grayscale(image)
+
+    def count_contrast(image):
+        contrast_calls.append(image.size)
+        return autocontrast(image)
+
+    monkeypatch.setattr(ImageOps, "grayscale", count_grayscale)
+    monkeypatch.setattr(ImageOps, "autocontrast", count_contrast)
+    modes = []
+
+    def infer(image):
+        modes.append(image.mode)
+        if len(modes) == 2:
+            raise ValueError("failed grayscale inference")
+        return []
+
+    _, attempts = run_cascade(Image.new("RGB", (64, 32)), infer, 0.8)
+    assert modes == ["RGB"] * 4
+    assert [item["status"] for item in attempts] == ["available", "failed", "available", "available"]
+    assert gray_calls == contrast_calls == [(64, 32)]
 
 
 def test_selection_preserves_candidate_ids_and_first_seen_order_when_deduplicating():
