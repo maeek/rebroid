@@ -28,7 +28,9 @@ export const formatDateLocale = (value: Date | string | number, fallback = 'unkn
     return fallback
   }
 
-  return new Date(value).toLocaleString()
+  return date.toLocaleString()
 }
 
-export const formatDisplayNumber = (value: number) => new Intl.NumberFormat('en-US').format(value)
+const displayNumberFormat = new Intl.NumberFormat('en-US')
+
+export const formatDisplayNumber = (value: number) => displayNumberFormat.format(value)
