@@ -16,6 +16,8 @@ it.each(['123', '1234', '12345'])(
     request.headers = {
       'content-type': 'multipart/form-data; boundary=boundary',
     };
+    const existingErrorListener = jest.fn();
+    request.on('error', existingErrorListener);
     const result = consumeSingleFileUpload({
       request,
       fieldName: 'file',
@@ -27,30 +29,57 @@ it.each(['123', '1234', '12345'])(
     });
     if (contents.length > 4) await expect(result).rejects.toThrow('too large');
     else await expect(result).resolves.toBe(contents);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(request.closed).toBe(true);
+    expect(request.listeners('error')).toEqual([existingErrorListener]);
   },
 );
 
-it('stops the file consumer when the request is interrupted', async () => {
-  const input = new PassThrough();
-  const request = Object.assign(input, {
+it.each(['abort', 'close'])(
+  'stops the file consumer on request %s',
+  async (event) => {
+    const input = new PassThrough();
+    const request = Object.assign(input, {
+      headers: { 'content-type': 'multipart/form-data; boundary=boundary' },
+    });
+    const consume = jest.fn((stream: Readable) => text(stream));
+    const result = consumeSingleFileUpload({
+      request,
+      fieldName: 'file',
+      maxBytes: 16,
+      missingError: () => new Error('missing'),
+      limitError: () => new Error('too large'),
+      canceledError: () => new Error('canceled'),
+      consume,
+    });
+    input.write(
+      '--boundary\r\nContent-Disposition: form-data; name="file"; filename="test.txt"\r\n\r\npartial',
+    );
+    const file = consume.mock.calls[0][0];
+    if (event === 'abort') request.emit('aborted');
+    else request.destroy();
+    await expect(result).rejects.toThrow('canceled');
+    expect(file.destroyed).toBe(true);
+    input.destroy();
+  },
+);
+
+it('rejects a request that disconnected before upload preparation completed', () => {
+  const request = Object.assign(new PassThrough(), {
     headers: { 'content-type': 'multipart/form-data; boundary=boundary' },
   });
-  const consume = jest.fn((stream: Readable) => text(stream));
-  const result = consumeSingleFileUpload({
-    request,
-    fieldName: 'file',
-    maxBytes: 16,
-    missingError: () => new Error('missing'),
-    limitError: () => new Error('too large'),
-    canceledError: () => new Error('canceled'),
-    consume,
-  });
-  input.write(
-    '--boundary\r\nContent-Disposition: form-data; name="file"; filename="test.txt"\r\n\r\npartial',
-  );
-  const file = consume.mock.calls[0][0];
-  request.emit('aborted');
-  await expect(result).rejects.toThrow('canceled');
-  expect(file.destroyed).toBe(true);
-  input.destroy();
+  request.destroy();
+  const consume = jest.fn();
+  expect(() =>
+    consumeSingleFileUpload({
+      request,
+      consume,
+      fieldName: 'file',
+      maxBytes: 16,
+      missingError: () => new Error('missing'),
+      limitError: () => new Error('too large'),
+      canceledError: () => new Error('canceled'),
+    }),
+  ).toThrow('canceled');
+  expect(consume).not.toHaveBeenCalled();
 });

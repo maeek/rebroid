@@ -7,18 +7,6 @@ export type MultipartUploadRequest = Readable & {
   headers: IncomingHttpHeaders;
 };
 
-const isMultipartUpload = (headers: IncomingHttpHeaders) => {
-  const contentType = headers['content-type'];
-  const value = Array.isArray(contentType) ? contentType[0] : contentType;
-  return value?.toLowerCase().startsWith('multipart/form-data') ?? false;
-};
-
-const assertMultipartUpload = (request: MultipartUploadRequest) => {
-  if (!isMultipartUpload(request.headers)) {
-    throw new ConflictException('A multipart file upload is required.');
-  }
-};
-
 interface SingleFileUploadOptions<Result> {
   request: MultipartUploadRequest;
   signal?: AbortSignal;
@@ -45,7 +33,12 @@ export const consumeSingleFileUpload = <Result>({
   consume,
 }: SingleFileUploadOptions<Result>) => {
   signal?.throwIfAborted();
-  assertMultipartUpload(request);
+  if (request.destroyed) throw canceledError();
+  const contentType = request.headers['content-type'];
+  const value = Array.isArray(contentType) ? contentType[0] : contentType;
+  if (!value?.toLowerCase().startsWith('multipart/form-data')) {
+    throw new ConflictException('A multipart file upload is required.');
+  }
   const parser = Busboy({
     headers: request.headers,
     // Busboy emits its limit event on equality. The configured maximum is inclusive.
@@ -84,6 +77,11 @@ export const consumeSingleFileUpload = <Result>({
     request.on('aborted', inputCanceled);
     signal?.addEventListener('abort', inputCanceled, { once: true });
     request.on('error', stop);
+    request.once('close', () => {
+      // Keep handling transport errors while a rejected request drains.
+      request.off('error', stop);
+      if (!request.readableEnded) inputCanceled();
+    });
     parser.on('finish', () => {
       if (!upload) {
         reject(missingError());
