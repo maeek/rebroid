@@ -26,9 +26,9 @@ export const defaultModelFor = (models: AutomationAiProviderModel[], role: Autom
 // Match the API's first-enabled fallback so the draft previews the defaults that will be saved.
 export const normalizeModelDefaults = (models: AutomationAiProviderModel[]): AutomationAiProviderModel[] => {
   const normalized = models.map(model => ({ ...model, roles: normalizeModelRoles(model.roles) }))
-  const defaults = modelPurposes.map(({ role }) => ({ role, id: defaultModelFor(normalized, role)?.id }))
+  const defaults = modelPurposes.map(({ role }) => ({ role, selected: defaultModelFor(normalized, role) }))
   return normalized.map(model => ({
     ...model,
-    defaultFor: defaults.filter(item => item.id === model.id).map(item => item.role)
+    defaultFor: defaults.filter(item => item.selected === model).map(item => item.role)
   }))
 }

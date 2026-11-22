@@ -22,4 +22,12 @@ describe('provider model purposes and defaults', () => {
       defaultModelFor(normalizeModelDefaults(normalized.filter(model => model.id !== 'first')), 'planner')?.id
     ).toBe('second')
   })
+  it('assigns each default to its selected row while draft model IDs overlap', () => {
+    const models = [{ ...emptyModel(), enabled: false }, emptyModel(), { ...emptyModel(), roles: ['vision' as const] }]
+    expect(normalizeModelDefaults(models).map(model => model.defaultFor)).toEqual([
+      [],
+      ['controller', 'planner'],
+      ['vision']
+    ])
+  })
 })

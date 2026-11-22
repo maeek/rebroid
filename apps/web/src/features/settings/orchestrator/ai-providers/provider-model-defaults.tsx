@@ -25,36 +25,32 @@ export const ProviderModelDefaults = ({
   >
     <div className='grid gap-x-form-column gap-y-6 lg:grid-cols-3'>
       {modelPurposes.map(({ role, label, description }) => {
-        const available = models.filter(model => model.enabled && model.roles.includes(role))
+        const selected = defaultModelFor(models, role)
+        const available = models.flatMap((model, index) =>
+          model.enabled && model.roles.includes(role) ? [{ model, index }] : []
+        )
         return (
           <FormField
             key={role}
             controlId={`default-model-${role}`}
             label={label}
-            modified={
-              savedModels ? defaultModelFor(models, role)?.id !== defaultModelFor(savedModels, role)?.id : undefined
-            }
+            modified={savedModels ? selected?.id !== defaultModelFor(savedModels, role)?.id : undefined}
             description={description}
             layout='vertical'
           >
             <Select
-              value={defaultModelFor(models, role)?.id ?? ''}
+              value={selected ? String(models.indexOf(selected)) : ''}
               disabled={disabled || available.length === 0}
-              onValueChange={id =>
-                onChange(
-                  models.findIndex(model => model.id === id),
-                  role
-                )
-              }
+              onValueChange={value => onChange(Number(value), role)}
             >
               <SelectTrigger className='w-full'>
                 <SelectValue placeholder={loading ? 'Loading models…' : 'No enabled model assigned'} />
               </SelectTrigger>
               <SelectContent>
-                {available.map(model => (
+                {available.map(({ model, index }) => (
                   <SelectItem
-                    key={model.id}
-                    value={model.id}
+                    key={index}
+                    value={String(index)}
                   >
                     {model.label || model.id}
                   </SelectItem>
