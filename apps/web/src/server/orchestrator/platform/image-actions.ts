@@ -80,15 +80,14 @@ export const listImageBuildContextFilesAction = async () => {
 
 export const removeImageBuildContextFileAction = async (id: string) =>
   runSafeAction(
-    async () => {
-      await requireFeature('feature.image-builder')
-      return runAuditedPlatformAction({
+    () =>
+      runAuditedPlatformAction({
+        feature: 'feature.image-builder',
         action: 'docker.image_build.context_file.remove',
         operation: () => orchestratorPlatformClient.removeImageBuildContextFile(id),
         resourceType: 'docker_image_build_context_file',
         resourceId: id
-      })
-    },
+      }),
     { fallbackMessage: 'Could not remove context file.', logLabel: 'removeImageBuildContextFileAction failed' }
   )
 
@@ -100,16 +99,15 @@ export const listImageBuildRecipesAction = async () => {
 
 export const createImageBuildRecipeAction = async (input: ContainerImageRecipeInput) =>
   runSafeAction(
-    async () => {
-      await requireFeature('feature.image-builder')
-      return runAuditedPlatformAction({
+    () =>
+      runAuditedPlatformAction({
+        feature: 'feature.image-builder',
         action: 'docker.image_build.recipe.create',
         details: { targetImage: input.targetImage, baseImage: input.baseImage },
         operation: () => orchestratorPlatformClient.createImageBuildRecipe(input),
         resourceType: 'docker_image_build_recipe',
         resourceId: input.targetImage
-      })
-    },
+      }),
     { fallbackMessage: 'Could not create image build recipe.', logLabel: 'createImageBuildRecipeAction failed' }
   )
 
@@ -120,16 +118,15 @@ export const getLatestImageBuildAction = async (buildKind: ContainerImageBuildKi
 
 export const startImageBuildAction = async (input: StartContainerImageBuildInput) =>
   runSafeAction(
-    async () => {
-      await requireFeature('feature.image-builder')
-      return runAuditedPlatformAction({
+    () =>
+      runAuditedPlatformAction({
+        feature: 'feature.image-builder',
         action: 'docker.image_build.start',
         details: { targetImage: input.targetImage, baseImage: input.baseImage },
         operation: () => orchestratorPlatformClient.startImageBuild(input),
         resourceType: 'docker_image_build',
         resourceId: input.targetImage
-      })
-    },
+      }),
     { fallbackMessage: 'Could not start image build.', logLabel: 'startImageBuildAction failed' }
   )
 
