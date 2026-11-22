@@ -59,12 +59,14 @@ export class AndroidAppsQueryService {
     const running: AndroidApplication[] = [];
     const recent: AndroidApplication[] = [];
     for (const row of await this.applications.findForNavigation(query)) {
-      if (row.status === AndroidApplicationStatus.Running) {
-        running.push(row);
-        running.sort(compareNames);
-        if (running.length > runningLimit) running.pop();
-      }
       if (recentIds.has(row.id)) recent.push(row);
+      if (row.status !== AndroidApplicationStatus.Running) continue;
+      if (running.length === runningLimit) {
+        if (compareNames(row, running[runningLimit - 1]) >= 0) continue;
+        running.pop();
+      }
+      running.push(row);
+      running.sort(compareNames);
     }
 
     const preferredIds = new Set(running.map(({ id }) => id));
