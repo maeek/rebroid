@@ -1,18 +1,9 @@
 'use client'
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { isActiveRunStatus, runStatusFromEvent } from '@/shared/model/automation-run-status'
 import { subscribeToRunEvents } from '@/shared/model/run-event-delivery'
 import type { AutomationRun, AutomationRunEvent, AutomationRunStatus } from '@/shared/contracts/automation'
-
-export const activeRunStatuses = new Set<AutomationRunStatus>(['queued', 'running'])
-
-const statusFromEvent = (event: AutomationRunEvent): AutomationRunStatus | null => {
-  if (event.type === 'run.started') return 'running'
-  if (event.type === 'run.completed') return 'success'
-  if (event.type === 'run.failed') return 'failed'
-  if (event.type === 'run.canceled') return 'canceled'
-  return null
-}
 
 export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>, enabled = true) => {
   const { id: runId, status: serverStatus } = run
@@ -22,7 +13,7 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
   const [connected, setConnected] = useState(false)
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false)
   const statusRef = useRef(serverStatus)
-  const status = state.runId === runId && activeRunStatuses.has(serverStatus) ? state.status : serverStatus
+  const status = state.runId === runId && isActiveRunStatus(serverStatus) ? state.status : serverStatus
   const getServerStatus = useEffectEvent(() => serverStatus)
 
   useEffect(() => {
@@ -35,13 +26,13 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
   }, [runId])
 
   useEffect(() => {
-    if (serverStatus === 'queued' || !activeRunStatuses.has(statusRef.current)) return
+    if (serverStatus === 'queued' || !isActiveRunStatus(statusRef.current)) return
     statusRef.current = serverStatus
     setState({ runId, status: serverStatus })
   }, [runId, serverStatus])
 
   const applyEventStatus = useEffectEvent((next: AutomationRunStatus) => {
-    if (next === 'queued' || next === statusRef.current || !activeRunStatuses.has(statusRef.current)) return
+    if (next === 'queued' || next === statusRef.current || !isActiveRunStatus(statusRef.current)) return
     statusRef.current = next
     setState({ runId, status: next })
   })
@@ -51,7 +42,7 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
     if (!enabled) return
     return subscribeToRunEvents({
       runId,
-      isLive: () => activeRunStatuses.has(statusRef.current),
+      isLive: () => isActiveRunStatus(statusRef.current),
       onEvents: nextEvents => {
         setEvents(current => {
           const byId = new Map(current.map(event => [event.id, event]))
@@ -59,7 +50,7 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
           return [...byId.values()].sort((left, right) => left.sequence - right.sequence)
         })
         for (const event of nextEvents) {
-          const next = statusFromEvent(event)
+          const next = runStatusFromEvent(event)
           if (next) applyEventStatus(next)
         }
       },
@@ -77,7 +68,7 @@ export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>
         if (reason === 'invalid-event') setStreamError('A live event could not be read.')
         else
           setStreamError(
-            activeRunStatuses.has(statusRef.current)
+            isActiveRunStatus(statusRef.current)
               ? 'Live updates are temporarily unavailable.'
               : 'Could not load recorded events.'
           )

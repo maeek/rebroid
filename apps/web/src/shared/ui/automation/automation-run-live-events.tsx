@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Disclosure, DisclosureSummary, DisclosureChevron } from '@/components/ui/disclosure'
 import { Notice } from '@/components/ui/notice'
 import { cn } from '@/lib/utils'
+import { isActiveRunStatus } from '@/shared/model/automation-run-status'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { WorkflowOcrExchangeDetails } from '@/shared/ui/automation/workflow-ocr-exchange-details'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { JsonViewer } from '@/shared/ui/json-viewer'
 import { StateView } from '@/shared/ui/state-view'
-import { activeRunStatuses, type useAutomationRunEvents } from './use-automation-run-events'
+import type { useAutomationRunEvents } from './use-automation-run-events'
 import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 const eventMarkerColor = (type: AutomationRunEvent['type']) => {
@@ -122,7 +123,7 @@ export function AutomationRunEventsPanel({
     [events, ocrStep]
   )
 
-  const active = activeRunStatuses.has(status)
+  const active = isActiveRunStatus(status)
   const waitingForEvents = !hasLoadedEvents || active
   const emptyEventTitle = ocrStep ? 'No OCR exchange recorded' : 'No recorded events'
   const emptyEventDescription = ocrStep ? undefined : 'Use Summary to inspect the run outcome.'

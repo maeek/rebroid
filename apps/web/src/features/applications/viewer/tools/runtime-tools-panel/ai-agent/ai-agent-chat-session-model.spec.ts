@@ -124,6 +124,12 @@ describe('ai agent chat session model', () => {
     expect(latestEventSequence(7, [])).toBe(7)
   })
 
+  it('restores a long history without spreading events onto the call stack', () => {
+    const entries = Array<AutomationRunEvent>(150_000).fill(event({ sequence: 123 }))
+    expect(collectLatestRunSequences([turn({ events: entries })]).get('run-1')).toBe(123)
+    expect(latestEventSequence(150, entries)).toBe(150)
+  })
+
   it('creates prompt turns with the requested queue state', () => {
     expect(createPromptTurn({ id: 'turn', prompt: 'Go', status: 'starting' })).toMatchObject({
       id: 'turn',

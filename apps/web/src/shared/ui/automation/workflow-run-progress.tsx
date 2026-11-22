@@ -1,7 +1,7 @@
 import { IconLoader2 } from '@tabler/icons-react'
 import { StateTransition } from '@/components/ui/state-transition'
+import { isActiveRunStatus } from '@/shared/model/automation-run-status'
 import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
-import { activeRunStatuses } from './use-automation-run-events'
 import type { AutomationRunEvent, AutomationRunStatus } from '@/shared/contracts/automation'
 
 const preparationLabels = {
@@ -41,7 +41,7 @@ export const WorkflowRunProgress = ({
   stopping: boolean
   streamError: string | null
 }) => {
-  if (!activeRunStatuses.has(status)) return null
+  if (!isActiveRunStatus(status)) return null
   const label = stopping ? 'Stopping workflow…' : progressLabel(status, events)
   return (
     <div

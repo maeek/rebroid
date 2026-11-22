@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useVisibilityAwareInterval } from '@/hooks/use-visibility-aware-interval'
 import { sendBff } from '@/lib/http/bff'
-import { activeRunStatuses, useAutomationRunEvents } from './use-automation-run-events'
+import { isActiveRunStatus } from '@/shared/model/automation-run-status'
+import { useAutomationRunEvents } from './use-automation-run-events'
 import type { AutomationRun, AutomationRunEventType } from '@/shared/contracts/automation'
 
 const refreshEvents = new Set<AutomationRunEventType>([
@@ -26,10 +27,10 @@ export const useWorkflowRunUpdates = (
   refresh: () => Promise<unknown>
 ) => {
   const runId = run?.id ?? ''
-  const active = !!run && activeRunStatuses.has(run.status)
+  const active = !!run && isActiveRunStatus(run.status)
   const feed = useAutomationRunEvents(run ?? { id: runId, status: 'queued' }, !!run && (active || showEvents))
   const [cancellation, setCancellation] = useState<{ runId: string; error?: Error }>()
-  const canStop = !!run && activeRunStatuses.has(feed.status)
+  const canStop = !!run && isActiveRunStatus(feed.status)
   const currentCancellation = cancellation?.runId === runId ? cancellation : undefined
   const [failedRunId, setFailedRunId] = useState<string>()
   const queue = useRef<RefreshQueue | undefined>(undefined)
@@ -83,7 +84,7 @@ export const useWorkflowRunUpdates = (
   }, [active, enqueue, sequence])
 
   useVisibilityAwareInterval({
-    enabled: active && (!feed.connected || !activeRunStatuses.has(feed.status) || failedRunId === runId),
+    enabled: active && (!feed.connected || !isActiveRunStatus(feed.status) || failedRunId === runId),
     intervalMs: 5_000,
     runOnFocus: false,
     task: () => enqueue()

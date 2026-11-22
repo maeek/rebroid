@@ -1,5 +1,6 @@
 import { getBff, sendBff } from '@/lib/http/bff'
 import { ActionResultError } from '@/shared/actions/action-result'
+import { terminalEventStatus } from '@/shared/model/automation-run-status'
 import type { AutomationRunEvent, AutomationRunEventPage } from '@/shared/contracts/automation'
 
 const runEventsUrl = (runId: string, after: number) =>
@@ -8,8 +9,7 @@ const runEventsUrl = (runId: string, after: number) =>
 const readRunEventPage = (runId: string, after: number, signal?: AbortSignal) =>
   getBff<AutomationRunEventPage>(runEventsUrl(runId, after), signal)
 
-const isTerminalEvent = ({ type }: AutomationRunEvent) =>
-  type === 'run.completed' || type === 'run.failed' || type === 'run.canceled'
+const isTerminalEvent = (event: AutomationRunEvent) => terminalEventStatus(event) !== null
 
 export const replayTerminalRunEvents = async ({
   runId,

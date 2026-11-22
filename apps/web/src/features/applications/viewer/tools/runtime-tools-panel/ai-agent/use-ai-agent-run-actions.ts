@@ -6,9 +6,10 @@ import {
   clearAdHocAiAutomationRunsAction,
   runAdHocAiAutomationAction
 } from '@/server/orchestrator/automations/automation-run-actions'
+import { isActiveRunStatus, isTerminalRunStatus } from '@/shared/model/automation-run-status'
 import { replayTerminalRunEvents } from '@/shared/model/run-event-delivery'
 import { createPromptTurn } from './ai-agent-chat-session-model'
-import { activeRunStatuses, runStatusToTurnStatus, terminalRunStatuses, type ChatTurn } from './ai-agent-chat-utils'
+import { runStatusToTurnStatus, type ChatTurn } from './ai-agent-chat-utils'
 import { conversationBeforeTurn, type AutomationAiConversationMessage } from './ai-agent-conversation'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
@@ -213,8 +214,7 @@ export const useAiAgentRunActions = ({
     await startTurn(queuedTurn, conversationBeforeTurn(queuedTurn.id, turns))
   }
 
-  const canCancelRun =
-    activeTurn?.run && activeRunStatuses.has(activeTurn.run.status) && activeTurn.status !== 'canceling'
+  const canCancelRun = activeTurn?.run && isActiveRunStatus(activeTurn.run.status) && activeTurn.status !== 'canceling'
   const showCancelRun = activeTurn?.run && (canCancelRun || activeTurn.status === 'canceling')
 
   const cancelRun = async () => {
@@ -232,7 +232,7 @@ export const useAiAgentRunActions = ({
     try {
       const canceled = await cancelAutomationRunAction(runId)
       if (!isCurrent()) return
-      const terminal = terminalRunStatuses.has(canceled.status)
+      const terminal = isTerminalRunStatus(canceled.status)
       if (terminal) {
         // Catch up before the terminal status detaches the subscription.
         await replayTerminalRunEvents({ runId, after, onEvents: events => appendRunEvents(runId, events), isCurrent })
