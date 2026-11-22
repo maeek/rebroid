@@ -127,7 +127,12 @@ export const subscribeToRunEvents = ({
       onReady?.()
       if (!live()) return
 
-      const { streamUrl } = await sendBff<{ streamUrl: string }>(runEventsUrl(runId, cursor), {})
+      const { streamUrl } = await sendBff<{ streamUrl: string }>(
+        runEventsUrl(runId, cursor),
+        {},
+        'POST',
+        controller.signal
+      )
       if (!current() || !live()) return
       const connection = new WebSocket(streamUrl)
       socket = connection

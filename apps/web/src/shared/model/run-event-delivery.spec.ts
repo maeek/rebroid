@@ -77,8 +77,8 @@ it('replays from the last delivered event, retries a failed read and closes on t
     )
     expect(onError.mock.calls).toEqual([['invalid-event'], ['unavailable']])
     expect(vi.mocked(sendBff).mock.calls).toEqual([
-      [`/api/bff/automations/runs/${runId}/events?after=1`, {}],
-      [`/api/bff/automations/runs/${runId}/events?after=2`, {}]
+      [`/api/bff/automations/runs/${runId}/events?after=1`, {}, 'POST', expect.any(AbortSignal)],
+      [`/api/bff/automations/runs/${runId}/events?after=2`, {}, 'POST', expect.any(AbortSignal)]
     ])
     expect(received).toEqual([started, progress])
     expect(connections).toHaveLength(2)
@@ -107,4 +107,23 @@ it('follows short history pages through the terminal event without requesting a 
   expect(onEvents.mock.calls).toEqual([[[progress]], [[finished]]])
   expect(getBff).toHaveBeenLastCalledWith(`/api/bff/automations/runs/${runId}/events?after=7`, undefined)
   expect(sendBff).not.toHaveBeenCalled()
+})
+
+it('aborts the pending socket-token request when a subscription closes', async () => {
+  vi.mocked(getBff).mockResolvedValue({ events: [], nextAfter: null })
+  const entered = Promise.withResolvers<AbortSignal>()
+  const reply = Promise.withResolvers<{ streamUrl: string }>()
+  vi.mocked(sendBff).mockImplementationOnce((_url, _body, _method, signal) => {
+    entered.resolve(signal!)
+    return reply.promise
+  })
+  const socket = vi.fn()
+  vi.stubGlobal('WebSocket', socket)
+  const close = subscribeToRunEvents({ runId, onEvents: vi.fn() })
+  const signal = await entered.promise
+  close()
+  expect(signal.aborted).toBe(true)
+  reply.resolve({ streamUrl: 'wss://example.test/events' })
+  await reply.promise
+  expect(socket).not.toHaveBeenCalled()
 })
