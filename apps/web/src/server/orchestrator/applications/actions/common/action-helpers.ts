@@ -19,10 +19,6 @@ export const getSanitizedAccessibleApplication = async (id: string, response?: '
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
-export const assertCanAccessApplication = async (id: string) => {
-  await getAccessibleApplication(id)
-}
-
 export const assertCanUseOwnedApplicationRuntime = async (id: string, message: string) => {
   const user = await getCurrentUserContext()
   const app = await orchestratorAppCatalogClient.getApplication(id)

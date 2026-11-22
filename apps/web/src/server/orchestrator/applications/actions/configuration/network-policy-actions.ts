@@ -13,7 +13,7 @@ import { revalidateApplicationDetail, revalidateApplicationList } from '../../..
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
-import { assertCanAccessApplication } from '../common/action-helpers'
+import { getAccessibleApplication } from '../common/action-helpers'
 import type { UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
 const networkPolicyUpdateSchema = z.strictObject({
@@ -24,8 +24,7 @@ const networkPolicyUpdateSchema = z.strictObject({
 export const updateNetworkPolicyAction = async (id: string, input: UpdateNetworkPolicyInput) =>
   runSafeAction(
     async () => {
-      await assertCanAccessApplication(id)
-      const user = await getCurrentUserContext()
+      const { user } = await getAccessibleApplication(id)
       if (!hasPermission(user.permissions, 'applications:configure-egress')) {
         throw new PublicActionError('You do not have permission to configure network access.', {
           code: 'forbidden',
@@ -70,8 +69,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
 export const applyNetworkPolicyAction = async (id: string) =>
   runSafeAction(
     async () => {
-      await assertCanAccessApplication(id)
-      const user = await getCurrentUserContext()
+      const { user } = await getAccessibleApplication(id)
       if (!hasPermission(user.permissions, 'applications:configure-egress')) {
         throw new PublicActionError('You do not have permission to apply network policy.', {
           code: 'forbidden',

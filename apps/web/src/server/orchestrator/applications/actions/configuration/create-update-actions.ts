@@ -12,7 +12,7 @@ import {
 } from '@/shared/contracts/application'
 import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
+import { getCurrentUserContext } from '../../../current-user'
 import { loadFeatureFlags } from '../../../features'
 import { OrchestratorRequestError } from '../../../request'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
@@ -25,7 +25,7 @@ import {
   enforceSessionQuota,
   sanitizeAndroidApplicationForUser
 } from '../../safety'
-import { assertCanAccessApplication } from '../common/action-helpers'
+import { getAccessibleApplication } from '../common/action-helpers'
 import { toCreateApplicationError, toUpdateApplicationError } from './create-application-error'
 
 const assertCanChangeResources = (
@@ -111,8 +111,7 @@ const assertCanConfigureCreateNetworkPolicy = (
 export const updateApplicationAction = async (id: string, input: UpdateAndroidApplicationInput) =>
   runSafeAction(
     async () => {
-      await assertCanAccessApplication(id)
-      const user = await getCurrentUserContext()
+      const { user } = await getAccessibleApplication(id)
       assertCanChangeResources(user, input)
       assertCanChangeSessionLimit(user, input)
       assertCanChangeContainerArgs(user, input)
@@ -174,14 +173,13 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
       const quotas = await getEnforcedResourceQuota(user.quotas, manifest)
       enforceResourceQuotas(input, quotas)
       enforceSessionQuota(input, quotas)
-      const ownerUserId = await getCurrentOwnerUserId()
       const containerImage = input.containerImage?.trim()
       const command = await orchestratorAppCatalogClient
         .createApplication(
           {
             ...applyCreateResourceQuotas(input, quotas),
             ...(useUnrestrictedDefault ? { networkPolicyEnabled: false } : {}),
-            ownerUserId,
+            ownerUserId: user.ownerUserId,
             containerArgs: containerImage
               ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined
               : input.containerArgs
@@ -209,8 +207,7 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
 
 export const updateApkAction = async (id: string, uploadedApkId: string) =>
   runSafeAction(async () => {
-    await assertCanAccessApplication(id)
-    const user = await getCurrentUserContext()
+    const { user } = await getAccessibleApplication(id)
     if (!hasPermission(user.permissions, 'applications:update-apk')) {
       throw new PublicActionError('You do not have permission to update APKs.', { code: 'forbidden', status: 403 })
     }

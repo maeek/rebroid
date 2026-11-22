@@ -17,8 +17,7 @@ import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissi
 
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('../../../current-user', () => ({
-  getCurrentUserContext: vi.fn(),
-  getCurrentOwnerUserId: () => Promise.resolve('owner-1')
+  getCurrentUserContext: vi.fn()
 }))
 vi.mock('../../../features', () => ({ loadFeatureFlags: vi.fn().mockResolvedValue(null), requireFeature: vi.fn() }))
 vi.mock('../../../shared', () => ({ revalidateApplicationDetail: vi.fn(), revalidateApplicationList: vi.fn() }))
