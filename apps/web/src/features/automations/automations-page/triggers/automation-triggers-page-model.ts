@@ -4,59 +4,12 @@ import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
 import type { AutomationOption, AutomationTrigger, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 
-type TriggerOperationToast = {
-  title: string
-  description?: string
-  variant: 'danger' | 'success'
-}
-
 export const defaultTriggerName = (automation: AutomationOption | undefined, app: AndroidApplication | undefined) => {
   if (automation && app) {
     return `${automation.name} on ${app.name}`.slice(0, 120)
   }
 
   return 'New workflow trigger'
-}
-
-export const deletedTriggerIdsFromResults = (results: PromiseSettledResult<unknown>[], triggers: AutomationTrigger[]) =>
-  new Set(
-    results
-      .map((result, index) => (result.status === 'fulfilled' ? triggers[index]?.id : null))
-      .filter((id): id is string => Boolean(id))
-  )
-
-export const summarizeTriggerBulkUpdateResults = (
-  results: PromiseSettledResult<unknown>[],
-  enabled: boolean
-): TriggerOperationToast => {
-  const failedCount = results.filter(result => result.status === 'rejected').length
-
-  if (failedCount > 0) {
-    return {
-      title: 'Some triggers could not be updated',
-      description: `${failedCount} update request failed.`,
-      variant: 'danger'
-    }
-  }
-
-  return { title: enabled ? 'Selected triggers enabled' : 'Selected triggers disabled', variant: 'success' }
-}
-
-export const summarizeTriggerBulkDeleteResults = (
-  results: PromiseSettledResult<unknown>[],
-  deletedIds: Set<string>
-): TriggerOperationToast => {
-  const failedCount = results.length - deletedIds.size
-
-  if (failedCount > 0) {
-    return {
-      title: 'Some triggers could not be deleted',
-      description: `${failedCount} delete request failed.`,
-      variant: 'danger'
-    }
-  }
-
-  return { title: 'Selected triggers deleted', variant: 'success' }
 }
 
 export const newTriggerFormState = ({

@@ -6,11 +6,8 @@ import {
   applyTriggerTargetApplication,
   applyTriggerWorkflow,
   defaultTriggerName,
-  deletedTriggerIdsFromResults,
   editTriggerFormState,
   newTriggerFormState,
-  summarizeTriggerBulkDeleteResults,
-  summarizeTriggerBulkUpdateResults,
   triggerFormSavePayload,
   triggerFormUpdatePayload
 } from './automation-triggers-page-model'
@@ -216,47 +213,5 @@ describe('automation triggers page model', () => {
     )
     expect([...url.searchParams.keys()]).toEqual(['q', 'page', 'pageSize'])
     expect(url.searchParams.get('q')).toBe('night')
-  })
-
-  it('extracts fulfilled deleted trigger ids from settled results', () => {
-    const triggers = [trigger('a'), trigger('b'), trigger('c')]
-    const results = [
-      { status: 'fulfilled', value: undefined },
-      { status: 'rejected', reason: new Error('failed') },
-      { status: 'fulfilled', value: undefined }
-    ] satisfies PromiseSettledResult<unknown>[]
-
-    expect([...deletedTriggerIdsFromResults(results, triggers)]).toEqual(['a', 'c'])
-  })
-
-  it('summarizes bulk trigger update and delete results', () => {
-    const mixedResults = [
-      { status: 'fulfilled', value: undefined },
-      { status: 'rejected', reason: new Error('failed') }
-    ] satisfies PromiseSettledResult<unknown>[]
-    const fulfilledResults = [{ status: 'fulfilled', value: undefined }] satisfies PromiseSettledResult<unknown>[]
-
-    expect(summarizeTriggerBulkUpdateResults(fulfilledResults, true)).toEqual({
-      title: 'Selected triggers enabled',
-      variant: 'success'
-    })
-    expect(summarizeTriggerBulkUpdateResults(fulfilledResults, false)).toEqual({
-      title: 'Selected triggers disabled',
-      variant: 'success'
-    })
-    expect(summarizeTriggerBulkUpdateResults(mixedResults, true)).toEqual({
-      title: 'Some triggers could not be updated',
-      description: '1 update request failed.',
-      variant: 'danger'
-    })
-    expect(summarizeTriggerBulkDeleteResults(fulfilledResults, new Set(['a']))).toEqual({
-      title: 'Selected triggers deleted',
-      variant: 'success'
-    })
-    expect(summarizeTriggerBulkDeleteResults(mixedResults, new Set(['a']))).toEqual({
-      title: 'Some triggers could not be deleted',
-      description: '1 delete request failed.',
-      variant: 'danger'
-    })
   })
 })

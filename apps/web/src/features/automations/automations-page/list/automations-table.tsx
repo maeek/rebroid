@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { parseAutomationGridSort } from '@rebroid/automation-core/grid-sort'
 import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
@@ -10,6 +10,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { RowActionButton } from '@/components/ui/row-actions'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -19,7 +20,6 @@ import { ResourceLink } from '@/shared/ui/resource-link'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-run-result'
-import { deletedAutomationIdsFromResults, summarizeAutomationDeleteResults } from './automations-table-model'
 import { AutomationsTableToolbar } from './automations-table-toolbar'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationGridRow, AutomationsGridPage, AutomationsGridQuery } from '@/shared/contracts/automation'
@@ -68,19 +68,30 @@ export function AutomationsTable({
   const { selectedIds, selectedItems: selectedAutomations } = grid
   const [pendingDelete, setPendingDelete] = useState<AutomationGridRow | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const deleting = useRef(false)
   const [busy, setBusy] = useState(false)
   const appNameById = useMemo(() => new Map(applications.map(app => [app.id, app.name])), [applications])
 
   const deleteMany = async (items: AutomationGridRow[]) => {
+    if (deleting.current) return
+    deleting.current = true
     setBusy(true)
     const results = await Promise.allSettled(items.map(item => deleteAutomationAction(item.id)))
-    const deletedIds = deletedAutomationIdsFromResults(items, results)
+    const deletedIds = successfulBulkIds(items, results)
     grid.deselectItems(deletedIds)
     setPendingDelete(null)
     setBulkDeleteOpen(false)
+    deleting.current = false
     setBusy(false)
     router.refresh()
-    toast(summarizeAutomationDeleteResults(items, deletedIds, results))
+    toast({
+      variant: 'success',
+      ...summarizeBulkResults(
+        results,
+        items.length === 1 ? 'Workflow deleted' : 'Selected workflows deleted',
+        'Some workflows could not be deleted'
+      )
+    })
   }
 
   const columns = useMemo<ColumnDef<AutomationGridRow>[]>(

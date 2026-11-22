@@ -15,7 +15,8 @@ import {
   runAutomationTriggerAction,
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
-import { successfulBulkIds } from '@/shared/actions/bulk-action-results'
+import { unwrapActionResult } from '@/shared/actions/action-result'
+import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { useResourceGridController } from '@/shared/ui/data-grid/use-resource-grid-controller'
 import { CompactPageHeader } from '@/shared/ui/page/page-header'
@@ -26,11 +27,8 @@ import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
 import {
   applyTriggerTargetApplication,
   applyTriggerWorkflow,
-  deletedTriggerIdsFromResults,
   editTriggerFormState,
   newTriggerFormState,
-  summarizeTriggerBulkDeleteResults,
-  summarizeTriggerBulkUpdateResults,
   triggerFormSavePayload,
   triggerFormUpdatePayload
 } from './automation-triggers-page-model'
@@ -171,9 +169,9 @@ export function AutomationTriggersPage({
     setSaving(true)
     try {
       if (form.id && baselineForm) {
-        await updateAutomationTriggerAction(form.id, triggerFormUpdatePayload(form, baselineForm))
+        unwrapActionResult(await updateAutomationTriggerAction(form.id, triggerFormUpdatePayload(form, baselineForm)))
       } else {
-        await createAutomationTriggerAction(triggerFormSavePayload(form))
+        unwrapActionResult(await createAutomationTriggerAction(triggerFormSavePayload(form)))
       }
       setFormOpen(false)
       router.refresh()
@@ -196,7 +194,7 @@ export function AutomationTriggersPage({
     setBusyId(trigger.id)
     try {
       await toggleFeedback.save(trigger.id, async () => {
-        await updateAutomationTriggerAction(trigger.id, { enabled })
+        unwrapActionResult(await updateAutomationTriggerAction(trigger.id, { enabled }))
         router.refresh()
       })
     } catch (error) {
@@ -217,7 +215,7 @@ export function AutomationTriggersPage({
     enqueuingTriggers.current.add(trigger.id)
     setTriggerRuns(current => new Map(current).set(trigger.id, null))
     try {
-      const run = await runAutomationTriggerAction(trigger.id)
+      const run = unwrapActionResult(await runAutomationTriggerAction(trigger.id))
       setTriggerRuns(current => new Map(current).set(trigger.id, run))
       router.refresh()
     } catch (error) {
@@ -242,7 +240,7 @@ export function AutomationTriggersPage({
     mutationPending.current = true
     setBusyId(trigger.id)
     try {
-      await deleteAutomationTriggerAction(trigger.id)
+      unwrapActionResult(await deleteAutomationTriggerAction(trigger.id))
       grid.deselectItems(new Set([trigger.id]))
       setPendingDelete(null)
       router.refresh()
@@ -270,7 +268,14 @@ export function AutomationTriggersPage({
       const updated = successfulBulkIds(selectedTriggers, results)
       grid.deselectItems(updated)
       router.refresh()
-      toast(summarizeTriggerBulkUpdateResults(results, enabled))
+      toast({
+        variant: 'success',
+        ...summarizeBulkResults(
+          results,
+          enabled ? 'Selected triggers enabled' : 'Selected triggers disabled',
+          'Some triggers could not be updated'
+        )
+      })
     } finally {
       mutationPending.current = false
       setBulkPending(null)
@@ -284,11 +289,14 @@ export function AutomationTriggersPage({
     try {
       const items = selectedTriggers
       const results = await Promise.allSettled(items.map(trigger => deleteAutomationTriggerAction(trigger.id)))
-      const deletedIds = deletedTriggerIdsFromResults(results, items)
+      const deletedIds = successfulBulkIds(items, results)
       grid.deselectItems(deletedIds)
       setBulkDeleteOpen(false)
       router.refresh()
-      toast(summarizeTriggerBulkDeleteResults(results, deletedIds))
+      toast({
+        variant: 'success',
+        ...summarizeBulkResults(results, 'Selected triggers deleted', 'Some triggers could not be deleted')
+      })
     } finally {
       mutationPending.current = false
       setBulkPending(null)

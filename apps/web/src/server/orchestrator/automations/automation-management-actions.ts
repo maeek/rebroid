@@ -183,10 +183,14 @@ export const saveAutomationAction = async (id: string | null, input: SaveAutomat
     { fallbackMessage: 'Could not save the workflow.', logLabel: 'saveAutomationAction failed' }
   )
 
-export const deleteAutomationAction = async (id: string) => {
-  const user = await requireAutomationUser('automations:manage')
-  const automation = await orchestratorAutomationsClient.remove(user.ownerUserId, id)
-  revalidatePath('/automations')
-  recordAutomationAudit(user.ownerUserId, 'automation.delete', automation.id, automation.name)
-  return automation
-}
+export const deleteAutomationAction = async (id: string) =>
+  runSafeAction(
+    async () => {
+      const user = await requireAutomationUser('automations:manage')
+      const automation = await orchestratorAutomationsClient.remove(user.ownerUserId, id)
+      revalidatePath('/automations')
+      recordAutomationAudit(user.ownerUserId, 'automation.delete', automation.id, automation.name)
+      return automation
+    },
+    { fallbackMessage: 'Could not delete the workflow.', logLabel: 'deleteAutomationAction' }
+  )

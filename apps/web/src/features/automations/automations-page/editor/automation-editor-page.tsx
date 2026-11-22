@@ -14,6 +14,7 @@ import {
   deleteAutomationAction,
   saveAutomationAction
 } from '@/server/orchestrator/automations/automation-management-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import {
   clearPendingAutomationDraft,
   readPendingAutomationDraft,
@@ -249,7 +250,7 @@ export function AutomationEditorPage({
     if (!automation) return
     setBusy(true)
     try {
-      await deleteAutomationAction(automation.id)
+      unwrapActionResult(await deleteAutomationAction(automation.id))
       toast({ title: 'Workflow deleted', variant: 'success' })
       afterClosingBackEntry(() => router.replace('/automations'))
     } catch (error) {

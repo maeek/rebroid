@@ -36,7 +36,7 @@ beforeEach(() => {
 it('checks the saved profile for omitted fields in a trigger patch', async () => {
   await expect(
     updateAutomationTriggerAction('trigger', { enabled: true, profileName: undefined, profileMode: undefined })
-  ).rejects.toMatchObject({ code: 'forbidden' })
+  ).resolves.toMatchObject({ ok: false, error: { code: 'forbidden' } })
   expect(orchestratorAppCatalogClient.getApplication).toHaveBeenCalledWith('app')
   expect(orchestratorAutomationsClient.updateTrigger).not.toHaveBeenCalled()
 })

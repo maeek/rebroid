@@ -1,11 +1,13 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from '@/hooks/use-toast'
 import {
   createAutomationTriggerAction,
   deleteAutomationTriggerAction,
   runAutomationTriggerAction,
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
+import { actionOk, actionError } from '@/shared/actions/action-result'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflowOption } from '@/shared/testing/automation-preview'
 import { AutomationTriggersPage } from './automation-triggers-page'
@@ -46,7 +48,7 @@ describe('Triggers editor workflow', () => {
 
   it('acknowledges Run now in the row and links the accepted run before refresh', async () => {
     const request = Promise.withResolvers<AutomationRun>()
-    vi.mocked(runAutomationTriggerAction).mockReturnValue(request.promise)
+    vi.mocked(runAutomationTriggerAction).mockReturnValue(request.promise.then(run => actionOk(run)))
     render(<AutomationTriggersPreview />)
     const row = screen.getByRole('row', { name: /Morning inventory/ })
     fireEvent.click(within(row).getByRole('button', { name: 'Open row actions' }))
@@ -116,7 +118,7 @@ describe('Triggers editor workflow', () => {
   })
 
   it('saves the selected app, profile, schedule, and start policy with the existing contract', async () => {
-    vi.mocked(createAutomationTriggerAction).mockResolvedValue(previewTrigger)
+    vi.mocked(createAutomationTriggerAction).mockResolvedValue(actionOk(previewTrigger))
     render(<AutomationTriggersPreview />)
     fireEvent.click(screen.getByRole('button', { name: 'New trigger' }))
     const dialog = await screen.findByRole('dialog', { name: 'New trigger' })
@@ -145,7 +147,7 @@ describe('Triggers editor workflow', () => {
   })
 
   it('searches workflow context and app identifiers, reuses tags, and creates new tags explicitly', async () => {
-    vi.mocked(createAutomationTriggerAction).mockResolvedValue(previewTrigger)
+    vi.mocked(createAutomationTriggerAction).mockResolvedValue(actionOk(previewTrigger))
     render(<AutomationTriggersPreview />)
     fireEvent.click(screen.getByRole('button', { name: 'New trigger' }))
     const dialog = await screen.findByRole('dialog', { name: 'New trigger' })
@@ -189,7 +191,7 @@ describe('Triggers editor workflow', () => {
   })
 
   it('loads a saved description when editing', async () => {
-    vi.mocked(updateAutomationTriggerAction).mockResolvedValue(previewTrigger)
+    vi.mocked(updateAutomationTriggerAction).mockResolvedValue(actionOk(previewTrigger))
     render(<AutomationTriggersPreview />)
     fireEvent.click(screen.getByRole('button', { name: 'Morning inventory' }))
     const dialog = await screen.findByRole('dialog', { name: 'Edit trigger' })
@@ -259,7 +261,7 @@ describe('Triggers editor workflow', () => {
     vi.mocked(updateAutomationTriggerAction).mockImplementation(
       () =>
         new Promise(resolve => {
-          finish = () => resolve(previewTrigger)
+          finish = () => resolve(actionOk(previewTrigger))
         })
     )
     render(<AutomationTriggersPreview />)
@@ -278,12 +280,29 @@ describe('Triggers editor workflow', () => {
     expect(screen.getByRole('checkbox', { name: 'Select current page' })).not.toBeChecked()
   })
 
+  it('keeps unsuccessful bulk updates selected and shows their support reference', async () => {
+    vi.mocked(updateAutomationTriggerAction).mockResolvedValue(actionError({ message: 'Try again.' }, 'trigger-ref'))
+    render(<AutomationTriggersPreview />)
+    const selection = screen.getByRole('checkbox', { name: 'Select current page' })
+    fireEvent.click(selection)
+    fireEvent.click(screen.getByRole('button', { name: 'Disable' }))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'danger',
+          description: 'Try again. Reference: trigger-ref'
+        })
+      )
+    )
+    expect(screen.getByRole('checkbox', { name: 'Select current page' })).toBeChecked()
+  })
+
   it('confirms bulk deletion and prevents closing or repeating a pending request', async () => {
     let finish!: () => void
     vi.mocked(deleteAutomationTriggerAction).mockImplementation(
       () =>
         new Promise(resolve => {
-          finish = () => resolve(previewTrigger)
+          finish = () => resolve(actionOk(previewTrigger))
         })
     )
     render(<AutomationTriggersPreview />)
