@@ -47,3 +47,25 @@ it('fails and releases a Dockerfile build if the initial phase write fails', asy
   expect(job.status).toBe('failed');
   expect(lifecycle.activeBuildIds()).toEqual([]);
 });
+
+it('rejects a digest as a Dockerfile build target before queueing the job', async () => {
+  const jobs = { createQueuedJob: jest.fn() };
+  const builder = new ContainerImageBuilderService(
+    jobs as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { assertEnabled: jest.fn() } as never,
+    {} as never,
+  );
+  await expect(
+    builder.startBuild({
+      name: 'Build',
+      targetImage: 'local/target@sha256:' + 'a'.repeat(64),
+      baseImage: 'local/base',
+      dockerfile: 'FROM local/base',
+    }),
+  ).rejects.toThrow('writable tag');
+  expect(jobs.createQueuedJob).not.toHaveBeenCalled();
+});

@@ -9,6 +9,12 @@ export type BuildValidation = {
 
 const requiredMicrogContextPaths = ['apks/GmsCore.apk', 'permissions/privapp-permissions-microg.xml']
 
+export const buildTargetImageError = (targetImage: string) => {
+  if (!targetImage.trim()) return 'Target image is required.'
+  if (targetImage.includes('@')) return 'Target image must use a writable tag.'
+  return undefined
+}
+
 export const buildValidation = (
   values: BuilderValues,
   contextFiles: ContainerImageBuildContextFile[],
@@ -16,7 +22,8 @@ export const buildValidation = (
 ): BuildValidation => {
   const errors: string[] = []
   const warnings: string[] = []
-  if (!values.targetImage.trim()) errors.push('Target image is required.')
+  const targetError = buildTargetImageError(values.targetImage)
+  if (targetError) errors.push(targetError)
   if (!values.baseImage.trim()) errors.push('Base image is required.')
   if (!/^\s*FROM\s+\S+/im.test(values.dockerfile)) errors.push('Dockerfile needs a FROM instruction.')
 

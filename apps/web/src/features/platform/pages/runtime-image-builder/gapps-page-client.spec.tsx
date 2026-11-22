@@ -59,6 +59,24 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
     expect(screen.getByRole('link', { name: 'Custom builder' })).toBeTruthy()
   })
 
+  it('requires a writable target tag before queueing a build', () => {
+    render(
+      <RuntimeGappsImageBuilderPageClient
+        presetResponse={presetResponse}
+        initialJob={null}
+      />
+    )
+    const target = screen.getByRole('textbox', { name: 'Target image' })
+    fireEvent.change(target, { target: { value: 'local/image@sha256:' + 'a'.repeat(64) } })
+    const build = screen.getByRole('button', { name: 'Build image' })
+    expect(build).toBeDisabled()
+    expect(screen.getByText('Target image must use a writable tag.')).toBeVisible()
+    fireEvent.click(build)
+    expect(sendBff).not.toHaveBeenCalled()
+    fireEvent.change(target, { target: { value: 'local/image:ready' } })
+    expect(build).toBeEnabled()
+  })
+
   it('shows progress beside a live log that follows the latest output', () => {
     const scrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight')
     Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => 480 })

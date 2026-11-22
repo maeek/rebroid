@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { sendBff } from '@/lib/http/bff'
+import { buildTargetImageError } from '../model/build-validation'
 import { gappsBuildPhases } from '../model/gapps-build'
 import { useActiveImageBuild } from './use-active-image-build'
 import type {
@@ -30,6 +31,7 @@ export interface GappsBuildController {
   isSettingDefault: boolean
   preset: GappsBuildPreset | undefined
   targetImage: string
+  targetImageError?: string
   cancelBuild: () => Promise<void>
   clearCache: () => Promise<void>
   selectVersion: (version: SupportedGappsAndroidVersion) => void
@@ -62,6 +64,7 @@ export const useGappsBuildController = ({
   } = useActiveImageBuild(initialJob)
   const [isClearing, setIsClearing] = useState(false)
   const clearing = useRef(false)
+  const targetImageError = buildTargetImageError(targetImage)
   const currentPhaseIndex = gappsBuildPhases.findIndex(phase => phase.id === (activeJob?.phase ?? 'queued'))
 
   const selectVersion = (version: SupportedGappsAndroidVersion) => {
@@ -71,7 +74,7 @@ export const useGappsBuildController = ({
   }
 
   const startBuild = async () => {
-    if (clearing.current || !presetResponse.resources.canBuild || !preset || !targetImage.trim()) return
+    if (clearing.current || !presetResponse.resources.canBuild || !preset || targetImageError) return
     await startActiveBuild(
       () => sendBff<ContainerImageBuildJob>('/api/bff/platform/image-builds/gapps', { androidVersion, targetImage }),
       'Google Play image queued'
@@ -109,6 +112,7 @@ export const useGappsBuildController = ({
     isSettingDefault,
     preset,
     targetImage,
+    targetImageError,
     cancelBuild,
     clearCache,
     selectVersion,

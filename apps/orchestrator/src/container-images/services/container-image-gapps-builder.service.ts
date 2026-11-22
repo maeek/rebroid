@@ -103,9 +103,6 @@ export class ContainerImageGappsBuilderService
       dto.targetImage ?? preset.defaultTargetImage,
       'Target image',
     );
-    if (targetImage.includes('@')) {
-      throw new ConflictException('Target image must use a writable tag.');
-    }
     const dockerfile = this.dockerfile(preset.baseImage, dto.androidVersion);
     const job = await this.jobs.createQueuedJob({
       recipeId: null,

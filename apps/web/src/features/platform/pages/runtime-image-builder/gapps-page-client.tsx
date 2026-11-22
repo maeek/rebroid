@@ -35,7 +35,7 @@ export const GappsBuilderContent = ({
           loading ||
           !resources.canBuild ||
           !controller.preset ||
-          !controller.targetImage.trim() ||
+          Boolean(controller.targetImageError) ||
           controller.isClearing ||
           controller.isCancelling
         }

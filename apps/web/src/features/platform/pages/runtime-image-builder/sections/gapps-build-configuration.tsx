@@ -19,6 +19,7 @@ type GappsConfigurationState = Pick<
   | 'androidVersion'
   | 'selectVersion'
   | 'targetImage'
+  | 'targetImageError'
   | 'setTargetImage'
   | 'isRunning'
   | 'isStarting'
@@ -78,6 +79,7 @@ export const GappsBuildConfiguration = ({
       <FormField
         controlId='gapps-target-image'
         label='Target image'
+        error={loading ? undefined : controller.targetImageError}
         description='Local image name and tag used after the build completes.'
         layout='vertical'
       >
