@@ -52,7 +52,7 @@ const updateSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('reset-runtime') })
 ])
 
-export const GET = () => runRouteHandler(getServerOrchestratorUiSettings)
+export const GET = () => runRouteHandler(() => getServerOrchestratorUiSettings('api'))
 
 export const POST = (request: Request) =>
   runRouteHandler(async () => {

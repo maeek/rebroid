@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET, POST } from '@/app/api/bff/preferences/ui-settings/route'
 import { getCurrentUser } from '@/server/auth/authorization'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { orchestratorSettingsClient } from '@/server/orchestrator/settings/client'
 import { getWebSettings } from '@/server/web-settings/store'
@@ -89,6 +90,18 @@ describe('Browser settings reads', () => {
       ok: true,
       data: { defaultContainerImage: defaultOrchestratorUiSettings.defaultContainerImage, orchestratorApiUrl: '' }
     })
+  })
+
+  it('returns a 401 for an expired API session before reading settings', async () => {
+    vi.mocked(getCurrentUser).mockImplementationOnce(async mode => {
+      if (mode === 'api') throw new PublicActionError('Sign in to continue.', { code: 'unauthenticated', status: 401 })
+      throw new Error('page redirect')
+    })
+    const response = await GET()
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toMatchObject({ ok: false, error: { code: 'unauthenticated' } })
+    expect(getWebSettings).not.toHaveBeenCalled()
+    expect(orchestratorSettingsClient.getSettings).not.toHaveBeenCalled()
   })
 
   it('checks authentication before loading protected settings', async () => {

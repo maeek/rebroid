@@ -40,26 +40,22 @@ const recordUpdate = (
     ...(failureDetails ? { outcome: 'failure', details: failureDetails } : {})
   })
 
-export const saveGeneralUiSettings = async (settings: GeneralUiSettings) => {
+const saveWebPreferences = async (
+  settings: GeneralUiSettings | AiUiSettings,
+  scope: 'general' | 'general_reset' | 'ai'
+) => {
   const admin = await requireAdmin('api')
   const web = await saveWebSettings(settings)
-  recordUpdate(admin, 'general')
+  recordUpdate(admin, scope)
   return combineSettings(web, await readOptionalRuntimeSettings())
 }
 
-export const resetGeneralUiSettings = async () => {
-  const admin = await requireAdmin('api')
-  const web = await saveWebSettings(pickGeneralUiSettings(defaultWebSettingsResponse))
-  recordUpdate(admin, 'general_reset')
-  return combineSettings(web, await readOptionalRuntimeSettings())
-}
+export const saveGeneralUiSettings = (settings: GeneralUiSettings) => saveWebPreferences(settings, 'general')
 
-export const saveAiUiSettings = async (settings: AiUiSettings) => {
-  const admin = await requireAdmin('api')
-  const web = await saveWebSettings(settings)
-  recordUpdate(admin, 'ai')
-  return combineSettings(web, await readOptionalRuntimeSettings())
-}
+export const resetGeneralUiSettings = () =>
+  saveWebPreferences(pickGeneralUiSettings(defaultWebSettingsResponse), 'general_reset')
+
+export const saveAiUiSettings = (settings: AiUiSettings) => saveWebPreferences(settings, 'ai')
 
 export const saveRuntimeUiSettings = async (settings: RuntimeUiSettingsPatch) => {
   const admin = await requireAdmin('api')

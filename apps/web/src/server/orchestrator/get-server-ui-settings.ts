@@ -12,9 +12,9 @@ import { getOrchestratorBaseUrl } from './config'
 import { orchestratorSettingsClient } from './settings/client'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
-const loadServerUiSettings = async (required: boolean): Promise<OrchestratorUiSettings> => {
+const loadServerUiSettings = async (required: boolean, response?: 'api'): Promise<OrchestratorUiSettings> => {
   await connection()
-  const user = await getCurrentUser()
+  const user = await getCurrentUser(response)
 
   const [webSettings, orchestratorSettings] = await Promise.all([
     getWebSettings().catch(error => {
@@ -44,5 +44,5 @@ const loadServerUiSettings = async (required: boolean): Promise<OrchestratorUiSe
   }
 }
 
-export const getServerOrchestratorUiSettings = cache(() => loadServerUiSettings(false))
+export const getServerOrchestratorUiSettings = cache((response?: 'api') => loadServerUiSettings(false, response))
 export const getRequiredServerOrchestratorUiSettings = cache(() => loadServerUiSettings(true))
