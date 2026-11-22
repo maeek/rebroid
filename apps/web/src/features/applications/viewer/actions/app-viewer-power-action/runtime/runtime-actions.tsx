@@ -1,22 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { getNormalizedProfileName } from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
 import { createRuntimeMenuActions } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-menu-actions'
 import {
-  closeDialogOnSuccess,
-  openPrimaryRuntimeAction,
-  restartAppRuntime,
-  startAppRuntime,
-  stopAppRuntime
-} from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-operations'
-import { recreateApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+  recreateApplicationAction,
+  requestApplicationStartAction,
+  requestApplicationStopAction
+} from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { rememberApplicationProfile } from '@/shared/model/application-profile/profile-history'
+import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import type {
   PowerActionRuntimeHandlersOptions,
   RuntimeActionPhase
 } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
-import type { ApplicationProfileMode } from '@/shared/contracts/application'
+const stopRuntime = async (appId: string) => {
+  unwrapActionResult(await requestApplicationStopAction(appId))
+  notifyRecentAppsUpdated()
+}
 
 export const usePowerActionRuntimeHandlers = ({
   app,
@@ -34,46 +36,63 @@ export const usePowerActionRuntimeHandlers = ({
   const [actionPhase, setActionPhase] = useState<RuntimeActionPhase>(null)
   const [recreateDialogOpen, setRecreateDialogOpen] = useState(false)
 
-  const handleStart = (options?: { profileMode?: ApplicationProfileMode; profileName?: string }) =>
-    startAppRuntime({ app, options, runAction, setActionPhase })
+  const pending = useRef(false)
 
-  const handleProfileStart = () => {
-    void handleStart({
-      profileMode,
-      profileName: getNormalizedProfileName(profileMode, profileName)
-    }).then(success => closeDialogOnSuccess(success, () => setStartDialogOpen(false)))
+  const run = async (
+    phase: NonNullable<RuntimeActionPhase>,
+    title: string,
+    action: (appId: string) => Promise<unknown>
+  ) => {
+    if (!app || pending.current) return false
+    pending.current = true
+    setActionPhase(phase)
+    try {
+      return await runAction(() => action(app.id), title)
+    } finally {
+      pending.current = false
+      setActionPhase(null)
+    }
   }
 
-  const handleStop = () => stopAppRuntime({ app, runAction, setActionPhase })
+  const startWithDefaults = () =>
+    run('starting', 'Could not start app', async id => unwrapActionResult(await requestApplicationStartAction(id)))
 
-  const handleStopConfirm = () => {
-    void handleStop().then(success => closeDialogOnSuccess(success, () => setStopDialogOpen(false)))
+  const handleProfileStart = async () => {
+    if (!app) return
+    const name = getNormalizedProfileName(profileMode, profileName)
+    const started = await run('starting', 'Could not start app', async id =>
+      unwrapActionResult(await requestApplicationStartAction(id, { profileMode, profileName: name }))
+    )
+    if (started) {
+      rememberApplicationProfile(app.id, { mode: profileMode, name })
+      setStartDialogOpen(false)
+    }
+  }
+
+  const handleStopConfirm = async () => {
+    if (await run('stopping', 'Could not stop app', stopRuntime)) setStopDialogOpen(false)
   }
 
   const handleRestart = async () => {
-    const didSucceed = await restartAppRuntime({ app, runAction, setActionPhase })
-    closeDialogOnSuccess(didSucceed, () => setRestartDialogOpen(false))
+    const restarted = await run('restarting', 'Could not restart app', async id => {
+      await stopRuntime(id)
+      unwrapActionResult(await requestApplicationStartAction(id))
+    })
+    if (restarted) setRestartDialogOpen(false)
   }
 
   const handleRecreate = async () => {
-    if (!app) return
-    setActionPhase('recreating')
-    const success = await runAction(
-      async () => unwrapActionResult(await recreateApplicationAction(app.id)),
-      'Could not recreate runtime'
+    const recreated = await run('recreating', 'Could not recreate runtime', async id =>
+      unwrapActionResult(await recreateApplicationAction(id))
     )
-    setActionPhase(null)
-    closeDialogOnSuccess(success, () => setRecreateDialogOpen(false))
+    if (recreated) setRecreateDialogOpen(false)
   }
 
   const handlePrimaryAction = () => {
-    openPrimaryRuntimeAction({
-      app,
-      canSwitchProfile,
-      onStart: () => void handleStart(),
-      onStartProfile: () => setStartDialogOpen(true),
-      onStop: () => setStopDialogOpen(true)
-    })
+    if (!app) return
+    if (app.running) setStopDialogOpen(true)
+    else if (canSwitchProfile) setStartDialogOpen(true)
+    else void startWithDefaults()
   }
 
   const menuActions = createRuntimeMenuActions({
@@ -82,7 +101,7 @@ export const usePowerActionRuntimeHandlers = ({
     canSwitchProfile,
     canStop,
     canRestart,
-    onStartDefaults: () => void handleStart(),
+    onStartDefaults: startWithDefaults,
     onStartProfile: () => setStartDialogOpen(true),
     onStop: () => setStopDialogOpen(true),
     onRestart: () => setRestartDialogOpen(true),

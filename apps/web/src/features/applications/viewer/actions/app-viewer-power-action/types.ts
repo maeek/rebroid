@@ -12,9 +12,7 @@ export type RuntimeMenuAction = {
   onSelect: () => void
 }
 
-export type RuntimeActionRunner = (action: () => Promise<unknown>, title: string) => Promise<boolean>
-
-export type SetActionPhase = (phase: RuntimeActionPhase) => void
+type RuntimeActionRunner = (action: () => Promise<unknown>, title: string) => Promise<boolean>
 
 export type PowerActionRuntimeHandlersOptions = {
   app?: AppDefinition
