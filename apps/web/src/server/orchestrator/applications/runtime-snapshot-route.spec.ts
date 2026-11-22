@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from '@/app/api/bff/applications/[id]/runtime/snapshot/route'
 import { getCurrentUser } from '@/server/auth/authorization'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { OrchestratorRequestError, request } from '@/server/orchestrator/request'
 
 vi.mock('server-only', () => ({}))
@@ -63,8 +64,13 @@ describe('application snapshot endpoint', () => {
   })
 
   it('requires authentication, permission and a valid application ID before requesting a snapshot', async () => {
-    vi.mocked(getCurrentUser).mockRejectedValueOnce(new Error('Session expired'))
+    vi.mocked(getCurrentUser).mockRejectedValueOnce(
+      new PublicActionError('Session expired', { code: 'unauthenticated', status: 401 })
+    )
     expect((await getSnapshot()).status).toBe(401)
+    expect(getCurrentUser).toHaveBeenCalledWith('api')
+    vi.mocked(getCurrentUser).mockRejectedValueOnce(new Error('Account store unavailable'))
+    expect((await getSnapshot()).status).toBe(500)
     vi.mocked(getCurrentUser).mockResolvedValue(account(false))
     expect((await getSnapshot()).status).toBe(403)
     expect((await getSnapshot('invalid')).status).toBe(400)

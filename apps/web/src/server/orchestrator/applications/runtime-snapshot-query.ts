@@ -16,13 +16,7 @@ const snapshotSchema = z.object({
 })
 
 export const readApplicationRuntimeSnapshot = async (id: string, signal?: AbortSignal) => {
-  const account = await getCurrentUser().catch(() => null)
-  if (!account) {
-    throw new PublicActionError('Sign in to view application snapshots.', {
-      code: 'unauthenticated',
-      status: 401
-    })
-  }
+  const account = await getCurrentUser('api')
   if (!hasPermission(account.effectivePermissions, 'applications:capture-screenshot')) {
     throw new PublicActionError('You do not have permission to view application snapshots.', {
       code: 'forbidden',
