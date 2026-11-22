@@ -3,12 +3,12 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
 import { allFilterValue } from './grid-query-utils'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type { AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 import type { DataGridFilterEntry } from '@/shared/ui/data-grid/data-grid-workspace'
 
 type FilterProps = {
-  applications: AndroidApplication[]
+  applications: ApplicationName[]
   gridQuery: AutomationTriggersGridQuery
   onUpdateGrid: (patch: Partial<AutomationTriggersGridQuery>) => void
 }

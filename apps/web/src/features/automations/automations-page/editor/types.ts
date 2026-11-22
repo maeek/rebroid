@@ -1,5 +1,5 @@
 import type { ActionResult } from '@/shared/actions/action-result'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AndroidApplication, ApplicationName } from '@/shared/contracts/application'
 import type {
   Automation,
   AutomationCommand,
@@ -13,7 +13,7 @@ import type { WorkflowHistoryRetention } from '@/shared/contracts/scheduled-task
 
 export interface AutomationsListPageProps {
   loading?: boolean
-  initialApplications: AndroidApplication[]
+  initialApplications: ApplicationName[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
   workflowHistoryRetention?: ActionResult<WorkflowHistoryRetention> | null

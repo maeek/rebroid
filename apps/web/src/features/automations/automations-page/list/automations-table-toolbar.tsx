@@ -3,7 +3,7 @@ import { IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { AutomationGridFilterControls, automationGridFilterSummary } from '../shared/automation-grid-filter-controls'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type { AutomationsGridPage, AutomationsGridQuery } from '@/shared/contracts/automation'
 
 export const AutomationsTableToolbar = ({
@@ -19,7 +19,7 @@ export const AutomationsTableToolbar = ({
   onUpdateGrid,
   children
 }: {
-  applications: AndroidApplication[]
+  applications: ApplicationName[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
   search: string

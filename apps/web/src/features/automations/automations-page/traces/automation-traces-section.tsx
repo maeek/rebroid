@@ -11,7 +11,7 @@ import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type { AutomationRunHistoryRow, AutomationRunStatus } from '@/shared/contracts/automation'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
@@ -73,7 +73,7 @@ export function AutomationTracesSection({
   loading = false
 }: {
   loading?: boolean
-  applications: Pick<AndroidApplication, 'id' | 'name'>[]
+  applications: ApplicationName[]
   runs: AutomationRunHistoryRow[]
   workflowId?: string
 }) {

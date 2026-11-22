@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listApplicationGallery } from '@/server/orchestrator/applications/application-gallery-query'
+import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
 import { getAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
@@ -7,7 +7,7 @@ import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { loadAutomationTracesPageData } from './page-data.server'
 import type { AutomationRun } from '@/shared/contracts/automation'
 vi.mock('@/server/orchestrator/applications/application-gallery-query', () => ({
-  listApplicationGallery: vi.fn()
+  listApplicationNames: vi.fn()
 }))
 vi.mock('@/server/orchestrator/automations/automation-management-actions', () => ({ getAutomationAction: vi.fn() }))
 vi.mock('@/server/orchestrator/automations/client', () => ({
@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(getAutomationAction).mockResolvedValue({ id: 'workflow' } as Awaited<
     ReturnType<typeof getAutomationAction>
   >)
-  vi.mocked(listApplicationGallery).mockResolvedValue([])
+  vi.mocked(listApplicationNames).mockResolvedValue([])
   vi.mocked(orchestratorAutomationsClient.listRunHistory).mockResolvedValue([])
   vi.mocked(getCurrentUserContext).mockResolvedValue({
     ownerUserId: 'owner',

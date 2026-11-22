@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { loadAutomationTriggersPageData } from './automation-triggers/page-data.server'
@@ -8,6 +9,7 @@ import { loadAutomationsListPageData } from './automations-list/page-data.server
 vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
   listApplicationsAction: vi.fn()
 }))
+vi.mock('@/server/orchestrator/applications/application-gallery-query', () => ({ listApplicationNames: vi.fn() }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('@/server/orchestrator/scheduled-tasks/workflow-history-retention', () => ({
   loadWorkflowHistoryRetention: vi.fn()
@@ -25,6 +27,7 @@ it.each([loadAutomationsListPageData, loadAutomationTriggersPageData])(
       ReturnType<typeof getCurrentUserContext>
     >)
     await expect(load({})).resolves.toMatchObject({ ok: false, error: { code: 'forbidden' } })
+    expect(listApplicationNames).not.toHaveBeenCalled()
     expect(listApplicationsAction).not.toHaveBeenCalled()
     expect(orchestratorAutomationsClient.listOptions).not.toHaveBeenCalled()
     expect(orchestratorAutomationsClient.listTriggersGrid).not.toHaveBeenCalled()
@@ -39,6 +42,7 @@ it.each([loadAutomationsListPageData, loadAutomationTriggersPageData])(
       ownerUserId: 'owner',
       permissions: { 'automations:manage': true }
     } as Awaited<ReturnType<typeof getCurrentUserContext>>)
+    vi.mocked(listApplicationNames).mockRejectedValue(new Error('internal address'))
     vi.mocked(listApplicationsAction).mockRejectedValue(new Error('internal address'))
     const result = await load({})
     expect(result).toMatchObject({ ok: false, error: { requestId: result.requestId, code: 'internal' } })

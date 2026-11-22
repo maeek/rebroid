@@ -21,7 +21,7 @@ import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-run-result'
 import { AutomationsTableToolbar } from './automations-table-toolbar'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type { AutomationGridRow, AutomationsGridPage, AutomationsGridQuery } from '@/shared/contracts/automation'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -52,7 +52,7 @@ export function AutomationsTable({
   loading = false
 }: {
   loading?: boolean
-  applications: AndroidApplication[]
+  applications: ApplicationName[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
 }) {

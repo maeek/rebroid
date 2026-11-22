@@ -14,7 +14,7 @@ import { ResourceLink } from '@/shared/ui/resource-link'
 import { StateView } from '@/shared/ui/state-view'
 import { AutomationRunTrace } from './automation-run-trace'
 import { AutomationTracesSection } from './automation-traces-section'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type { Automation, AutomationRun, AutomationRunHistoryRow } from '@/shared/contracts/automation'
 
 export function AutomationTracesPage({
@@ -25,7 +25,7 @@ export function AutomationTracesPage({
   selectedRunId,
   loading = false
 }: {
-  applications: Pick<AndroidApplication, 'id' | 'name'>[]
+  applications: ApplicationName[]
   automation: Pick<Automation, 'id' | 'name'> | null
   loading?: boolean
   runs: AutomationRunHistoryRow[]

@@ -1,5 +1,5 @@
 import { runSafeAction } from '@/server/actions/safe-action'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
 import { requireAutomationUser } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { loadWorkflowHistoryRetention } from '@/server/orchestrator/scheduled-tasks/workflow-history-retention'
@@ -12,7 +12,7 @@ export const loadAutomationsListPageData = (searchParams: WorkflowGridSearchPara
       const gridQuery = workflowGridQueryFromSearchParams(searchParams)
       const [automationsPage, applications, workflowHistoryRetention] = await Promise.all([
         orchestratorAutomationsClient.listGrid(user.ownerUserId, gridQuery),
-        listApplicationsAction(),
+        listApplicationNames(user),
         loadWorkflowHistoryRetention()
       ])
       return { applications, automationsPage, gridQuery, workflowHistoryRetention }

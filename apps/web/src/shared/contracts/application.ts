@@ -15,6 +15,7 @@ export type ApplicationPowerAcknowledgement = Pick<
   ApplicationCommandResult,
   'status' | 'lifecycleStage' | 'message' | 'profile'
 >
+export type ApplicationName = Pick<AndroidApplication, 'id' | 'name'>
 export type AndroidApplicationSummary = OrchestratorApiSchemas['AndroidApplicationSummaryResponseDto']
 export type AndroidApplicationDetailState = OrchestratorApiSchemas['AndroidApplicationDetailStateDto']
 export type ApplicationDetailRefresh = {
