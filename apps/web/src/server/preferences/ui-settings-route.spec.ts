@@ -93,11 +93,11 @@ describe('Browser settings reads', () => {
   })
 
   it('returns a 401 for an expired API session before reading settings', async () => {
-    vi.mocked(getCurrentUser).mockImplementationOnce(async mode => {
-      if (mode === 'api') throw new PublicActionError('Sign in to continue.', { code: 'unauthenticated', status: 401 })
-      throw new Error('page redirect')
-    })
+    vi.mocked(getCurrentUser).mockRejectedValueOnce(
+      new PublicActionError('Sign in to continue.', { code: 'unauthenticated', status: 401 })
+    )
     const response = await GET()
+    expect(getCurrentUser).toHaveBeenCalledExactlyOnceWith('api')
     expect(response.status).toBe(401)
     await expect(response.json()).resolves.toMatchObject({ ok: false, error: { code: 'unauthenticated' } })
     expect(getWebSettings).not.toHaveBeenCalled()
