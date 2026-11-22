@@ -54,6 +54,19 @@ describe('OrchestratorSettingsStore', () => {
     });
   });
 
+  it('exposes only the public settings fields', () => {
+    const stored = { ...store.defaults(), privateExtension: 'internal' };
+    expect(Object.keys(store.toPublicSettings(stored)).sort()).toEqual([
+      'androidRendering',
+      'defaultContainerImage',
+      'defaultInactivityTimeoutSeconds',
+      'defaultScrcpyTransport',
+      'dockerImageRegistry',
+      'maxApkUploadSizeMb',
+      'services',
+    ]);
+  });
+
   it('serializes concurrent read-modify-write updates without losing fields', async () => {
     const settings = new SettingsService(store, {} as never);
     await expect(settings.readAndroidRendering()).resolves.toEqual({
@@ -87,7 +100,7 @@ describe('OrchestratorSettingsStore', () => {
 
   it('restores runtime defaults and connections while preserving unrelated settings', async () => {
     const settings = new SettingsService(store, {} as never);
-    const defaults = store.normalizeSettings(store.defaults());
+    const defaults = await store.getStoredSettings();
     const configured = await store.updateSettings((current) => ({
       ...current,
       androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' },

@@ -45,20 +45,15 @@ export class OrchestratorSettingsStore {
 
   constructor(private readonly config: ConfigService) {}
 
-  async readStoredSettings() {
+  async getStoredSettings() {
+    let stored: Partial<StoredOrchestratorSettings> = {};
     try {
       const content = await readFile(this.settingsPath(), 'utf-8');
-      return JSON.parse(content) as Partial<StoredOrchestratorSettings>;
+      stored = JSON.parse(content) as Partial<StoredOrchestratorSettings>;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return {};
-      }
-      throw error;
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
-  }
-
-  async getStoredSettings() {
-    return this.normalizeSettings(await this.readStoredSettings());
+    return this.normalizeSettings(stored);
   }
 
   updateSettings(
@@ -111,7 +106,7 @@ export class OrchestratorSettingsStore {
     };
   }
 
-  normalizeSettings(
+  private normalizeSettings(
     value: Partial<StoredOrchestratorSettings>,
   ): StoredOrchestratorSettings {
     const defaults = this.defaults();
@@ -159,12 +154,15 @@ export class OrchestratorSettingsStore {
   toPublicSettings(
     settings: StoredOrchestratorSettings,
   ): OrchestratorSettingsDto {
-    const publicSettings = { ...settings };
-    delete (publicSettings as Partial<StoredOrchestratorSettings>).aiProviders;
-    delete (publicSettings as Partial<StoredOrchestratorSettings>).featureFlags;
-    delete (publicSettings as Partial<StoredOrchestratorSettings>)
-      .dockerOperationLimits;
-    return publicSettings;
+    return {
+      androidRendering: settings.androidRendering,
+      defaultContainerImage: settings.defaultContainerImage,
+      dockerImageRegistry: settings.dockerImageRegistry,
+      defaultScrcpyTransport: settings.defaultScrcpyTransport,
+      defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
+      maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
+      services: settings.services,
+    };
   }
 
   private defaultFeatureFlags(): PersistedFeatureFlags {

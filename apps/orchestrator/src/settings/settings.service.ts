@@ -20,13 +20,8 @@ export class SettingsService {
     private readonly aiProviders: AiProviderSettingsService,
   ) {}
 
-  /**
-   * Loads persisted settings and fills in any missing values from config defaults.
-   */
   async getSettings(): Promise<OrchestratorSettingsDto> {
-    const stored = await this.store.readStoredSettings();
-    const normalized = this.store.normalizeSettings(stored);
-    return this.store.toPublicSettings(normalized);
+    return this.store.toPublicSettings(await this.store.getStoredSettings());
   }
 
   async getDockerOperationLimits() {

@@ -115,7 +115,8 @@ describe('AiProviderModelDownloadService', () => {
         },
       }),
     );
-    jest.spyOn(store, 'readStoredSettings').mockResolvedValue({
+    let settings = {
+      ...store.defaults(),
       aiProviders: [
         normalizeAiProvider({
           id: 'local',
@@ -142,8 +143,10 @@ describe('AiProviderModelDownloadService', () => {
           ],
         }),
       ],
-    });
-    let settings = await store.getStoredSettings();
+    };
+    jest
+      .spyOn(store, 'getStoredSettings')
+      .mockImplementation(async () => settings);
     jest.spyOn(store, 'updateSettings').mockImplementation(async (update) => {
       settings = await update(settings);
       return settings;
