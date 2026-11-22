@@ -30,6 +30,7 @@ it('documents OpenAI billing issues as read-only provider response data', async 
     for (const path of [
       '/api/v1/settings/ai-providers',
       '/api/v1/settings/ai-providers/{providerId}',
+      '/api/v1/settings/ai-providers/{providerId}/health',
       '/api/v1/settings/ai-providers/{providerId}/models/downloads',
     ]) {
       expect(committed.paths[path]).toEqual(generated.paths[path]);

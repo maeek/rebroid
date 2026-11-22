@@ -11,7 +11,12 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   AutomationAiProviderCandidateHealthDto,
   AutomationAiProviderModelDto,
@@ -34,7 +39,10 @@ import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
 import { SettingsService } from './settings.service';
 import { AndroidRenderingSettingsDto } from './dto/android-rendering-settings.dto';
-import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
+import {
+  modelRoles,
+  type AutomationAiProviderModelRole,
+} from './contracts/ai-provider';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -96,6 +104,8 @@ export class SettingsController {
 
   @RequiresFeature('feature.ai')
   @Get('ai-providers/:providerId/health')
+  @ApiQuery({ name: 'modelId', required: false, type: String })
+  @ApiQuery({ name: 'role', required: false, enum: modelRoles })
   @ApiOkResponse({ type: AutomationAiProviderHealthDto })
   checkAiProviderHealth(
     @Param('providerId') providerId: string,

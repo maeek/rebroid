@@ -1,6 +1,7 @@
-import type {
-  AutomationAiProviderModel,
-  AutomationAiProviderModelRole,
+import {
+  modelRoles,
+  type AutomationAiProviderModel,
+  type AutomationAiProviderModelRole,
 } from './contracts/ai-provider';
 
 export const normalizeDefaultModel = (models: AutomationAiProviderModel[]) => {
@@ -25,5 +26,3 @@ export const normalizeDefaultModel = (models: AutomationAiProviderModel[]) => {
     defaultFor: model.roles.filter((role) => defaultByRole.get(role) === index),
   }));
 };
-
-export const modelRoles = ['controller', 'planner', 'vision'] as const;

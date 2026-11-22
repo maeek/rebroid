@@ -12,6 +12,10 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import {
+  modelRoles,
+  type AutomationAiProviderModelRole,
+} from '../contracts/ai-provider';
 import { openAiBillingCodes } from '../../common/openai-billing';
 
 export class AutomationAiProviderModelSettingsDto {
@@ -112,14 +116,14 @@ export class AutomationAiProviderModelDto {
   label!: string;
 
   @ApiPropertyOptional({
-    enum: ['controller', 'planner', 'vision'],
+    enum: modelRoles,
     isArray: true,
     default: ['planner'],
   })
   @IsOptional()
   @IsArray()
-  @IsIn(['controller', 'planner', 'vision'], { each: true })
-  roles!: Array<'controller' | 'planner' | 'vision'>;
+  @IsIn(modelRoles, { each: true })
+  roles!: AutomationAiProviderModelRole[];
 
   @ApiProperty({ type: AutomationAiProviderModelSettingsDto })
   @ValidateNested()
@@ -138,14 +142,14 @@ export class AutomationAiProviderModelDto {
   enabled!: boolean;
 
   @ApiPropertyOptional({
-    enum: ['controller', 'planner', 'vision'],
+    enum: modelRoles,
     isArray: true,
     default: [],
   })
   @IsOptional()
   @IsArray()
-  @IsIn(['controller', 'planner', 'vision'], { each: true })
-  defaultFor!: Array<'controller' | 'planner' | 'vision'>;
+  @IsIn(modelRoles, { each: true })
+  defaultFor!: AutomationAiProviderModelRole[];
 }
 
 export class AutomationAiProviderDto {

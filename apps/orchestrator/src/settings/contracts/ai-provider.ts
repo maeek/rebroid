@@ -29,7 +29,8 @@ export interface AutomationAiProviderModel {
   capabilities?: AutomationAiProviderModelCapabilities;
 }
 
-export type AutomationAiProviderModelRole = 'controller' | 'planner' | 'vision';
+export const modelRoles = ['controller', 'planner', 'vision'] as const;
+export type AutomationAiProviderModelRole = (typeof modelRoles)[number];
 
 export interface AutomationAiProviderModelCapabilities {
   streaming?: boolean;

@@ -4320,9 +4320,9 @@ export interface operations {
     };
     SettingsController_checkAiProviderHealth: {
         parameters: {
-            query: {
-                modelId: string;
-                role: string;
+            query?: {
+                modelId?: string;
+                role?: "controller" | "planner" | "vision";
             };
             header?: never;
             path: {
@@ -6488,10 +6488,10 @@ export interface operations {
                 q?: string;
                 tag?: string;
                 targetApplicationId?: string;
-                enabled?: "true" | "false";
                 status?: "never_run" | "success" | "failed" | "running";
                 lastRun?: "all" | "never" | "7d" | "30d" | "90d";
                 sort?: string;
+                enabled?: "true" | "false";
             };
             header?: never;
             path?: never;

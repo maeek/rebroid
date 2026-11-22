@@ -1,5 +1,5 @@
 import { defaultAiProviders, MASKED_API_KEY } from './ai-provider-defaults';
-import { modelRoles, normalizeDefaultModel } from './ai-provider-default-model';
+import { normalizeDefaultModel } from './ai-provider-default-model';
 import {
   nullableInteger,
   nullableNumber,
@@ -11,6 +11,7 @@ import {
   type AutomationAiProvider,
   type AutomationAiProviderModel,
   type AutomationAiProviderModelCapabilities,
+  modelRoles,
   type AutomationAiProviderModelRole,
   type AutomationAiProviderProtocol,
   type AutomationAiProviderServerFlavor,

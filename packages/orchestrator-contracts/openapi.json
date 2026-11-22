@@ -305,7 +305,7 @@
           },
           {
             "name": "modelId",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"
@@ -313,9 +313,14 @@
           },
           {
             "name": "role",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
+              "enum": [
+                "controller",
+                "planner",
+                "vision"
+              ],
               "type": "string"
             }
           }
@@ -4121,18 +4126,6 @@
             }
           },
           {
-            "name": "enabled",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "true",
-                "false"
-              ]
-            }
-          },
-          {
             "name": "status",
             "required": false,
             "in": "query",
@@ -4168,6 +4161,18 @@
             "schema": {
               "example": "updatedAt:desc,name:asc",
               "type": "string"
+            }
+          },
+          {
+            "name": "enabled",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
             }
           }
         ],
@@ -11124,7 +11129,6 @@
         },
         "required": [
           "id",
-          "name",
           "targetImage",
           "baseImage",
           "runtimeKind",
@@ -11133,7 +11137,8 @@
           "dockerfile",
           "contextFileIdsJson",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "name"
         ]
       },
       "CreateContainerImageRecipeDto": {
@@ -11353,19 +11358,19 @@
           "id",
           "targetImage",
           "baseImage",
-          "status",
-          "buildKind",
-          "phase",
           "runtimeKind",
           "gmsMode",
           "signatureSpoofing",
-          "cacheState",
-          "validationResults",
           "dockerfile",
           "contextFileIdsJson",
-          "logTail",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "status",
+          "buildKind",
+          "phase",
+          "cacheState",
+          "validationResults",
+          "logTail"
         ]
       },
       "GappsBuildPresetDto": {
