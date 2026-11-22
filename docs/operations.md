@@ -175,7 +175,8 @@ Preview the reported paths and resources first. The account-session schema requi
 database. Older web databases are rejected at startup.
 
 These scripts discover base-stack volumes by name and managed resources by label on the current
-Docker engine. Review the dry run before executing on a host with other Rebroid deployments.
+Docker engine. Execution completes resource discovery and validates local removal paths before deleting state.
+Review the dry run before executing on a host with other Rebroid deployments.
 The test overlay uses different state volume names. To discard its Compose volumes, run
 `docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml down --volumes` with the same
 project name used to start it. This deletes the test stack's accounts, databases, and generated
