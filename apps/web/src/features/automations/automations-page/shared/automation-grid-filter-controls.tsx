@@ -36,7 +36,7 @@ export const automationGridFilterSummary = ({ applications, gridQuery, onUpdateG
   )
   if (gridQuery.enabled) add('enabled', 'State', gridQuery.enabled === 'true' ? 'Enabled' : 'Disabled')
   add('status', 'Status')
-  add('lastRun', 'Last run')
+  if (gridQuery.lastRun !== allFilterValue) add('lastRun', 'Last run')
   return entries
 }
 
@@ -53,16 +53,14 @@ export const AutomationGridFilterControls = ({
       layout='vertical'
     >
       <Select
-        value={gridQuery.tag ?? allFilterValue}
-        onValueChange={nextValue =>
-          onUpdateGrid({ tag: nextValue === allFilterValue ? undefined : nextValue, page: 1 })
-        }
+        value={gridQuery.tag ?? ''}
+        onValueChange={nextValue => onUpdateGrid({ tag: nextValue || undefined, page: 1 })}
       >
         <SelectTrigger className='w-full'>
-          <SelectValue placeholder='Tag' />
+          <SelectValue placeholder='All tags' />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={allFilterValue}>All tags</SelectItem>
+          <SelectItem value=''>All tags</SelectItem>
           {tags.map(tag => (
             <SelectItem
               key={tag}

@@ -21,11 +21,11 @@ import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { buildAutomationTagCatalog } from '../shared/automation-tags'
+import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
 import {
   applyTriggerTargetApplication,
   applyTriggerWorkflow,
-  buildAutomationTriggersGridHref,
   deletedTriggerIdsFromResults,
   editTriggerFormState,
   newTriggerFormState,
@@ -110,7 +110,7 @@ export function AutomationTriggersPage({
   const selectedTriggers = selectedTriggersFromIds(triggersPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<AutomationTriggersGridQuery>) => {
-    router.push(buildAutomationTriggersGridHref({ gridQuery, pageSize: triggersPage.pageSize, patch }))
+    router.push(buildAutomationGridHref('/automations/triggers', { gridQuery, pageSize: triggersPage.pageSize, patch }))
   }
 
   const openCreate = () => {

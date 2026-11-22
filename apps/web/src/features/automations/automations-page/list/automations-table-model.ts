@@ -1,11 +1,4 @@
-import { compactGridParams } from '../shared/grid-query-utils'
-import type { AutomationGridRow, AutomationsGridQuery } from '@/shared/contracts/automation'
-
-type AutomationsGridHrefInput = {
-  gridQuery: AutomationsGridQuery
-  pageSize: number
-  patch: Partial<AutomationsGridQuery>
-}
+import type { AutomationGridRow } from '@/shared/contracts/automation'
 
 type AutomationOperationToast = {
   title: string
@@ -21,17 +14,6 @@ export const retainPageAutomationSelection = (automations: AutomationGridRow[], 
 
 export const selectedAutomationsFromIds = (automations: AutomationGridRow[], selectedIds: Set<string>) =>
   automations.filter(automation => selectedIds.has(automation.id))
-
-export const buildAutomationsGridHref = ({ gridQuery, pageSize, patch }: AutomationsGridHrefInput) => {
-  const params = compactGridParams({
-    ...gridQuery,
-    ...patch,
-    page: patch.page ?? gridQuery.page ?? 1,
-    pageSize: patch.pageSize ?? gridQuery.pageSize ?? pageSize
-  })
-
-  return `/automations${params.size ? `?${params.toString()}` : ''}`
-}
 
 export const deletedAutomationIdsFromResults = (items: AutomationGridRow[], results: PromiseSettledResult<unknown>[]) =>
   new Set(

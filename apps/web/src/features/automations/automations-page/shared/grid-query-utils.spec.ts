@@ -1,12 +1,17 @@
 import { parseAutomationGridSort } from '@rebroid/automation-core/grid-sort'
 import { describe, expect, it } from 'vitest'
-import { allFilterValue, compactGridParams } from './grid-query-utils'
+import { buildAutomationGridHref } from './grid-query-utils'
 
 describe('grid query utils', () => {
-  it('drops empty and all filter values', () => {
-    const params = compactGridParams({ q: ' apps ', tag: allFilterValue, page: 2, status: undefined })
-
-    expect(params.toString()).toBe('q=apps&page=2')
+  it('preserves literal searches and tags named all across workflow and trigger pagination', () => {
+    for (const path of ['/automations', '/automations/triggers'] as const) {
+      const href = buildAutomationGridHref(path, {
+        gridQuery: { q: ' all ', tag: 'all', lastRun: 'all' },
+        patch: { page: 2 },
+        pageSize: 20
+      })
+      expect(href).toBe(`${path}?q=all&tag=all&page=2&pageSize=20`)
+    }
   })
 
   it('parses sorting search params', () => {

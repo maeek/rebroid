@@ -1,20 +1,8 @@
 import { cronToSchedule, defaultSchedule, scheduleToCron } from '@/shared/model/automation-schedule'
-import { compactGridParams } from '../shared/grid-query-utils'
 import { appProfileMode, appProfileName, getScheduleCron, getStartPolicy } from './automation-trigger-utils'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
-import type {
-  AutomationOption,
-  AutomationTrigger,
-  AutomationTriggersGridQuery,
-  SaveAutomationTriggerInput
-} from '@/shared/contracts/automation'
-
-type TriggerGridHrefInput = {
-  gridQuery: AutomationTriggersGridQuery
-  pageSize: number
-  patch: Partial<AutomationTriggersGridQuery>
-}
+import type { AutomationOption, AutomationTrigger, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 
 type TriggerOperationToast = {
   title: string
@@ -28,17 +16,6 @@ export const defaultTriggerName = (automation: AutomationOption | undefined, app
   }
 
   return 'New workflow trigger'
-}
-
-export const buildAutomationTriggersGridHref = ({ gridQuery, pageSize, patch }: TriggerGridHrefInput) => {
-  const params = compactGridParams({
-    ...gridQuery,
-    ...patch,
-    page: patch.page ?? gridQuery.page ?? 1,
-    pageSize: patch.pageSize ?? gridQuery.pageSize ?? pageSize
-  })
-
-  return `/automations/triggers${params.size ? `?${params.toString()}` : ''}`
 }
 
 export const retainVisibleTriggerSelection = (triggers: AutomationTrigger[], selectedIds: Set<string>) => {

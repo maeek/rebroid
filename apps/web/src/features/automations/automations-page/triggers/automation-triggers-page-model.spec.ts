@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSchedule } from '@/shared/model/automation-schedule'
+import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import {
   applyTriggerTargetApplication,
   applyTriggerWorkflow,
-  buildAutomationTriggersGridHref,
   defaultTriggerName,
   deletedTriggerIdsFromResults,
   editTriggerFormState,
@@ -173,7 +173,7 @@ describe('automation triggers page model', () => {
 
   it('builds compact trigger grid hrefs', () => {
     expect(
-      buildAutomationTriggersGridHref({
+      buildAutomationGridHref('/automations/triggers', {
         gridQuery: {
           q: 'smoke',
           tag: 'nightly',
@@ -195,7 +195,7 @@ describe('automation triggers page model', () => {
 
   it('removes cleared filters from the URL while keeping unrelated state', () => {
     const url = new URL(
-      buildAutomationTriggersGridHref({
+      buildAutomationGridHref('/automations/triggers', {
         gridQuery: {
           q: 'night',
           tag: 'nightly',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import {
-  buildAutomationsGridHref,
   deletedAutomationIdsFromResults,
   retainPageAutomationSelection,
   selectedAutomationsFromIds,
@@ -13,7 +13,7 @@ const automation = (id: string): AutomationGridRow => ({ id, name: id }) as Auto
 describe('automations table model', () => {
   it('clears workflow filters without restoring their previous values', () => {
     const url = new URL(
-      buildAutomationsGridHref({
+      buildAutomationGridHref('/automations', {
         gridQuery: { q: 'smoke', tag: 'nightly', targetApplicationId: 'app-1', status: 'failed', lastRun: '7d' },
         pageSize: 20,
         patch: { tag: undefined, targetApplicationId: undefined, status: undefined, lastRun: undefined, page: 1 }
@@ -44,7 +44,7 @@ describe('automations table model', () => {
 
   it('builds compact workflow grid hrefs', () => {
     expect(
-      buildAutomationsGridHref({
+      buildAutomationGridHref('/automations', {
         gridQuery: {
           q: 'smoke',
           tag: 'nightly',

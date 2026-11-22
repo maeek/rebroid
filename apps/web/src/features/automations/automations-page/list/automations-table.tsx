@@ -17,9 +17,9 @@ import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
+import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-run-result'
 import {
-  buildAutomationsGridHref,
   deletedAutomationIdsFromResults,
   retainPageAutomationSelection,
   selectedAutomationsFromIds,
@@ -81,7 +81,7 @@ export function AutomationsTable({
   const selectedAutomations = selectedAutomationsFromIds(automationsPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<AutomationsGridQuery>) => {
-    router.push(buildAutomationsGridHref({ gridQuery, pageSize: automationsPage.pageSize, patch }))
+    router.push(buildAutomationGridHref('/automations', { gridQuery, pageSize: automationsPage.pageSize, patch }))
   }
 
   const deleteMany = async (items: AutomationGridRow[]) => {
