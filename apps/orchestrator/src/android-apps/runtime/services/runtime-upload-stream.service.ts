@@ -1,4 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { runtimeFileUploadLimit } from '@rebroid/android-application-core/redroid-runtime';
+import {
+  ConflictException,
+  Injectable,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import { type FileHandle, mkdtemp, open, rm, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,8 +23,6 @@ type RuntimeUploadConsumer = (
 
 @Injectable()
 export class RuntimeUploadStreamService {
-  readonly maxUploadBytes = 256 * 1024 * 1024;
-
   constructor(private readonly operations: AndroidAppsRuntimeOperationGate) {}
 
   consumeFileUpload(
@@ -39,7 +42,7 @@ export class RuntimeUploadStreamService {
           signal: controller.signal,
           consume,
           fieldName: 'file',
-          maxBytes: this.maxUploadBytes,
+          maxBytes: runtimeFileUploadLimit.bytes,
           missingError: () =>
             new ConflictException('A file upload is required.'),
           limitError: () => this.limitError(),
@@ -67,7 +70,7 @@ export class RuntimeUploadStreamService {
         new Transform({
           transform: (chunk: Buffer, _encoding, callback) => {
             sizeBytes += chunk.length;
-            if (sizeBytes > this.maxUploadBytes) {
+            if (sizeBytes > runtimeFileUploadLimit.bytes) {
               callback(this.limitError());
             } else {
               callback(null, chunk);
@@ -85,8 +88,6 @@ export class RuntimeUploadStreamService {
   }
 
   private limitError() {
-    return new ConflictException(
-      `File upload exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
-    );
+    return new PayloadTooLargeException(runtimeFileUploadLimit.message);
   }
 }

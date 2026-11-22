@@ -5,12 +5,13 @@ import { orchestratorAppRuntimeClient } from './runtime-client'
 afterEach(() => vi.unstubAllGlobals())
 
 it.each([
-  ['runtime_file_exists', 'runtime_file_exists'],
-  ['runtime_busy', 'conflict']
-])('translates upload conflict %s into the public result', async (upstreamCode, publicCode) => {
+  [409, 'runtime_file_exists', 'runtime_file_exists'],
+  [409, 'runtime_busy', 'conflict'],
+  [413, 'too_large', 'validation']
+] as const)('translates upload failure %s/%s into the public result', async (status, upstreamCode, publicCode) => {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue(Response.json({ code: upstreamCode, message: 'private diagnostic' }, { status: 409 }))
+    vi.fn().mockResolvedValue(Response.json({ code: upstreamCode, message: 'private diagnostic' }, { status }))
   )
   const result = orchestratorAppRuntimeClient.uploadDataFileStream(
     '00000000-0000-4000-8000-000000000001',
@@ -24,6 +25,6 @@ it.each([
     },
     (cause: unknown) => toActionError(cause, 'fixture')
   )
-  expect(error).toMatchObject({ code: publicCode, status: 409, requestId: 'fixture' })
+  expect(error).toMatchObject({ code: publicCode, status, requestId: 'fixture' })
   expect(error.message).not.toContain('private diagnostic')
 })

@@ -1,3 +1,4 @@
+import { runtimeFileUploadLimit } from '@rebroid/android-application-core/redroid-runtime'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
@@ -10,7 +11,6 @@ type RouteContext = { params: Promise<{ id: string }> }
 
 const pathSchema = z.string().trim().min(1).max(4096).startsWith('/data')
 const overwriteSchema = z.enum(['true', 'false']).default('false')
-const maxRuntimeUploadBytes = 512 * 1024 * 1024
 
 export const runtime = 'nodejs'
 
@@ -21,9 +21,9 @@ export const POST = (request: NextRequest, context: RouteContext) =>
     const overwrite = overwriteSchema.parse(request.nextUrl.searchParams.get('overwrite') ?? 'false') === 'true'
     const { app, user } = await assertCanTransferApplicationFiles(id)
     const upload = prepareStreamingMultipartUpload(request, {
-      maxBytes: maxRuntimeUploadBytes,
+      maxBytes: runtimeFileUploadLimit.bytes,
       missingMessage: 'File is required.',
-      tooLargeMessage: 'File upload exceeds the 512 MB limit.'
+      tooLargeMessage: runtimeFileUploadLimit.message
     })
     const uploaded = await orchestratorAppRuntimeClient.uploadDataFileStream(
       id,

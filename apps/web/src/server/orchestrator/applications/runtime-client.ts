@@ -1,3 +1,4 @@
+import { runtimeFileUploadLimit } from '@rebroid/android-application-core/redroid-runtime'
 import { z } from 'zod'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { emptyRequest, jsonRequest, OrchestratorRequestError, responseRequest, streamRequest } from '../request'
@@ -86,11 +87,14 @@ export const orchestratorAppRuntimeClient = {
       contentType,
       { signal }
     ).catch((error: unknown) => {
-      if (
-        error instanceof OrchestratorRequestError &&
-        error.status === 409 &&
-        error.details?.code === 'runtime_file_exists'
-      ) {
+      if (!(error instanceof OrchestratorRequestError)) throw error
+      if (error.status === 413) {
+        throw new PublicActionError(runtimeFileUploadLimit.message, {
+          code: 'validation',
+          status: 413
+        })
+      }
+      if (error.status === 409 && error.details?.code === 'runtime_file_exists') {
         throw new PublicActionError('A file with that name already exists.', {
           code: 'runtime_file_exists',
           status: 409

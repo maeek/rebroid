@@ -7,6 +7,12 @@ export const androidApplicationResourceLimits = {
   cpuLimitCpus: { min: 0.1, max: 128 },
 } as const;
 
+const runtimeFileUploadLimitMiB = 256;
+export const runtimeFileUploadLimit = {
+  bytes: runtimeFileUploadLimitMiB * 1024 * 1024,
+  message: `File upload exceeds the ${runtimeFileUploadLimitMiB} MB limit.`,
+} as const;
+
 export const androidRenderingModes = ["software", "host"] as const;
 
 export interface AndroidRenderingSettings {
