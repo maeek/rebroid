@@ -1,3 +1,4 @@
+import { isRecord } from '../../common/object-record';
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { z, ZodError, toJSONSchema } from 'zod';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
@@ -177,6 +178,3 @@ const normalizeJsonSchemaNode = (schema: unknown): unknown => {
     ),
   };
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value);

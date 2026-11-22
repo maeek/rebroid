@@ -1,3 +1,4 @@
+import { isRecord } from '../../common/object-record';
 import {
   actionInputBinding,
   actionInputBindingType,
@@ -10,7 +11,6 @@ import type {
   AvailableStepOutputs,
   AutomationConditionService,
 } from '../condition/automation-condition.service';
-import { isRecord } from './automation-definition-normalizer.utils';
 
 export const normalizeActionInputs = (
   registry: AutomationCommandRegistryService,

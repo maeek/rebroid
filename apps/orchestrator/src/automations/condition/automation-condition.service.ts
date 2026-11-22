@@ -1,3 +1,4 @@
+import { isRecord } from '../../common/object-record';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   AutomationConditionExpression,
@@ -12,9 +13,6 @@ import {
   unaryOperators,
 } from '@rebroid/automation-core/metadata';
 import { evaluateConditionPredicate } from './automation-condition-predicates';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 const conditionOperatorSet = new Set<AutomationConditionOperator>(
   conditionOperators,

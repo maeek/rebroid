@@ -1,3 +1,4 @@
+import { asRecord } from './object-record';
 import {
   providerRequestHeaders,
   withProviderResponse,
@@ -129,17 +130,12 @@ export const withProviderModelResponse = <T>(
   );
 
 export const providerAssistantMessage = (body: unknown) => {
-  const root = objectRecord(body);
+  const root = asRecord(body);
   const choice = Array.isArray(root?.choices)
-    ? objectRecord(root.choices[0])
+    ? asRecord(root.choices[0])
     : null;
-  return objectRecord(choice?.message) ?? objectRecord(root?.message);
+  return asRecord(choice?.message) ?? asRecord(root?.message);
 };
-
-const objectRecord = (value: unknown) =>
-  value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 
 export const buildChatRequestBody = ({
   messages,

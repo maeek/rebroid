@@ -1,7 +1,4 @@
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
+import { asRecord } from './object-record';
 
 const extractErrorMessage = (
   error: Record<string, unknown> | null,

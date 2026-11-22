@@ -1,7 +1,7 @@
+import { isRecord } from '../../common/object-record';
 import { BadRequestException } from '@nestjs/common';
 import {
   isControlStepType,
-  isRecord,
   normalizePositiveInteger,
   normalizeStepId,
   stableStepId,

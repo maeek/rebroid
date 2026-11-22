@@ -1,3 +1,5 @@
+import { text } from './ai-provider-values';
+import { isRecord } from '../common/object-record';
 import type { AutomationAiProviderRemoteModel } from './contracts/ai-provider';
 
 export const parseProviderRemoteModels = (
@@ -17,18 +19,15 @@ export const parseProviderRemoteModels = (
   return models;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 const ollamaModel = (
   row: Record<string, unknown>,
 ): AutomationAiProviderRemoteModel | undefined => {
-  const id = textValue(row.name) || textValue(row.model);
+  const id = text(row.name) || text(row.model);
   if (!id) return;
   const details = isRecord(row.details) ? row.details : {};
-  const family = textValue(details.family);
-  const parameterSize = textValue(details.parameter_size);
-  const quantizationLevel = textValue(details.quantization_level);
+  const family = text(details.family);
+  const parameterSize = text(details.parameter_size);
+  const quantizationLevel = text(details.quantization_level);
   return {
     id,
     label: id,
@@ -41,20 +40,17 @@ const ollamaModel = (
 const openAiModel = (
   row: Record<string, unknown>,
 ): AutomationAiProviderRemoteModel | undefined => {
-  const id = textValue(row.id);
+  const id = text(row.id);
   if (!id) return;
-  const family = textValue(row.owned_by);
+  const family = text(row.owned_by);
   const capabilities = parseCapabilityLabels(row);
   return {
     id,
-    label: textValue(row.name) || id,
+    label: text(row.name) || id,
     ...(family && { family }),
     ...(capabilities && { capabilities }),
   };
 };
-
-const textValue = (value: unknown) =>
-  typeof value === 'string' ? value.trim() : '';
 
 const parseCapabilityLabels = (model: Record<string, unknown>) => {
   const raw = Array.isArray(model.labels) ? model.labels : model.capabilities;

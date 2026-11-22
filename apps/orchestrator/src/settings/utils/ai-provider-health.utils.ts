@@ -1,3 +1,5 @@
+import { text } from '../ai-provider-values';
+import { asRecord } from '../../common/object-record';
 import {
   providerAssistantMessage,
   type ChatMessage,
@@ -53,7 +55,7 @@ export const modelRoleProbeIncompatibility = (
   body: unknown,
   mode: 'tool' | 'schema' | 'text' = role === 'controller' ? 'tool' : 'text',
 ) => {
-  const root = record(body);
+  const root = asRecord(body);
   if (!root) {
     return `${modelRoleLabel(role)} role check returned an invalid JSON body.`;
   }
@@ -64,18 +66,18 @@ export const modelRoleProbeIncompatibility = (
   if (mode === 'tool') {
     const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
     const hasExpectedCall = calls.some(
-      (call) => record(record(call)?.function)?.name === 'health_check_noop',
+      (call) =>
+        asRecord(asRecord(call)?.function)?.name === 'health_check_noop',
     );
     return hasExpectedCall
       ? null
       : `${modelRoleLabel(role)} role check did not produce the required structured tool call.`;
   }
 
-  const content =
-    typeof message.content === 'string' ? message.content.trim() : '';
+  const content = text(message.content);
   if (mode === 'schema') {
     try {
-      if (record(JSON.parse(content))?.ok === true) return null;
+      if (asRecord(JSON.parse(content))?.ok === true) return null;
     } catch {
       // The model did not return the configured structured response.
     }
@@ -84,11 +86,9 @@ export const modelRoleProbeIncompatibility = (
   if (!content) {
     const reasoning =
       typeof message.reasoning_content === 'string'
-        ? message.reasoning_content.trim()
-        : typeof message.thinking === 'string'
-          ? message.thinking.trim()
-          : '';
-    return reasoning
+        ? message.reasoning_content
+        : message.thinking;
+    return text(reasoning)
       ? `${modelRoleLabel(role)} role check returned reasoning but no public content.`
       : `${modelRoleLabel(role)} role check returned empty content.`;
   }
@@ -111,7 +111,7 @@ export const providerDiagnosticMessage = (
 
 export const aiProviderErrorMessage = (error: unknown) => {
   if (!(error instanceof Error)) return 'Provider health check failed.';
-  const cause = record(error.cause);
+  const cause = asRecord(error.cause);
   if (!cause) return error.message;
 
   const details = [
@@ -125,8 +125,3 @@ export const aiProviderErrorMessage = (error: unknown) => {
     ? `${error.message}: ${uniqueDetails.join(' ')}`
     : error.message;
 };
-
-const record = (value: unknown) =>
-  value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;

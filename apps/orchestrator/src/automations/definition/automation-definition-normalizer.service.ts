@@ -1,3 +1,4 @@
+import { isRecord } from '../../common/object-record';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   AUTOMATION_API_VERSION,
@@ -19,7 +20,6 @@ import { normalizeActionInputs } from './automation-action-input-bindings';
 import { normalizeAutomationTags } from '../tags/automation-tags';
 import {
   isControlStepType,
-  isRecord,
   normalizePositiveInteger,
   normalizeStepId,
 } from './automation-definition-normalizer.utils';

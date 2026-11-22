@@ -1,3 +1,4 @@
+import { asRecord } from './object-record';
 import { ProviderResponseLimitError } from './ai-provider-http';
 import {
   providerProtocol,
@@ -156,8 +157,8 @@ const parseOpenAiUpdate = (
   parsed: Record<string, unknown>,
 ): ParsedStreamUpdate | null => {
   const choice = Array.isArray(parsed.choices) ? parsed.choices[0] : null;
-  const choiceRecord = objectValue(choice);
-  const deltaRecord = objectValue(choiceRecord?.delta);
+  const choiceRecord = asRecord(choice);
+  const deltaRecord = asRecord(choiceRecord?.delta);
   if (!choiceRecord && !parsed.usage && !parsed.timings) return null;
   return {
     contentDelta: stringValue(deltaRecord?.content),
@@ -180,7 +181,7 @@ const parseOpenAiUpdate = (
 const parseOllamaUpdate = (
   parsed: Record<string, unknown>,
 ): ParsedStreamUpdate | null => {
-  const message = objectValue(parsed.message);
+  const message = asRecord(parsed.message);
   if (!message && parsed.done !== true) return null;
   return {
     contentDelta: stringValue(message?.content),
@@ -258,16 +259,11 @@ const eventData = (event: string) => {
 
 const parseJsonObject = (value: string) => {
   try {
-    return objectValue(JSON.parse(value) as unknown);
+    return asRecord(JSON.parse(value) as unknown);
   } catch {
     return null;
   }
 };
-
-const objectValue = (value: unknown) =>
-  value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 
 const stringValue = (value: unknown) =>
   typeof value === 'string' ? value : '';
@@ -279,7 +275,7 @@ const parseToolCallDeltas = (value: unknown): ChatToolCallDelta[] => {
   if (!Array.isArray(value)) return [];
   const output: ChatToolCallDelta[] = [];
   for (const item of value) {
-    const record = objectValue(item);
+    const record = asRecord(item);
     if (!record) continue;
     const index = record.index === undefined ? output.length : record.index;
     if (
@@ -290,7 +286,7 @@ const parseToolCallDeltas = (value: unknown): ChatToolCallDelta[] => {
     ) {
       throw new ProviderResponseLimitError('tool call index');
     }
-    const functionRecord = objectValue(record.function);
+    const functionRecord = asRecord(record.function);
     output.push({
       index,
       ...(stringValue(record.id) ? { id: stringValue(record.id) } : {}),
@@ -322,7 +318,7 @@ const parseOllamaToolCalls = (value: unknown): ChatToolCallDelta[] =>
   }));
 
 const parseOpenAiUsage = (value: unknown): ChatCompletionUsage | null => {
-  const usage = objectValue(value);
+  const usage = asRecord(value);
   if (!usage) return null;
   return {
     ...(numberValue(usage.prompt_tokens) !== undefined
@@ -353,7 +349,7 @@ const parseOllamaUsage = (
 };
 
 const parseLlamaTimings = (value: unknown): ChatCompletionTimings | null => {
-  const timings = objectValue(value);
+  const timings = asRecord(value);
   if (!timings) return null;
   return {
     ...(numberValue(timings.prompt_ms) !== undefined

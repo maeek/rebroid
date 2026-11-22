@@ -1,8 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-
 const controlTypes = new Set(['condition', 'switch', 'repeat']);
 
 export const isControlStepType = (
