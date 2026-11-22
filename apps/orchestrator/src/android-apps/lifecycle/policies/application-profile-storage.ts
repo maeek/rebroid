@@ -1,9 +1,6 @@
 import { runtimeResourceNames } from '../../../network-isolation/runtime-resource-names';
 import { selectApplicationProfile } from '../../common/utils/application-profile-selection';
-import {
-  parseSavedProfiles,
-  forgetSavedProfile,
-} from '../../common/utils/android-apps-profile-history.utils';
+import { parseSavedProfiles } from '../../common/utils/android-apps-profile-history.utils';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 
 interface ProfileStorageState {
@@ -56,22 +53,26 @@ export class ApplicationProfileStorage {
       this.app.profileMode === ApplicationProfileMode.Persistent;
     if (activePersistent && this.activeName === name) return 'active';
 
-    const result = forgetSavedProfile(this.app.savedProfilesJson, {
-      mode: ApplicationProfileMode.Persistent,
-      name,
-    });
-    if (!result.removed) return 'missing';
+    const profiles = parseSavedProfiles(this.app.savedProfilesJson);
+    const retained = profiles.filter(
+      (profile) =>
+        profile.mode !== ApplicationProfileMode.Persistent ||
+        profile.name !== name,
+    );
+    if (retained.length === profiles.length) return 'missing';
 
     const volumeName = this.volumeFor(name);
     const activeVolume = this.app.volumeName || this.volumeFor(this.activeName);
     if (activePersistent && activeVolume === volumeName) return 'shared';
     if (
-      this.savedPersistentNames().some(
-        (other) => other !== name && this.volumeFor(other) === volumeName,
+      retained.some(
+        (profile) =>
+          profile.mode === ApplicationProfileMode.Persistent &&
+          this.volumeFor(profile.name) === volumeName,
       )
     )
       return 'shared';
-    return { volumeName, savedProfilesJson: result.savedProfilesJson };
+    return { volumeName, savedProfilesJson: JSON.stringify(retained) };
   }
 
   trackedVolumes() {

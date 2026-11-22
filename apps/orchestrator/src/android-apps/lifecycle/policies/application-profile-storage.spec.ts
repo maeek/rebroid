@@ -32,3 +32,34 @@ it('protects the recorded active volume and deduplicates tracked storage on full
     ]),
   );
 });
+
+it('removes only the requested persistent identity and keeps normalized history order', () => {
+  const mode = ApplicationProfileMode.Persistent;
+  const guest = { mode: ApplicationProfileMode.Temporary, name: 'work' };
+  const current = { mode, name: 'current' };
+  const app = {
+    id: 'app',
+    name: 'Application',
+    profileMode: mode,
+    profileName: 'current',
+    volumeName: '',
+    savedProfilesJson: JSON.stringify([
+      guest,
+      { mode, name: ' work ' },
+      current,
+      current,
+    ]),
+  };
+  const policy = new ApplicationProfileStorage(app, 'stored');
+  expect(policy.planRemoval(' work ')).toEqual({
+    volumeName: 'stored-data-application-work-app',
+    savedProfilesJson: JSON.stringify([guest, current]),
+  });
+  expect(policy.planRemoval('missing')).toBe('missing');
+  expect(
+    new ApplicationProfileStorage(
+      { ...app, savedProfilesJson: 'bad' },
+      'stored',
+    ).planRemoval('work'),
+  ).toBe('missing');
+});

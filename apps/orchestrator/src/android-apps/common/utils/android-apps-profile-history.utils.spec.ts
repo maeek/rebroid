@@ -1,6 +1,5 @@
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import {
-  forgetSavedProfile,
   parseSavedProfiles,
   rememberSavedProfile,
 } from './android-apps-profile-history.utils';
@@ -72,72 +71,4 @@ describe('android apps profile history utils', () => {
       ).toHaveLength(24);
     },
   );
-
-  it('forgets a saved persistent profile by trimmed name', () => {
-    const raw = JSON.stringify([
-      { mode: ApplicationProfileMode.Persistent, name: 'default' },
-      { mode: ApplicationProfileMode.Persistent, name: 'work' },
-    ]);
-
-    expect(
-      forgetSavedProfile(raw, {
-        mode: ApplicationProfileMode.Persistent,
-        name: ' work ',
-      }),
-    ).toEqual({
-      removed: true,
-      savedProfilesJson: JSON.stringify([
-        { mode: ApplicationProfileMode.Persistent, name: 'default' },
-      ]),
-    });
-  });
-
-  it('reports missing profiles without changing normalized history', () => {
-    const raw = JSON.stringify([
-      { mode: ApplicationProfileMode.Persistent, name: 'default' },
-    ]);
-
-    expect(
-      forgetSavedProfile(raw, {
-        mode: ApplicationProfileMode.Persistent,
-        name: 'missing',
-      }),
-    ).toEqual({
-      removed: false,
-      savedProfilesJson: JSON.stringify([
-        { mode: ApplicationProfileMode.Persistent, name: 'default' },
-      ]),
-    });
-  });
-
-  it('keeps temporary and persistent profiles separate when forgetting', () => {
-    const raw = JSON.stringify([
-      { mode: ApplicationProfileMode.Temporary, name: 'default' },
-      { mode: ApplicationProfileMode.Persistent, name: 'default' },
-    ]);
-
-    expect(
-      forgetSavedProfile(raw, {
-        mode: ApplicationProfileMode.Persistent,
-        name: 'default',
-      }),
-    ).toEqual({
-      removed: true,
-      savedProfilesJson: JSON.stringify([
-        { mode: ApplicationProfileMode.Temporary, name: 'default' },
-      ]),
-    });
-  });
-
-  it('returns missing against corrupted JSON', () => {
-    expect(
-      forgetSavedProfile('not-json', {
-        mode: ApplicationProfileMode.Persistent,
-        name: 'default',
-      }),
-    ).toEqual({
-      removed: false,
-      savedProfilesJson: '[]',
-    });
-  });
 });

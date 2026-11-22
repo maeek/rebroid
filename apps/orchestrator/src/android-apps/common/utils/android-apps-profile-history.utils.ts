@@ -57,19 +57,3 @@ export const rememberSavedProfile = (
   });
   return JSON.stringify([{ mode: profile.mode, name }, ...history]);
 };
-
-export const forgetSavedProfile = (
-  raw: string | null | undefined,
-  profile: AndroidApplicationSavedProfile,
-) => {
-  const name = profile.name.trim();
-  const profiles = parseSavedProfiles(raw);
-  const savedProfiles = profiles.filter(
-    (item) => item.mode !== profile.mode || item.name !== name,
-  );
-
-  return {
-    removed: savedProfiles.length !== profiles.length,
-    savedProfilesJson: JSON.stringify(savedProfiles),
-  };
-};
