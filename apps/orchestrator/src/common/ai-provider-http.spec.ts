@@ -65,6 +65,29 @@ it('enforces the timeout while reading a response body', async () => {
   }
 });
 
+it('decodes only the requested prefix of a large error chunk, including a split BOM', async () => {
+  const bytes = new TextEncoder().encode(
+    '\uFEFF界🤖' + 'unused'.repeat(20_000),
+  );
+  const response = new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.subarray(0, 2));
+        controller.enqueue(bytes.subarray(2));
+        controller.close();
+      },
+    }),
+  );
+  const decode = jest.spyOn(TextDecoder.prototype, 'decode');
+  try {
+    expect(await readBoundedProviderText(response, 3)).toBe('界🤖');
+    const sizes = decode.mock.calls.map(([input]) => input?.byteLength ?? 0);
+    expect(Math.max(...sizes)).toBeLessThan(20);
+  } finally {
+    decode.mockRestore();
+  }
+});
+
 it('rejects and cancels oversized JSON responses before parsing them', async () => {
   const cancel = jest.fn();
   const response = new Response(

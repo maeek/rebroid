@@ -149,7 +149,11 @@ export const readBoundedProviderText = async (
     while (text.length < maxCharacters) {
       const chunk = await reader.read();
       if (chunk.done) return (text + decoder.decode()).slice(0, maxCharacters);
-      text += decoder.decode(chunk.value, { stream: true });
+      // Allow four UTF-8 bytes per remaining character and a leading three-byte BOM.
+      const maxBytes = 4 * (maxCharacters - text.length) + 3;
+      text += decoder.decode(chunk.value.subarray(0, maxBytes), {
+        stream: true,
+      });
     }
     return text.slice(0, maxCharacters);
   } finally {
