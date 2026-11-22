@@ -120,7 +120,6 @@ export class ContainerImageGappsPackageService {
     let entryCount = 0;
     let extractedBytes = 0;
     const symlinkPaths = new Set<string>();
-    const extractedPaths = new Set<string>();
     const archive = await yauzl.openPromise(packagePath);
     for await (const entry of archive.eachEntry()) {
       signal?.throwIfAborted();
@@ -132,7 +131,6 @@ export class ContainerImageGappsPackageService {
         entry,
         workDirectory,
         symlinkPaths,
-        extractedPaths,
         extractedBytes,
         signal,
       });
@@ -152,12 +150,10 @@ export class ContainerImageGappsPackageService {
     entry: Entry;
     workDirectory: string;
     symlinkPaths: Set<string>;
-    extractedPaths: Set<string>;
     extractedBytes: number;
     signal?: AbortSignal;
   }) {
-    const { archive, entry, workDirectory, symlinkPaths, extractedPaths } =
-      input;
+    const { archive, entry, workDirectory, symlinkPaths } = input;
     const archivePath = validateGappsArchivePath(entry.fileName);
     const systemPath = gappsSystemRelativePath(archivePath);
     if (!systemPath) return 0;
@@ -180,26 +176,30 @@ export class ContainerImageGappsPackageService {
     if (isDirectory) {
       await mkdir(destination, { recursive: true, mode: safeMode });
       await chmod(destination, safeMode);
-      extractedPaths.add(systemPath);
       return 0;
     }
 
     await mkdir(dirname(destination), { recursive: true, mode: 0o755 });
     if (fileType === unixSymlink) {
-      if (
-        [...extractedPaths].some((path) => path.startsWith(`${systemPath}/`))
-      ) {
-        throw new Error(
-          `GApps symlink replaces an extracted directory: ${archivePath}`,
-        );
-      }
       const target = (
         await this.readEntry(archive, entry, maxSymlinkBytes)
       ).toString('utf8');
       validateGappsSymlinkTarget(systemPath, target);
-      await symlink(target, destination);
+      try {
+        await symlink(target, destination);
+      } catch (error) {
+        if (
+          (error as NodeJS.ErrnoException).code === 'EEXIST' &&
+          (await lstat(destination)).isDirectory()
+        ) {
+          throw new Error(
+            `GApps symlink replaces an extracted directory: ${archivePath}`,
+            { cause: error },
+          );
+        }
+        throw error;
+      }
       symlinkPaths.add(systemPath);
-      extractedPaths.add(systemPath);
       return entry.uncompressedSize;
     }
     if (fileType !== 0 && fileType !== unixRegularFile) {
@@ -215,7 +215,6 @@ export class ContainerImageGappsPackageService {
       { signal: input.signal },
     );
     await chmod(destination, safeMode);
-    extractedPaths.add(systemPath);
     return entry.uncompressedSize;
   }
 
