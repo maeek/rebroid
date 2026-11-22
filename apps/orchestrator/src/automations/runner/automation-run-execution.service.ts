@@ -48,11 +48,8 @@ export class AutomationRunExecutionService {
 
   async execute(input: AutomationRunExecutionInput) {
     let endExecution: (() => void) | undefined;
-    let runnable: Awaited<
-      ReturnType<AutomationRunnableResolverService['resolve']>
-    > = null;
     try {
-      runnable = await this.runnableResolver.resolve(input.automationId);
+      const runnable = await this.runnableResolver.resolve(input.automationId);
       const queuedRun = await this.runs.findById(input.runId);
       if (
         queuedRun?.status !== AutomationRunStatus.Queued ||
@@ -60,8 +57,9 @@ export class AutomationRunExecutionService {
       )
         return;
       if (!runnable) {
-        await this.failActiveRun(
+        await this.finishRun(
           queuedRun.id,
+          AutomationRunStatus.Failed,
           'Automation definition is no longer available.',
         );
         return;
@@ -130,72 +128,55 @@ export class AutomationRunExecutionService {
         },
       );
       if (input.abortSignal.aborted) return;
-      const failed = execution.failed;
-      const status = failed
-        ? AutomationRunStatus.Failed
-        : AutomationRunStatus.Success;
-      const completed = await this.events.transitionRun(run.id, {
-        status,
-        completedAt: new Date(),
-        error: failed ? run.error : null,
-      });
-      if (!completed) return;
-
-      this.metrics.automationRunFinished(
-        completed.trigger,
-        completed.status,
-        completed.startedAt,
+      await this.finishRun(
+        run.id,
+        execution.failed
+          ? AutomationRunStatus.Failed
+          : AutomationRunStatus.Success,
+        execution.failed ? run.error : null,
       );
     } catch (error) {
       if (input.abortSignal.aborted) return;
-      const run = await this.runs.findById(input.runId);
-      if (run && !input.abortSignal.aborted) {
-        const failed = await this.failActiveRun(
-          run.id,
-          getErrorMessage(error),
-          error instanceof AutomationAuthorizationError
-            ? {
-                requestId: error.requestId,
-                code: error.code,
-                service: 'web',
-                ...(error.httpStatus === undefined
-                  ? {}
-                  : { httpStatus: error.httpStatus }),
-              }
-            : undefined,
-        );
-        if (failed) {
-          this.metrics.automationRunFinished(
-            failed.trigger,
-            failed.status,
-            failed.startedAt,
-          );
-        }
-      }
+      await this.finishRun(
+        input.runId,
+        AutomationRunStatus.Failed,
+        getErrorMessage(error),
+        error instanceof AutomationAuthorizationError
+          ? {
+              requestId: error.requestId,
+              code: error.code,
+              service: 'web',
+              ...(error.httpStatus === undefined
+                ? {}
+                : { httpStatus: error.httpStatus }),
+            }
+          : undefined,
+      );
       this.logger.error(
         `Automation run ${input.runId} failed unexpectedly: ${getErrorMessage(error)}`,
       );
     } finally {
       endExecution?.();
-      this.ephemeralAutomations.delete(
-        runnable?.ephemeral ? runnable.entity.id : input.automationId,
-      );
+      this.ephemeralAutomations.delete(input.automationId);
     }
   }
 
-  private async failActiveRun(
+  private async finishRun(
     runId: string,
-    message: string,
+    status: AutomationRunStatus.Success | AutomationRunStatus.Failed,
+    error: string | null,
     data?: Record<string, unknown>,
   ) {
-    return this.events.transitionRun(
+    const completed = await this.events.transitionRun(
       runId,
-      {
-        status: AutomationRunStatus.Failed,
-        completedAt: new Date(),
-        error: message,
-      },
+      { status, completedAt: new Date(), error },
       data,
     );
+    if (completed)
+      this.metrics.automationRunFinished(
+        completed.trigger,
+        completed.status,
+        completed.startedAt,
+      );
   }
 }

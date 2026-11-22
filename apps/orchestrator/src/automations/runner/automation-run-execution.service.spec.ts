@@ -476,12 +476,15 @@ describe('AutomationRunExecutionService', () => {
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
       expect.objectContaining({ status: AutomationRunStatus.Success }),
+      undefined,
     );
   });
 
   it('fails a queued run whose definition disappeared', async () => {
     const resolve = jest.fn().mockResolvedValue(null);
-    const { service, events, ephemeral } = createExecution({ resolve });
+    const { service, events, ephemeral, metrics } = createExecution({
+      resolve,
+    });
     events.transitionRun.mockResolvedValue({
       ...queuedRun,
       status: AutomationRunStatus.Failed,
@@ -496,6 +499,9 @@ describe('AutomationRunExecutionService', () => {
       undefined,
     );
     expect(ephemeral.delete).toHaveBeenCalledWith(queuedRun.automationId);
+    await expect(metrics.registry.metrics()).resolves.toContain(
+      'rebroid_automation_runs_total{trigger="manual",outcome="failed"} 1',
+    );
   });
 
   it.each([
@@ -558,6 +564,7 @@ describe('AutomationRunExecutionService', () => {
         expect(events.transitionRun).toHaveBeenCalledWith(
           queuedRun.id,
           expect.objectContaining({ status: scenario.status }),
+          undefined,
         );
       }
     },
