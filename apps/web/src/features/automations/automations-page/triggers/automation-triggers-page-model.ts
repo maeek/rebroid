@@ -18,12 +18,6 @@ export const defaultTriggerName = (automation: AutomationOption | undefined, app
   return 'New workflow trigger'
 }
 
-export const retainVisibleTriggerSelection = (triggers: AutomationTrigger[], selectedIds: Set<string>) => {
-  const visibleIds = new Set(triggers.map(trigger => trigger.id))
-
-  return new Set([...selectedIds].filter(id => visibleIds.has(id)))
-}
-
 export const selectedTriggersFromIds = (triggers: AutomationTrigger[], selectedIds: Set<string>) =>
   triggers.filter(trigger => selectedIds.has(trigger.id))
 

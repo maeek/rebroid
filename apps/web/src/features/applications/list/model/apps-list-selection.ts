@@ -8,12 +8,6 @@ type AppsListOperationToast = {
   variant?: 'danger'
 }
 
-export const retainVisibleSelectedIds = (apps: AppGalleryItem[], selectedIds: Set<string>) => {
-  const visibleIds = new Set(apps.map(app => app.id))
-
-  return new Set([...selectedIds].filter(id => visibleIds.has(id)))
-}
-
 export const deriveAppsListSelection = ({
   apps,
   selectedIds,

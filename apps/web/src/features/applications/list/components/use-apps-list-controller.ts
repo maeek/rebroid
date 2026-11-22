@@ -14,7 +14,6 @@ import {
 import {
   deriveAppsListSelection,
   fulfilledBulkDeleteAppIds,
-  retainVisibleSelectedIds,
   summarizeBulkDeleteAppsResult,
   summarizeBulkStopAppsResult
 } from '@/features/applications/list/model/apps-list-selection'
@@ -37,6 +36,7 @@ import {
 import { sortApps, type AppsListSortMode } from '@/shared/model/applications/app-sort'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { filterGalleryApps, type AppsGalleryOwnership } from '../model/apps-gallery-filter'
 import type { AppsListContextValue, BulkAction, BulkAppProgress, PendingAppAction } from './apps-list-context'
 import type { AppGalleryItem, ApplicationGalleryRow } from '@/shared/contracts/application-gallery'

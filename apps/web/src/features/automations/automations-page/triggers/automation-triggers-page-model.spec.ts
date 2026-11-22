@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSchedule } from '@/shared/model/automation-schedule'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import {
   applyTriggerTargetApplication,
@@ -8,7 +9,6 @@ import {
   deletedTriggerIdsFromResults,
   editTriggerFormState,
   newTriggerFormState,
-  retainVisibleTriggerSelection,
   selectedTriggersFromIds,
   summarizeTriggerBulkDeleteResults,
   summarizeTriggerBulkUpdateResults,
@@ -167,7 +167,7 @@ describe('automation triggers page model', () => {
     const triggers = [trigger('a'), trigger('b'), trigger('c')]
     const selectedIds = new Set(['a', 'missing', 'c'])
 
-    expect([...retainVisibleTriggerSelection(triggers, selectedIds)]).toEqual(['a', 'c'])
+    expect([...retainVisibleSelectedIds(triggers, selectedIds)]).toEqual(['a', 'c'])
     expect(selectedTriggersFromIds(triggers, selectedIds).map(item => item.id)).toEqual(['a', 'c'])
   })
 

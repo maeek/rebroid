@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import {
   deletedAutomationIdsFromResults,
-  retainPageAutomationSelection,
   selectedAutomationsFromIds,
   summarizeAutomationDeleteResults
 } from './automations-table-model'
@@ -26,7 +26,7 @@ describe('automations table model', () => {
     const automations = [automation('a'), automation('c')]
     const selectedIds = new Set(['a', 'b', 'c'])
 
-    expect([...retainPageAutomationSelection(automations, selectedIds)]).toEqual(['a', 'c'])
+    expect([...retainVisibleSelectedIds(automations, selectedIds)]).toEqual(['a', 'c'])
     expect(selectedAutomationsFromIds(automations, selectedIds)).toEqual(automations)
   })
 

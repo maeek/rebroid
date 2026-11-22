@@ -17,6 +17,7 @@ import {
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { successfulBulkIds } from '@/shared/actions/bulk-action-results'
 import { serializeSortParam } from '@/shared/model/search-params'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
@@ -29,7 +30,6 @@ import {
   deletedTriggerIdsFromResults,
   editTriggerFormState,
   newTriggerFormState,
-  retainVisibleTriggerSelection,
   selectedTriggersFromIds,
   summarizeTriggerBulkDeleteResults,
   summarizeTriggerBulkUpdateResults,
@@ -75,7 +75,7 @@ export function AutomationTriggersPage({
   }, [gridQuery.q])
 
   useEffect(() => {
-    setSelectedIds(current => retainVisibleTriggerSelection(triggersPage.items, current))
+    setSelectedIds(current => retainVisibleSelectedIds(triggersPage.items, current))
     setTriggerRuns(current => {
       const observed = triggersPage.items.filter(trigger => {
         const receipt = current.get(trigger.id)

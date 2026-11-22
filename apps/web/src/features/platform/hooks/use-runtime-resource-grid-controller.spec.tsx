@@ -9,7 +9,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace })
 }))
 
-const getItemId = (item: { id: string }) => item.id
 const parseSort = (sort: string | undefined) => [
   { id: sort?.split(':')[0] ?? 'name', desc: sort?.endsWith(':desc') ?? false }
 ]
@@ -27,7 +26,6 @@ describe('useRuntimeResourceGridController', () => {
         items: [{ id: 'a' }],
         gridQuery: { q: '', sort: 'name:asc' },
         pageSize: 20,
-        getItemId,
         parseSort,
         buildHref
       })
@@ -52,7 +50,7 @@ describe('useRuntimeResourceGridController', () => {
     const initialProps: GridQuery = { q: 'current', ownership: 'managed', page: 3 }
     const { result, rerender } = renderHook(
       (gridQuery: GridQuery) =>
-        useRuntimeResourceGridController({ items: [], gridQuery, pageSize: 20, getItemId, parseSort, buildHref }),
+        useRuntimeResourceGridController({ items: [], gridQuery, pageSize: 20, parseSort, buildHref }),
       { initialProps }
     )
 
@@ -73,7 +71,7 @@ describe('useRuntimeResourceGridController', () => {
     const initialProps: GridQuery = { q: 'previous', page: 1 }
     const { result, rerender } = renderHook(
       (gridQuery: GridQuery) =>
-        useRuntimeResourceGridController({ items: [], gridQuery, pageSize: 20, getItemId, parseSort, buildHref }),
+        useRuntimeResourceGridController({ items: [], gridQuery, pageSize: 20, parseSort, buildHref }),
       { initialProps }
     )
 
@@ -101,7 +99,6 @@ describe('useRuntimeResourceGridController', () => {
           items,
           gridQuery: {},
           pageSize: 20,
-          getItemId,
           parseSort,
           buildHref
         }),

@@ -10,6 +10,7 @@ import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
 import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { isBuiltInGroup } from '@/shared/permissions/effective-access'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -49,8 +50,7 @@ export const GroupsSection = ({
   const selectedGroups = sortedGroups.filter(group => selectedIds.has(group.id))
 
   useEffect(() => {
-    const groupIds = new Set(groups.map(group => group.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => groupIds.has(id))))
+    setSelectedIds(current => retainVisibleSelectedIds(groups, current))
   }, [groups])
 
   const columns: ColumnDef<UserGroup>[] = [

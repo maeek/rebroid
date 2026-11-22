@@ -11,6 +11,7 @@ import { RowActionButton } from '@/components/ui/row-actions'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { serializeSortParam } from '@/shared/model/search-params'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -21,7 +22,6 @@ import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-run-result'
 import {
   deletedAutomationIdsFromResults,
-  retainPageAutomationSelection,
   selectedAutomationsFromIds,
   summarizeAutomationDeleteResults
 } from './automations-table-model'
@@ -74,7 +74,7 @@ export function AutomationsTable({
   }, [gridQuery.q])
 
   useEffect(() => {
-    setSelectedIds(current => retainPageAutomationSelection(automationsPage.items, current))
+    setSelectedIds(current => retainVisibleSelectedIds(automationsPage.items, current))
   }, [automationsPage.items])
 
   const appNameById = useMemo(() => new Map(applications.map(app => [app.id, app.name])), [applications])

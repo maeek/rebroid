@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import {
   deriveAppsListSelection,
   fulfilledBulkDeleteAppIds,
-  retainVisibleSelectedIds,
   summarizeBulkDeleteAppsResult,
   summarizeBulkStopAppsResult
 } from './apps-list-selection'

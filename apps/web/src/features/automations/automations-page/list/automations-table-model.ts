@@ -6,12 +6,6 @@ type AutomationOperationToast = {
   variant?: 'danger'
 }
 
-export const retainPageAutomationSelection = (automations: AutomationGridRow[], selectedIds: Set<string>) => {
-  const currentPageIds = new Set(automations.map(automation => automation.id))
-
-  return new Set([...selectedIds].filter(id => currentPageIds.has(id)))
-}
-
 export const selectedAutomationsFromIds = (automations: AutomationGridRow[], selectedIds: Set<string>) =>
   automations.filter(automation => selectedIds.has(automation.id))
 

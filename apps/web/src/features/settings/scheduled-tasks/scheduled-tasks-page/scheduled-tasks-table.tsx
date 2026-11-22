@@ -12,6 +12,7 @@ import { useScheduledTasksControllerContext } from '@/features/settings/schedule
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
 import { toast } from '@/hooks/use-toast'
 import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
@@ -57,8 +58,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
   const selectedTasksAreCustom = selectedTasks.every(task => task.kind === 'custom')
 
   useEffect(() => {
-    const taskIds = new Set(tasks.map(task => task.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => taskIds.has(id))))
+    setSelectedIds(current => retainVisibleSelectedIds(tasks, current))
   }, [tasks])
 
   const runBatch = async (

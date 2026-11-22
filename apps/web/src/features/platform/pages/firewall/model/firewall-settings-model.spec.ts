@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import {
   clampFirewallPageIndex,
   firewallAllowlistDisplay,
@@ -8,7 +9,6 @@ import {
   filterFirewallApplications,
   mergeFirewallApplications,
   paginateFirewallApplications,
-  retainVisibleFirewallSelection,
   selectedFirewallApplicationsFromIds,
   sortFirewallApplications
 } from './firewall-settings-model'
@@ -96,7 +96,7 @@ describe('firewall settings model', () => {
     const applications = [app('a'), app('c')]
     const selectedIds = new Set(['a', 'b', 'c'])
 
-    expect([...retainVisibleFirewallSelection(applications, selectedIds)]).toEqual(['a', 'c'])
+    expect([...retainVisibleSelectedIds(applications, selectedIds)]).toEqual(['a', 'c'])
     expect(selectedFirewallApplicationsFromIds(applications, selectedIds)).toEqual(applications)
   })
 

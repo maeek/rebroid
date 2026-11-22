@@ -69,12 +69,6 @@ export const clampFirewallPageIndex = (totalItems: number, pageSize: number, pag
   return Math.min(pageIndex, pageCount - 1)
 }
 
-export const retainVisibleFirewallSelection = (applications: AndroidApplication[], selectedIds: Set<string>) => {
-  const visibleIds = new Set(applications.map(application => application.id))
-
-  return new Set([...selectedIds].filter(id => visibleIds.has(id)))
-}
-
 export const selectedFirewallApplicationsFromIds = (
   applications: FirewallPolicyApplication[],
   selectedIds: Set<string>

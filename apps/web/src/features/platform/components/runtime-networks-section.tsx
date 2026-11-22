@@ -23,8 +23,6 @@ import {
 import { createNetworkColumns } from './runtime-networks-table-parts'
 import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/shared/contracts/platform'
 
-const networkId = (network: PlatformNetworksGridPage['items'][number]) => network.id
-
 export const RuntimeNetworksSection = ({
   networksPage,
   gridQuery
@@ -52,7 +50,6 @@ export const RuntimeNetworksSection = ({
     items: networksPage.items,
     gridQuery,
     pageSize: networksPage.pageSize,
-    getItemId: networkId,
     parseSort: sort => parsePlatformInventorySort('networks', sort),
     buildHref: buildNetworksGridHref
   })

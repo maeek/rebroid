@@ -14,6 +14,7 @@ import {
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { approvedDestinationsLabel, unrestrictedAccessLabel } from '@/shared/model/network/outbound-policy'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -25,7 +26,6 @@ import {
   filterFirewallApplications,
   mergeFirewallApplications,
   paginateFirewallApplications,
-  retainVisibleFirewallSelection,
   selectedFirewallApplicationsFromIds,
   sortFirewallApplications
 } from '../model/firewall-settings-model'
@@ -97,7 +97,7 @@ export const FirewallSettings = ({
     if (pageIndex !== nextPageIndex) setPageIndex(nextPageIndex)
   }, [pageIndex, pageSize, sortedApplications.length])
   useEffect(() => {
-    setSelectedIds(current => retainVisibleFirewallSelection(sortedApplications, current))
+    setSelectedIds(current => retainVisibleSelectedIds(sortedApplications, current))
   }, [sortedApplications])
 
   const reconcileSelected = async () => {

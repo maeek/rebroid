@@ -9,6 +9,7 @@ import {
   releaseDisplaySidecarSessionAction
 } from '@/server/orchestrator/diagnostics/actions'
 import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { activeStatuses, castingErrorMessage, filterSessions, sortSessions } from './casting-sidecar-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
@@ -65,11 +66,7 @@ export const useCastingSidecarController = ({
     if (pageIndex >= pageCount) setPageIndex(pageCount - 1)
   }, [pageIndex, pageSize, sortedSessions.length])
   useEffect(() => {
-    const visibleIds = new Set(sortedSessions.map(session => session.id))
-    setSelectedIds(current => {
-      const visibleSelection = new Set([...current].filter(id => visibleIds.has(id)))
-      return visibleSelection.size === current.size ? current : visibleSelection
-    })
+    setSelectedIds(current => retainVisibleSelectedIds(sortedSessions, current))
   }, [sortedSessions])
 
   const updateDisplayState = useCallback(async (nextHealth: ServiceHealth) => {

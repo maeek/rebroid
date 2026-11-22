@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { toAppGalleryItem } from '@/shared/contracts/application-gallery'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { galleryPreviewApplications } from '../apps-gallery-preview-data'
 import { filterGalleryApps } from './apps-gallery-filter'
-import { deriveAppsListSelection, retainVisibleSelectedIds } from './apps-list-selection'
+import { deriveAppsListSelection } from './apps-list-selection'
 
 const base = toAppGalleryItem(galleryPreviewApplications[1])
 const apps = [

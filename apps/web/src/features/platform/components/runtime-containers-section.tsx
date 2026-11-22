@@ -24,8 +24,6 @@ import { createContainerColumns } from './runtime-containers-table-parts'
 import { RuntimeContainerFilters } from './runtime-grid-filter-controls'
 import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
-const containerId = (container: PlatformContainersGridPage['items'][number]) => container.id
-
 export const RuntimeContainersSection = ({
   containersPage,
   gridQuery
@@ -53,7 +51,6 @@ export const RuntimeContainersSection = ({
     items: containersPage.items,
     gridQuery,
     pageSize: containersPage.pageSize,
-    getItemId: containerId,
     parseSort: sort => parsePlatformInventorySort('containers', sort),
     buildHref: buildContainersGridHref
   })

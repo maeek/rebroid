@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { serializeSortParam } from '@/shared/model/search-params'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { useRoutedGridQuery } from '@/shared/ui/data-grid/use-routed-grid-query'
 import type { OnChangeFn, SortingState } from '@tanstack/react-table'
 
@@ -19,18 +20,19 @@ interface RuntimeResourceGridHrefInput<TQuery extends RuntimeResourceGridQuery> 
   patch: Partial<TQuery>
 }
 
-export const useRuntimeResourceGridController = <TItem, TQuery extends RuntimeResourceGridQuery>({
+export const useRuntimeResourceGridController = <
+  TItem extends { id: string },
+  TQuery extends RuntimeResourceGridQuery
+>({
   items,
   gridQuery,
   pageSize,
-  getItemId,
   parseSort,
   buildHref
 }: {
   items: TItem[]
   gridQuery: TQuery
   pageSize: number
-  getItemId: (item: TItem) => string
   parseSort: (sort: string | undefined) => SortingState
   buildHref: (input: RuntimeResourceGridHrefInput<TQuery>) => string
 }) => {
@@ -45,14 +47,10 @@ export const useRuntimeResourceGridController = <TItem, TQuery extends RuntimeRe
   const sorting = useMemo(() => parseSort(gridQuery.sort), [gridQuery.sort, parseSort])
 
   useEffect(() => {
-    const visibleIds = new Set(items.map(getItemId))
-    setSelectedIds(current => {
-      const visibleSelection = new Set([...current].filter(id => visibleIds.has(id)))
-      return visibleSelection.size === current.size ? current : visibleSelection
-    })
-  }, [getItemId, items])
+    setSelectedIds(current => retainVisibleSelectedIds(items, current))
+  }, [items])
 
-  const selectedItems = items.filter(item => selectedIds.has(getItemId(item)))
+  const selectedItems = items.filter(item => selectedIds.has(item.id))
   const pushGridParams = (patch: Partial<TQuery>) => submit(current => ({ ...current, ...patch }))
   const onSortingChange: OnChangeFn<SortingState> = updater => {
     submit(current => ({

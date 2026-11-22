@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
@@ -141,8 +142,7 @@ export const UsersGrid = ({
   const selectedUsers = sortedUsers.filter(user => selectedIds.has(user.id))
 
   useEffect(() => {
-    const userIds = new Set(users.map(user => user.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => userIds.has(id))))
+    setSelectedIds(current => retainVisibleSelectedIds(users, current))
   }, [users, setSelectedIds])
 
   const columns = useMemo<ColumnDef<PublicUser>[]>(

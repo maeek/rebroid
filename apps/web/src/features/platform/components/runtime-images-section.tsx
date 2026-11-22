@@ -19,8 +19,6 @@ import { buildImagesGridHref, canRemoveSelectedImages, getImageRemoveDialogLabel
 import { createImageColumns } from './runtime-images-table-parts'
 import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/shared/contracts/platform'
 
-const imageId = (image: PlatformImagesGridPage['items'][number]) => image.id
-
 export const RuntimeImagesSection = ({
   imagesPage,
   gridQuery
@@ -48,7 +46,6 @@ export const RuntimeImagesSection = ({
     items: imagesPage.items,
     gridQuery,
     pageSize: imagesPage.pageSize,
-    getItemId: imageId,
     parseSort: sort => parsePlatformInventorySort('images', sort),
     buildHref: buildImagesGridHref
   })
