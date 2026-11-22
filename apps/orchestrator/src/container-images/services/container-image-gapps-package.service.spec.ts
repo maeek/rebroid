@@ -98,6 +98,7 @@ describe('ContainerImageGappsPackageService', () => {
       await mkdir(permissionDirectory, { recursive: true });
       await writeFile(join(appDirectory, 'GmsCore.apk'), 'gms');
       await writeFile(join(appDirectory, 'Phonesky.apk'), 'store');
+      await writeFile(join(appDirectory, 'config.bin'), 'settings');
       await writeFile(
         join(permissionDirectory, 'privapp-permissions-google.xml'),
         '<permissions package="com.google.android.gms" />',
@@ -128,7 +129,19 @@ describe('ContainerImageGappsPackageService', () => {
           'com.google.android.gsf',
         ],
         privilegedPermissionXml: 'privapp-permissions-google.xml',
+        extractedFileCount: 5,
       });
+      const cancellation = new AbortController();
+      inspection.extractPackageNameFromFile
+        .mockClear()
+        .mockImplementationOnce(async () => {
+          cancellation.abort(new Error('build cancelled'));
+          return 'com.google.android.gms';
+        });
+      await expect(
+        service.validate(directory, cancellation.signal),
+      ).rejects.toThrow('build cancelled');
+      expect(inspection.extractPackageNameFromFile).toHaveBeenCalledTimes(1);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

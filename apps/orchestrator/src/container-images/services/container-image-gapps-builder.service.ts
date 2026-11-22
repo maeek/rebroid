@@ -278,7 +278,10 @@ export class ContainerImageGappsBuilderService
     );
     staging.workDirectory = workDirectory;
     signal.throwIfAborted();
-    const payloadValidation = await this.packages.validate(workDirectory);
+    const payloadValidation = await this.packages.validate(
+      workDirectory,
+      signal,
+    );
     signal.throwIfAborted();
     if (staging.temporaryPackage) {
       await this.cache.promote(

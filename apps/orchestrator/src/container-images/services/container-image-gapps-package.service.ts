@@ -68,16 +68,17 @@ export class ContainerImageGappsPackageService {
     return rm(workDirectory, { recursive: true, force: true });
   }
 
-  async validate(workDirectory: string) {
-    const files = await this.listFiles(join(workDirectory, 'system'));
-    const apkFiles = files.filter((path) =>
-      path.toLowerCase().endsWith('.apk'),
+  async validate(workDirectory: string, signal?: AbortSignal) {
+    const { apkFiles, xmlFiles, fileCount } = await inspectSystemTree(
+      join(workDirectory, 'system'),
+      signal,
     );
     apkFiles.sort(
       (left, right) => this.apkPriority(left) - this.apkPriority(right),
     );
     const packageNames = new Set<string>();
     for (const apkPath of apkFiles) {
+      signal?.throwIfAborted();
       const packageName =
         await this.apkInspection.extractPackageNameFromFile(apkPath);
       if (packageName) packageNames.add(packageName);
@@ -85,8 +86,10 @@ export class ContainerImageGappsPackageService {
     }
 
     const privilegedPermissionXml = await this.findPrivilegedPermissionXml(
-      files.filter((path) => path.toLowerCase().endsWith('.xml')),
+      xmlFiles,
+      signal,
     );
+    signal?.throwIfAborted();
     const missingPackages = requiredPackages.filter(
       (packageName) => !packageNames.has(packageName),
     );
@@ -105,7 +108,7 @@ export class ContainerImageGappsPackageService {
     return {
       packageNames: requiredPackages,
       privilegedPermissionXml,
-      extractedFileCount: files.length,
+      extractedFileCount: fileCount,
     };
   }
 
@@ -234,20 +237,6 @@ export class ContainerImageGappsPackageService {
     return Buffer.concat(chunks, size);
   }
 
-  private async listFiles(directory: string): Promise<string[]> {
-    const result: string[] = [];
-    const entries = await readdir(directory, { withFileTypes: true });
-    for (const entry of entries) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) {
-        result.push(...(await this.listFiles(path)));
-      } else if (entry.isFile()) {
-        result.push(path);
-      }
-    }
-    return result;
-  }
-
   private apkPriority(path: string) {
     const normalized = path.toLowerCase();
     if (normalized.includes('gmscore')) return 0;
@@ -257,13 +246,19 @@ export class ContainerImageGappsPackageService {
     return 3;
   }
 
-  private async findPrivilegedPermissionXml(paths: string[]) {
+  private async findPrivilegedPermissionXml(
+    paths: string[],
+    signal?: AbortSignal,
+  ) {
     for (const path of paths) {
+      signal?.throwIfAborted();
       const normalized = path.toLowerCase();
       if (!normalized.includes('permission')) continue;
       const fileStat = await lstat(path);
       if (fileStat.size > 2 * 1024 * 1024) continue;
-      const content = await readFile(path, 'utf8').catch(() => '');
+      const content = await readFile(path, { encoding: 'utf8', signal }).catch(
+        () => '',
+      );
       if (
         content.includes('com.google.android.gms') ||
         content.includes('com.android.vending')
@@ -273,4 +268,25 @@ export class ContainerImageGappsPackageService {
     }
     return null;
   }
+}
+
+async function inspectSystemTree(root: string, signal?: AbortSignal) {
+  const apkFiles: string[] = [];
+  const xmlFiles: string[] = [];
+  let fileCount = 0;
+  async function visit(directory: string) {
+    signal?.throwIfAborted();
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        await visit(join(directory, entry.name));
+      } else if (entry.isFile()) {
+        fileCount++;
+        const name = entry.name.toLowerCase();
+        if (name.endsWith('.apk')) apkFiles.push(join(directory, entry.name));
+        if (name.endsWith('.xml')) xmlFiles.push(join(directory, entry.name));
+      }
+    }
+  }
+  await visit(root);
+  return { apkFiles, xmlFiles, fileCount };
 }
