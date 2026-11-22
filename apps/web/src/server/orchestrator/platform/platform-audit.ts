@@ -11,7 +11,7 @@ export const runAuditedPlatformAction = async <T>({
   action: string
   details?: Record<string, unknown>
   operation: () => Promise<T>
-  resourceId: string
+  resourceId?: string
   resourceType: string
 }) => {
   const admin = await requireAdminUser()

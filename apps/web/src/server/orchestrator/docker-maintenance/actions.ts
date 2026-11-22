@@ -1,97 +1,61 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
-import { recordAuditEvent } from '@/server/audit/events'
-import { revalidateOrchestratorPages, requireAdminUser } from '../shared'
+import { runAuditedPlatformAction } from '../platform/platform-audit'
 import { orchestratorDockerMaintenanceClient } from './client'
 
 export const pruneImagesAction = async (danglingOnly = true) =>
   runSafeAction(
-    async () => {
-      const admin = await requireAdminUser()
-      const result = await orchestratorDockerMaintenanceClient.pruneImages(danglingOnly)
-      recordAuditEvent({
-        actorUserId: admin.id,
-        actorLabel: admin.name || admin.username || admin.id,
-        category: 'docker',
+    () =>
+      runAuditedPlatformAction({
         action: 'docker.prune.images',
+        operation: () => orchestratorDockerMaintenanceClient.pruneImages(danglingOnly),
         resourceType: 'docker_image',
         details: { danglingOnly }
-      })
-      revalidateOrchestratorPages()
-      return result
-    },
+      }),
     { fallbackMessage: 'Could not prune images.', logLabel: 'pruneImagesAction failed' }
   )
 
 export const pruneContainersAction = async () =>
   runSafeAction(
-    async () => {
-      const admin = await requireAdminUser()
-      const result = await orchestratorDockerMaintenanceClient.pruneContainers()
-      recordAuditEvent({
-        actorUserId: admin.id,
-        actorLabel: admin.name || admin.username || admin.id,
-        category: 'docker',
+    () =>
+      runAuditedPlatformAction({
         action: 'docker.prune.containers',
+        operation: () => orchestratorDockerMaintenanceClient.pruneContainers(),
         resourceType: 'docker_container'
-      })
-      revalidateOrchestratorPages()
-      return result
-    },
+      }),
     { fallbackMessage: 'Could not prune containers.', logLabel: 'pruneContainersAction failed' }
   )
 
 export const pruneNetworksAction = async () =>
   runSafeAction(
-    async () => {
-      const admin = await requireAdminUser()
-      const result = await orchestratorDockerMaintenanceClient.pruneNetworks()
-      recordAuditEvent({
-        actorUserId: admin.id,
-        actorLabel: admin.name || admin.username || admin.id,
-        category: 'docker',
+    () =>
+      runAuditedPlatformAction({
         action: 'docker.prune.networks',
+        operation: () => orchestratorDockerMaintenanceClient.pruneNetworks(),
         resourceType: 'docker_network'
-      })
-      revalidateOrchestratorPages()
-      return result
-    },
+      }),
     { fallbackMessage: 'Could not prune networks.', logLabel: 'pruneNetworksAction failed' }
   )
 
 export const pruneVolumesAction = async () =>
   runSafeAction(
-    async () => {
-      const admin = await requireAdminUser()
-      const result = await orchestratorDockerMaintenanceClient.pruneVolumes()
-      recordAuditEvent({
-        actorUserId: admin.id,
-        actorLabel: admin.name || admin.username || admin.id,
-        category: 'docker',
+    () =>
+      runAuditedPlatformAction({
         action: 'docker.prune.volumes',
+        operation: () => orchestratorDockerMaintenanceClient.pruneVolumes(),
         resourceType: 'docker_volume'
-      })
-      revalidateOrchestratorPages()
-      return result
-    },
+      }),
     { fallbackMessage: 'Could not prune volumes.', logLabel: 'pruneVolumesAction failed' }
   )
 
 export const pruneAllDockerResourcesAction = async () =>
   runSafeAction(
-    async () => {
-      const admin = await requireAdminUser()
-      const result = await orchestratorDockerMaintenanceClient.pruneAllDockerResources()
-      recordAuditEvent({
-        actorUserId: admin.id,
-        actorLabel: admin.name || admin.username || admin.id,
-        category: 'docker',
+    () =>
+      runAuditedPlatformAction({
         action: 'docker.prune.all',
+        operation: () => orchestratorDockerMaintenanceClient.pruneAllDockerResources(),
         resourceType: 'docker'
-      })
-      revalidateOrchestratorPages()
-      return result
-    },
+      }),
     { fallbackMessage: 'Could not prune Docker resources.', logLabel: 'pruneAllDockerResourcesAction failed' }
   )
