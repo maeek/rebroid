@@ -28,8 +28,7 @@ function fixture() {
     { reconcileById: async () => app } as never,
     {} as never,
     { storeStream } as never,
-    new RuntimeUploadStreamService(),
-    operations,
+    new RuntimeUploadStreamService(operations),
   );
   const request = Object.assign(new PassThrough(), {
     headers: { 'content-type': 'multipart/form-data; boundary=boundary' },

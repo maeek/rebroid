@@ -5,7 +5,7 @@ import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 it.each([false, true])(
   'stages a private, counted upload and cleans up after a store callback (failure=%s)',
   async (failStore) => {
-    const uploads = new RuntimeUploadStreamService();
+    const uploads = new RuntimeUploadStreamService({} as never);
     let staged = '';
     const store = uploads.withStagedFile(
       Readable.from([Buffer.from('file'), Buffer.from(' contents')]),

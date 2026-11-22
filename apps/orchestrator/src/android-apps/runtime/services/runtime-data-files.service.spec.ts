@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { DockerContainerArchiveReadLimitError } from '../../../docker/contracts/docker-container-archive.port';
+import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
 import { RuntimeDataFilesService } from './runtime-data-files.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeFilePreviewService } from './runtime-file-preview.service';
@@ -20,6 +21,7 @@ describe('RuntimeDataFilesService', () => {
   };
   let exec: { execInContainerWithOutput: jest.Mock };
   let service: RuntimeDataFilesService;
+  let operations: AndroidAppsRuntimeOperationGate;
 
   beforeEach(() => {
     archive = {
@@ -39,15 +41,26 @@ describe('RuntimeDataFilesService', () => {
       status: AndroidApplicationStatus.Running,
     };
     const reconciler = { requireRunningById: jest.fn().mockResolvedValue(app) };
+    operations = new AndroidAppsRuntimeOperationGate({} as never, {} as never);
     service = new RuntimeDataFilesService(
       archive as never,
       exec as never,
       reconciler as never,
       new RuntimeFilePathService(),
-      new RuntimeUploadStreamService(),
+      new RuntimeUploadStreamService(operations),
       new RuntimeFilePreviewService(archive as never),
       { getStored: jest.fn().mockResolvedValue(app) } as never,
     );
+  });
+
+  it('prevents an upload from writing into a runtime being replaced', async () => {
+    const request = Object.assign(Readable.from([]), { headers: {} });
+    await operations.interrupt('app-1', async () => {
+      await expect(service.uploadFile('app-1', request)).rejects.toThrow(
+        'An Android runtime change is in progress.',
+      );
+    });
+    expect(archive.copyFileToContainer).not.toHaveBeenCalled();
   });
 
   const command = () =>

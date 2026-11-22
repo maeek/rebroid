@@ -102,17 +102,12 @@ export class RuntimeDataFilesService {
     requestedPath?: string,
     overwrite = false,
   ) {
-    const app = await this.reconciler.requireRunningById(id);
-    const directory = this.paths.normalizeDataPath(requestedPath);
-    return this.uploads.consumeFileUpload(request, (stream, originalName) =>
-      this.storeRunningFileStream(
-        app,
-        stream,
-        originalName,
-        directory,
-        overwrite,
-      ),
-    );
+    return this.uploads.consumeFileUpload(id, request, async () => {
+      const app = await this.reconciler.requireRunningById(id);
+      const directory = this.paths.normalizeDataPath(requestedPath);
+      return (stream, name) =>
+        this.storeRunningFileStream(app, stream, name, directory, overwrite);
+    });
   }
 
   async createDirectory(

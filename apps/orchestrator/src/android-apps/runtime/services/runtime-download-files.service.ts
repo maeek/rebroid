@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Readable } from 'node:stream';
 import type { MultipartUploadRequest } from '../../../common/http-upload';
 import {
@@ -9,7 +9,6 @@ import {
   DOCKER_CONTAINER_EXEC,
   type DockerContainerExecPort,
 } from '../../../docker/contracts/docker-container-exec.port';
-import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
 import { assertMutableApplication } from '../../common/utils/mutable-application';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
@@ -38,7 +37,6 @@ export class RuntimeDownloadFilesService {
     private readonly paths: RuntimeFilePathService,
     private readonly volumes: RuntimeDownloadVolumeService,
     private readonly uploads: RuntimeUploadStreamService,
-    private readonly operations: AndroidAppsRuntimeOperationGate,
   ) {}
 
   async listDownloadFiles(
@@ -59,22 +57,12 @@ export class RuntimeDownloadFilesService {
     request: MultipartUploadRequest,
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
-    const controller = new AbortController();
-    return this.operations.withApplicationOperation(
-      id,
-      async () => {
-        const app = await this.reconciler.reconcileById(id);
-        assertMutableApplication(app);
-        return this.uploads.consumeFileUpload(
-          request,
-          (stream, originalName) =>
-            this.storeDownloadFileStream(app, stream, originalName, query),
-          controller.signal,
-        );
-      },
-      () =>
-        controller.abort(new ConflictException('File upload was cancelled.')),
-    );
+    return this.uploads.consumeFileUpload(id, request, async () => {
+      const app = await this.reconciler.reconcileById(id);
+      assertMutableApplication(app);
+      return (stream, name) =>
+        this.storeDownloadFileStream(app, stream, name, query);
+    });
   }
 
   async downloadFile(

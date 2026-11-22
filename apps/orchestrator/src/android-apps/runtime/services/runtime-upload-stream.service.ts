@@ -8,30 +8,46 @@ import {
   type MultipartUploadRequest,
   consumeSingleFileUpload,
 } from '../../../common/http-upload';
-import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
+import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
+import type { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
+
+type RuntimeUploadConsumer = (
+  stream: Readable,
+  originalName: string,
+) => Promise<ApplicationRuntimeFileUploadDto>;
 
 @Injectable()
 export class RuntimeUploadStreamService {
   readonly maxUploadBytes = 256 * 1024 * 1024;
 
+  constructor(private readonly operations: AndroidAppsRuntimeOperationGate) {}
+
   consumeFileUpload(
+    id: string,
     request: MultipartUploadRequest,
-    store: (
-      stream: Readable,
-      originalName: string,
-    ) => Promise<ApplicationRuntimeFileUploadDto>,
-    signal?: AbortSignal,
+    prepare: () => Promise<RuntimeUploadConsumer>,
   ) {
-    return consumeSingleFileUpload({
-      request,
-      signal,
-      fieldName: 'file',
-      maxBytes: this.maxUploadBytes,
-      missingError: () => new ConflictException('A file upload is required.'),
-      limitError: () => this.limitError(),
-      canceledError: () => new ConflictException('File upload was cancelled.'),
-      consume: (stream, originalName) => store(stream, originalName),
-    });
+    const controller = new AbortController();
+    const canceledError = () =>
+      new ConflictException('File upload was cancelled.');
+    return this.operations.withApplicationOperation(
+      id,
+      async () => {
+        const consume = await prepare();
+        return consumeSingleFileUpload({
+          request,
+          signal: controller.signal,
+          consume,
+          fieldName: 'file',
+          maxBytes: this.maxUploadBytes,
+          missingError: () =>
+            new ConflictException('A file upload is required.'),
+          limitError: () => this.limitError(),
+          canceledError,
+        });
+      },
+      () => controller.abort(canceledError()),
+    );
   }
 
   async withStagedFile(

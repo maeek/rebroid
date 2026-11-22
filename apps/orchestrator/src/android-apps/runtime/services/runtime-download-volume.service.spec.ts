@@ -46,7 +46,7 @@ describe('RuntimeDownloadVolumeService', () => {
       networkIsolation as never,
       resources as never,
       paths,
-      new RuntimeUploadStreamService(),
+      new RuntimeUploadStreamService({} as never),
     );
   });
 
