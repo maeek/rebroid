@@ -5,8 +5,8 @@ import { sanitizeAndroidApplicationForUser } from '../../safety'
 
 export type CurrentUserContext = Awaited<ReturnType<typeof getCurrentUserContext>>
 
-export const getAccessibleApplication = async (id: string) => {
-  const user = await getCurrentUserContext()
+export const getAccessibleApplication = async (id: string, response?: 'api') => {
+  const user = await getCurrentUserContext(response)
   const app = await orchestratorAppCatalogClient.getApplication(id)
   if (!user.isPlatformAdmin && app.ownerUserId !== user.ownerUserId) {
     throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
@@ -14,8 +14,8 @@ export const getAccessibleApplication = async (id: string) => {
   return { app, user }
 }
 
-export const getSanitizedAccessibleApplication = async (id: string) => {
-  const { app, user } = await getAccessibleApplication(id)
+export const getSanitizedAccessibleApplication = async (id: string, response?: 'api') => {
+  const { app, user } = await getAccessibleApplication(id, response)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
@@ -32,8 +32,8 @@ export const assertCanUseOwnedApplicationRuntime = async (id: string, message: s
   return { app, user }
 }
 
-export const requireOwnedRuntimeContext = async (id: string, message: string) => {
-  const user = await getCurrentUserContext()
+export const requireOwnedRuntimeContext = async (id: string, message: string, response?: 'api') => {
+  const user = await getCurrentUserContext(response)
   const target = await orchestratorAppCatalogClient.getViewerRuntime(id)
   if (target.ownerUserId !== user.ownerUserId) {
     throw new PublicActionError(message, { code: 'forbidden', status: 403 })

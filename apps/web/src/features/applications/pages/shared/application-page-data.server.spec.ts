@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
+import { getSanitizedAccessibleApplication } from '@/server/orchestrator/applications/actions/common/action-helpers'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { getApplicationLoadingDisplaySize, getApplicationPageData } from './application-page-data.server'
 
-vi.mock('@/server/orchestrator/applications/actions/queries/get-application-action', () => ({
-  getApplicationAction: vi.fn()
+vi.mock('@/server/orchestrator/applications/actions/common/action-helpers', () => ({
+  getSanitizedAccessibleApplication: vi.fn()
 }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('@/server/orchestrator/get-server-ui-settings', () => ({ getServerOrchestratorUiSettings: vi.fn() }))
@@ -25,7 +25,7 @@ describe('Application page data failure states', () => {
   it('rejects a malformed app link before querying the orchestrator', async () => {
     await expect(getApplicationPageData('undefined')).resolves.toEqual({ failure: { kind: 'invalid-link' } })
     await expect(getApplicationLoadingDisplaySize('undefined')).resolves.toBeNull()
-    expect(getApplicationAction).not.toHaveBeenCalled()
+    expect(getSanitizedAccessibleApplication).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -33,14 +33,14 @@ describe('Application page data failure states', () => {
     new PublicActionError('App not found', { code: 'not_found', status: 404 }),
     new PublicActionError('Access denied', { code: 'forbidden', status: 403 })
   ])('renders the same response for missing and inaccessible apps', async error => {
-    vi.mocked(getApplicationAction).mockRejectedValueOnce(error)
+    vi.mocked(getSanitizedAccessibleApplication).mockRejectedValueOnce(error)
     await expect(getApplicationPageData(appId)).resolves.toEqual({ failure: { kind: 'not-found' } })
-    vi.mocked(getApplicationAction).mockRejectedValueOnce(error)
+    vi.mocked(getSanitizedAccessibleApplication).mockRejectedValueOnce(error)
     await expect(getApplicationLoadingDisplaySize(appId)).resolves.toBeNull()
   })
 
   it('reads the configured tablet dimensions from the authorized app definition', async () => {
-    vi.mocked(getApplicationAction).mockResolvedValueOnce({
+    vi.mocked(getSanitizedAccessibleApplication).mockResolvedValueOnce({
       ...applicationPreview,
       runtime: {
         ...applicationPreview.runtime,
@@ -48,11 +48,11 @@ describe('Application page data failure states', () => {
       }
     })
     await expect(getApplicationLoadingDisplaySize(appId)).resolves.toMatchObject({ width: 1600, height: 1000 })
-    expect(getApplicationAction).toHaveBeenCalledExactlyOnceWith(appId)
+    expect(getSanitizedAccessibleApplication).toHaveBeenCalledExactlyOnceWith(appId)
   })
 
   it('preserves the request ID and classifies a service failure separately', async () => {
-    vi.mocked(getApplicationAction).mockRejectedValueOnce(
+    vi.mocked(getSanitizedAccessibleApplication).mockRejectedValueOnce(
       new OrchestratorRequestError('Private cause', 503, 'load-request-2')
     )
     await expect(getApplicationPageData(appId)).resolves.toEqual({

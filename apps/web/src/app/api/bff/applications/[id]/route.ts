@@ -6,5 +6,5 @@ import { getSanitizedAccessibleApplication } from '@/server/orchestrator/applica
 export const GET = (_request: Request, context: { params: Promise<{ id: string }> }) =>
   runRouteHandler(async () => {
     const { id } = await context.params
-    return getSanitizedAccessibleApplication(parseRouteInput(z.uuid(), id))
+    return getSanitizedAccessibleApplication(parseRouteInput(z.uuid(), id), 'api')
   })

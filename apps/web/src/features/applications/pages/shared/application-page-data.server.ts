@@ -6,7 +6,7 @@ import { withStoredAppIcon } from '@/features/applications/icons/enrich'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { logger } from '@/server/observability/logger'
 import { getRequestId, normalizeRequestId } from '@/server/observability/request-id'
-import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
+import { getSanitizedAccessibleApplication } from '@/server/orchestrator/applications/actions/common/action-helpers'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
@@ -16,7 +16,7 @@ import type { AppPageFailureState } from '@/features/applications/components/app
 
 const loadApplication = cache(async (id: string) => {
   try {
-    return { app: mapAndroidApplicationToAppDefinition(await getApplicationAction(id)) }
+    return { app: mapAndroidApplicationToAppDefinition(await getSanitizedAccessibleApplication(id)) }
   } catch (error) {
     unstable_rethrow(error)
     const status =
