@@ -46,6 +46,29 @@ describe('useVisibilityAwareInterval', () => {
     expect(task).toHaveBeenCalledTimes(2)
   })
 
+  it('aborts admitted work on disable and creates a fresh signal when re-enabled', () => {
+    const signals: AbortSignal[] = []
+    const { rerender, unmount } = renderHook(
+      (enabled: boolean) =>
+        useVisibilityAwareInterval({
+          enabled,
+          immediate: true,
+          intervalMs: 1000,
+          task: signal => {
+            signals.push(signal)
+          }
+        }),
+      { initialProps: true }
+    )
+    expect(signals[0].aborted).toBe(false)
+    rerender(false)
+    expect(signals[0].aborted).toBe(true)
+    rerender(true)
+    expect(signals[1].aborted).toBe(false)
+    unmount()
+    expect(signals[1].aborted).toBe(true)
+  })
+
   it('waits until the page is visible', () => {
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,

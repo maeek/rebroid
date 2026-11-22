@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 
 interface UseVisibilityAwareIntervalOptions {
   enabled?: boolean
@@ -8,7 +8,7 @@ interface UseVisibilityAwareIntervalOptions {
   intervalMs: number | null
   runOnFocus?: boolean
   stopOnError?: boolean
-  task: () => Promise<void> | void
+  task: (signal: AbortSignal) => Promise<void> | void
 }
 
 export const useVisibilityAwareInterval = ({
@@ -19,57 +19,51 @@ export const useVisibilityAwareInterval = ({
   stopOnError = false,
   task
 }: UseVisibilityAwareIntervalOptions) => {
-  const taskRef = useRef(task)
+  const runTask = useEffectEvent(task)
 
   useEffect(() => {
-    taskRef.current = task
-  }, [task])
-
-  useEffect(() => {
-    if (!enabled || !intervalMs) {
-      return
-    }
-
-    let disposed = false
-    let stopped = false
+    if (!enabled || !intervalMs) return
+    const controller = new AbortController()
     let running = false
+    let intervalId: number | undefined
 
     const run = async () => {
-      if (disposed || stopped || running || document.visibilityState !== 'visible') {
-        return
-      }
-
+      if (controller.signal.aborted || running || document.visibilityState !== 'visible') return
       running = true
       try {
-        await taskRef.current()
+        await runTask(controller.signal)
       } catch {
         if (stopOnError) {
-          stopped = true
+          controller.abort()
+          window.clearInterval(intervalId)
         }
       } finally {
         running = false
       }
     }
 
-    const runVisible = () => {
-      void run()
+    const tick = () => void run()
+    const schedule = () => {
+      window.clearInterval(intervalId)
+      if (!controller.signal.aborted && document.visibilityState === 'visible') {
+        intervalId = window.setInterval(tick, intervalMs)
+      }
     }
 
-    if (immediate) {
-      runVisible()
+    const onVisibilityChange = () => {
+      schedule()
+      if (runOnFocus) void run()
     }
-
-    const intervalId = window.setInterval(runVisible, intervalMs)
-    if (runOnFocus) {
-      window.addEventListener('focus', runVisible)
-      document.addEventListener('visibilitychange', runVisible)
-    }
+    schedule()
+    if (immediate) void run()
+    if (runOnFocus) window.addEventListener('focus', tick)
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
-      disposed = true
+      controller.abort()
       window.clearInterval(intervalId)
-      window.removeEventListener('focus', runVisible)
-      document.removeEventListener('visibilitychange', runVisible)
+      window.removeEventListener('focus', tick)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [enabled, immediate, intervalMs, runOnFocus, stopOnError])
 }

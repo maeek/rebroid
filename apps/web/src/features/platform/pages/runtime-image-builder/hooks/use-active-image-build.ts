@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
+import { useVisibilityAwareInterval } from '@/hooks/use-visibility-aware-interval'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -19,55 +20,23 @@ export const useActiveImageBuild = (initialJob: ContainerImageBuildJob | null) =
   const jobId = activeJob?.id
   const isRunning = isLive(activeJob)
 
-  const acceptSnapshot = useCallback((expectedId: string, next: ContainerImageBuildJob) => {
+  const acceptSnapshot = (expectedId: string, next: ContainerImageBuildJob) => {
     const current = currentJob.current
     if (current?.id !== expectedId || next.id !== expectedId || !isLive(current)) return false
     currentJob.current = next
     setActiveJob(next)
     return true
-  }, [])
+  }
 
-  useEffect(() => {
-    if (!jobId || !isRunning) return
-    let disposed = false
-    let refreshing = false
-    const refresh = async () => {
-      if (disposed || refreshing || document.visibilityState !== 'visible') return
-      refreshing = true
-      try {
-        const next = await getBff<ContainerImageBuildJob>(buildPath(jobId))
-        if (!disposed) acceptSnapshot(jobId, next)
-      } catch {
-        // Keep the last known state; the next refresh can recover from transient failures.
-      } finally {
-        refreshing = false
-      }
+  useVisibilityAwareInterval({
+    enabled: isRunning,
+    intervalMs: 5000,
+    task: async signal => {
+      if (!jobId) return
+      const next = await getBff<ContainerImageBuildJob>(buildPath(jobId), signal)
+      if (!signal.aborted) acceptSnapshot(jobId, next)
     }
-    let interval: number | null = null
-    const stop = () => {
-      if (interval !== null) window.clearInterval(interval)
-      interval = null
-    }
-    const start = () => {
-      stop()
-      if (document.visibilityState !== 'visible') return
-      interval = window.setInterval(() => void refresh(), 5000)
-    }
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void refresh()
-      start()
-    }
-    const handleFocus = () => void refresh()
-    start()
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleFocus)
-    return () => {
-      disposed = true
-      stop()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [jobId, isRunning, acceptSnapshot])
+  })
 
   const isIdle = () => !pending.current && !isLive(currentJob.current)
 
