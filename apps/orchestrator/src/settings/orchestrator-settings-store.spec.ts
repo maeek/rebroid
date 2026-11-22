@@ -54,6 +54,25 @@ describe('OrchestratorSettingsStore', () => {
     });
   });
 
+  it('orders the initial subscription between earlier and later writes', async () => {
+    const observed: Array<[number, boolean]> = [];
+    const saveLimit = (maxApkUploadSizeMb: number) =>
+      store.updateSettings((current) => ({ ...current, maxApkUploadSizeMb }));
+    const [, unsubscribe] = await Promise.all([
+      saveLimit(80),
+      store.subscribeWithCurrent((settings, initial) =>
+        observed.push([settings.maxApkUploadSizeMb, initial]),
+      ),
+      saveLimit(96),
+    ]);
+    unsubscribe();
+    await saveLimit(112);
+    expect(observed).toEqual([
+      [80, true],
+      [96, false],
+    ]);
+  });
+
   it('exposes only the public settings fields', () => {
     const stored = { ...store.defaults(), privateExtension: 'internal' };
     expect(Object.keys(store.toPublicSettings(stored)).sort()).toEqual([

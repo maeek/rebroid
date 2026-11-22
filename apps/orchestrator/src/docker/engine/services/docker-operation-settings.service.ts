@@ -18,10 +18,9 @@ export class DockerOperationSettingsService
   }
 
   async onModuleInit() {
-    this.unsubscribe = this.settings.subscribeDockerOperationLimits((limits) =>
-      this.apply(limits),
+    this.unsubscribe = await this.settings.subscribeDockerOperationLimits(
+      (limits) => this.apply(limits),
     );
-    this.apply(await this.settings.getDockerOperationLimits());
   }
 
   onModuleDestroy() {

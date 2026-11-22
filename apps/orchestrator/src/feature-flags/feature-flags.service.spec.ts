@@ -12,10 +12,18 @@ class SettingsStoreStub {
 
   defaults = jest.fn(() => this.settings);
   getStoredSettings = jest.fn(async () => this.settings);
-  subscribe = jest.fn(
-    (listener: (settings: StoredOrchestratorSettings) => void) => {
-      this.listeners.add(listener);
-      return () => this.listeners.delete(listener);
+  subscribeWithCurrent = jest.fn(
+    async (
+      listener: (
+        settings: StoredOrchestratorSettings,
+        initial: boolean,
+      ) => void,
+    ) => {
+      listener(this.settings, true);
+      const onChange = (settings: StoredOrchestratorSettings) =>
+        listener(settings, false);
+      this.listeners.add(onChange);
+      return () => this.listeners.delete(onChange);
     },
   );
   updateSettings = jest.fn(
@@ -124,6 +132,33 @@ describe('FeatureFlagsService', () => {
       }),
     ).rejects.toMatchObject({
       response: { code: 'feature_revision_conflict' },
+    });
+  });
+
+  it('retains the synchronized display state across unrelated writes and invalidates it on a revision change', async () => {
+    const store = new SettingsStoreStub(settings());
+    const service = new FeatureFlagsService(store as never, config as never);
+    await service.onModuleInit();
+    const display = () =>
+      service
+        .getManifest()
+        .features.find(({ key }) => key === 'feature.display-webrtc');
+    service.markSynchronization('feature.display-webrtc', 0, 'applied');
+    const applied = display();
+    await store.updateSettings((current) => ({
+      ...current,
+      maxApkUploadSizeMb: 80,
+    }));
+    expect(display()).toBe(applied);
+    await service.update({
+      revision: 0,
+      changes: [{ key: 'feature.ocr', enabled: false }],
+    });
+    service.markSynchronization('feature.display-webrtc', 0, 'applied');
+    expect(display()).toMatchObject({
+      revision: 1,
+      effective: false,
+      syncStatus: 'pending',
     });
   });
 

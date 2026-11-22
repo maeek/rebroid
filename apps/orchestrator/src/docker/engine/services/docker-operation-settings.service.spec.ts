@@ -18,9 +18,9 @@ it('loads persisted limits, applies saves and resets, and unsubscribes at shutdo
     undefined;
   const unsubscribe = jest.fn();
   const settings = {
-    getDockerOperationLimits: jest.fn().mockResolvedValue(stored),
-    subscribeDockerOperationLimits: jest.fn((callback) => {
+    subscribeDockerOperationLimits: jest.fn(async (callback) => {
       listener = callback;
+      listener(stored);
       return unsubscribe;
     }),
     updateDockerOperationLimits: jest.fn(async (value) => {

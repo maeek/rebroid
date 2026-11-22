@@ -51,14 +51,19 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    this.snapshot = this.buildSnapshot(await this.store.getStoredSettings());
-    this.unsubscribe = this.store.subscribe((settings) => {
-      const revision = this.snapshot.revision;
-      this.snapshot = this.buildSnapshot(settings, this.snapshot);
-      if (this.snapshot.revision !== revision) {
-        for (const subscriber of this.subscribers) subscriber();
-      }
-    });
+    this.unsubscribe = await this.store.subscribeWithCurrent(
+      (settings, initial) => {
+        if (
+          !initial &&
+          settings.featureFlags.revision === this.snapshot.revision
+        )
+          return;
+        this.snapshot = this.buildSnapshot(settings);
+        if (!initial) {
+          for (const subscriber of this.subscribers) subscriber();
+        }
+      },
+    );
   }
 
   onModuleDestroy() {
@@ -205,10 +210,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private buildSnapshot(
-    settings: StoredOrchestratorSettings,
-    previous?: FeatureSnapshot,
-  ): FeatureSnapshot {
+  private buildSnapshot(settings: StoredOrchestratorSettings): FeatureSnapshot {
     const states = {} as Record<FeatureFlagKey, FeatureFlagStateDto>;
     for (const definition of featureFlagDefinitions) {
       const supported = this.isSupported(definition);
@@ -217,15 +219,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
           ? definition.defaultEnabled
           : (settings.featureFlags.values[definition.key] ??
             definition.defaultEnabled);
-      const previousState = previous?.states[definition.key];
-      const preserveSynchronization =
-        definition.owner === 'display' &&
-        previous?.revision === settings.featureFlags.revision;
-      const syncStatus = preserveSynchronization
-        ? (previousState?.syncStatus ?? 'pending')
-        : definition.owner === 'display'
-          ? 'pending'
-          : 'applied';
+      const needsSynchronization = definition.owner === 'display';
       states[definition.key] = Object.freeze({
         key: definition.key,
         owner: definition.owner,
@@ -235,12 +229,8 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
         mutable: definition.control === 'runtime',
         enabled,
         supported,
-        effective: preserveSynchronization
-          ? (previousState?.effective ?? false)
-          : definition.owner === 'display'
-            ? false
-            : enabled && supported,
-        syncStatus,
+        effective: enabled && supported && !needsSynchronization,
+        syncStatus: needsSynchronization ? 'pending' : 'applied',
         disablePolicy: definition.disablePolicy,
         lifecycle: definition.lifecycle,
         removalCondition: definition.removalCondition,

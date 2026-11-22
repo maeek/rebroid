@@ -74,6 +74,15 @@ export class OrchestratorSettingsStore {
     return () => this.subscribers.delete(listener);
   }
 
+  subscribeWithCurrent(
+    listener: (settings: StoredOrchestratorSettings, initial: boolean) => void,
+  ) {
+    return this.writes.run(async () => {
+      listener(await this.getStoredSettings(), true);
+      return this.subscribe((settings) => listener(settings, false));
+    });
+  }
+
   private async persistSettings(settings: StoredOrchestratorSettings) {
     const path = this.settingsPath();
     const temporaryPath = `${path}.tmp`;

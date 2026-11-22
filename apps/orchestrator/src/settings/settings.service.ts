@@ -24,10 +24,6 @@ export class SettingsService {
     return this.store.toPublicSettings(await this.store.getStoredSettings());
   }
 
-  async getDockerOperationLimits() {
-    return (await this.store.getStoredSettings()).dockerOperationLimits;
-  }
-
   async readAndroidRendering() {
     return (await this.store.getStoredSettings()).androidRendering;
   }
@@ -50,7 +46,7 @@ export class SettingsService {
   subscribeDockerOperationLimits(
     listener: (limits: DockerOperationLimits | undefined) => void,
   ) {
-    return this.store.subscribe((settings) =>
+    return this.store.subscribeWithCurrent((settings) =>
       listener(settings.dockerOperationLimits),
     );
   }
