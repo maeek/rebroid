@@ -9,7 +9,7 @@ import {
   viewerStreamStatusMessageType,
 } from "./stream-message-types.js";
 
-export type CompatibilityStatusInput = {
+type CompatibilityStatusInput = {
   mode?: unknown;
   message?: unknown;
   diagnostic?: unknown;

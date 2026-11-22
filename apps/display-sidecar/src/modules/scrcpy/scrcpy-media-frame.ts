@@ -9,9 +9,9 @@ import {
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import type { ScrcpyAudioPacket } from "./scrcpy.types";
 
-export type RebroidMediaKind = keyof typeof rbd1MediaKind;
+type RebroidMediaKind = keyof typeof rbd1MediaKind;
 
-export interface RebroidMediaFrame {
+interface RebroidMediaFrame {
   kind: RebroidMediaKind;
   sequence: number;
   timestampUs: bigint;

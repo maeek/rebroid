@@ -1,4 +1,4 @@
-export interface CompatibleH264Offer {
+interface CompatibleH264Offer {
   payloadType: string;
   profileLevelId: string;
 }

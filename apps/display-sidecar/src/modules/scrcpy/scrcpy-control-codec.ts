@@ -8,7 +8,7 @@ import type {
   TouchControlPayload,
 } from "../shared/display-control.types";
 
-export const CONTROL_MESSAGE = {
+const CONTROL_MESSAGE = {
   INJECT_KEYCODE: 0,
   INJECT_TEXT: 1,
   INJECT_TOUCH_EVENT: 2,

@@ -16,7 +16,7 @@ import type {
 
 type BinaryWriter = (payload: Buffer) => Promise<void>;
 
-export interface QueuedScrcpyMediaSinkOptions {
+interface QueuedScrcpyMediaSinkOptions {
   allowClipboard?: boolean;
   onVideoReset?: (deadlineMs: number) => void;
   isOpen: () => boolean;

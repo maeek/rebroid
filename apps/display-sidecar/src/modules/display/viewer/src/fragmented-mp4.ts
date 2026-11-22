@@ -17,7 +17,7 @@ export interface FragmentedMp4Sample {
   data: Uint8Array<ArrayBufferLike>;
 }
 
-export interface FragmentedMp4Fragment {
+interface FragmentedMp4Fragment {
   segment: ArrayBuffer;
   samples: Array<{ sequence: number; timestampUs: number }>;
   durationMs: number;

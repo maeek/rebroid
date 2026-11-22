@@ -98,7 +98,7 @@ export class AdbShellResultDto {
   exitCode!: number;
 }
 
-export class AdbUiDumpDiagnosticsDto {
+class AdbUiDumpDiagnosticsDto {
   @ApiProperty({ example: "uiautomator dump /data/local/tmp/window.xml" })
   command!: string;
 

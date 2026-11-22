@@ -28,9 +28,7 @@ import type {
 } from "../shared/display-control.types";
 export type { AdbChildProcess } from "./adb-command-runner";
 
-export type CommandResult = AdbCommandResult;
-
-export interface UiDumpDiagnostics {
+interface UiDumpDiagnostics {
   command: string;
   compressed: boolean;
   durationMs: number;
@@ -119,7 +117,7 @@ export class AdbService {
     }
   }
 
-  private requireConnectedState(udid: string, state: CommandResult) {
+  private requireConnectedState(udid: string, state: AdbCommandResult) {
     if (state.stdout.trim() !== "device") {
       throw new InternalServerErrorException(
         `ADB transport ${udid} is ${state.stdout.trim() || "unknown"}.`,
@@ -489,7 +487,7 @@ export class AdbService {
     await this.shellResult(udid, ["rm", "-f", dumpPath], 5_000, signal);
     const dump = await this.shellResult(udid, dumpArgs, 10_000, signal);
     let xml = "";
-    let catResult: CommandResult | null = null;
+    let catResult: AdbCommandResult | null = null;
     if (dump.exitCode === 0) {
       catResult = await this.shellResult(
         udid,
@@ -601,7 +599,7 @@ export class AdbService {
     return error instanceof Error ? error.message : String(error);
   }
 
-  private noop(): CommandResult {
+  private noop(): AdbCommandResult {
     return {
       stdout: "",
       stderr: "",

@@ -1,12 +1,12 @@
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 
-export interface ScrcpyVideoPacketStats {
+interface ScrcpyVideoPacketStats {
   configPackets: number;
   mediaPackets: number;
   keyFrames: number;
 }
 
-export interface ScrcpyVideoPacketForwardResult {
+interface ScrcpyVideoPacketForwardResult {
   packet: ScrcpyPacket | null;
   configPrepended: boolean;
   firstConfigPacket: boolean;

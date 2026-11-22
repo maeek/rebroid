@@ -2,7 +2,7 @@ import { splitAnnexBPacket } from "../display/viewer/src/bytes";
 import { h264DimensionsFromSps } from "../display/viewer/src/h264-sps";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 
-export interface ScrcpyH264Configuration {
+interface ScrcpyH264Configuration {
   profileLevelId: string;
   sdpFmtpLine: string;
   width?: number;

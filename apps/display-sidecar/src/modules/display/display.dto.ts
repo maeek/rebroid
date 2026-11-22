@@ -2,10 +2,9 @@ import { viewerCommands } from "@rebroid/android-application-core/viewer-control
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { DisplayFeatureStateDto } from "../shared/sidecar-feature.dto";
 
-export type DisplaySessionStatus =
-  "created" | "active" | "released" | "expired";
+import type { DisplaySessionStatus } from "./display.types";
 
-export class DisplayNewDisplayDto {
+class DisplayNewDisplayDto {
   @ApiProperty({ example: 1280 })
   width!: number;
 
@@ -89,7 +88,7 @@ export class CreateDisplaySurfaceDto {
   dpi?: number;
 }
 
-export class DisplaySurfaceDto {
+class DisplaySurfaceDto {
   @ApiProperty({ example: "main" })
   id!: string;
 
@@ -192,18 +191,15 @@ export class DisplaySessionDto {
   webrtcOfferPath!: string;
 }
 
-export class DisplaySessionInventoryItemDto extends PickType(
-  DisplaySessionDto,
-  [
-    "id",
-    "appId",
-    "status",
-    "createdAt",
-    "lastActivityAt",
-    "expiresAt",
-    "capabilities",
-  ] as const,
-) {
+class DisplaySessionInventoryItemDto extends PickType(DisplaySessionDto, [
+  "id",
+  "appId",
+  "status",
+  "createdAt",
+  "lastActivityAt",
+  "expiresAt",
+  "capabilities",
+] as const) {
   @ApiPropertyOptional({ example: "user_123" })
   ownerUserId?: string;
 }

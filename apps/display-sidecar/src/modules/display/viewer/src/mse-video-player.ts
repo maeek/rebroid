@@ -15,7 +15,7 @@ type VideoWithFrameCallback = HTMLVideoElement & {
   cancelVideoFrameCallback?: (handle: number) => void;
 };
 
-export interface MseMediaSegment {
+interface MseMediaSegment {
   epoch: number;
   segment: ArrayBuffer;
   durationMs: number;
@@ -23,7 +23,7 @@ export interface MseMediaSegment {
   samples: Array<{ sequence: number; timestampUs: number }>;
 }
 
-export interface MseMetricsSnapshot {
+interface MseMetricsSnapshot {
   decodedFps?: number;
   drawnFps: number;
   presentedFps: number;
