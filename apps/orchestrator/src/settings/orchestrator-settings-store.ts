@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { isDrmRenderDevice } from '@rebroid/android-application-core/redroid-runtime';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
 import { SerialQueue } from '../common/serial-queue';
+import { SettingsSubscribers } from './settings-subscribers';
 import { numberInRange } from '../common/number-range';
 import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
 import { normalizeDockerOperationLimits } from './docker-operation-limits-settings';
@@ -39,9 +40,10 @@ export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
 @Injectable()
 export class OrchestratorSettingsStore {
   private readonly writes = new SerialQueue();
-  private readonly subscribers = new Set<
-    (settings: StoredOrchestratorSettings) => void
-  >();
+  private readonly subscribers =
+    new SettingsSubscribers<StoredOrchestratorSettings>(
+      OrchestratorSettingsStore.name,
+    );
 
   constructor(private readonly config: ConfigService) {}
 
@@ -70,8 +72,7 @@ export class OrchestratorSettingsStore {
   }
 
   subscribe(listener: (settings: StoredOrchestratorSettings) => void) {
-    this.subscribers.add(listener);
-    return () => this.subscribers.delete(listener);
+    return this.subscribers.subscribe(listener);
   }
 
   subscribeWithCurrent(
@@ -92,7 +93,7 @@ export class OrchestratorSettingsStore {
       mode: 0o600,
     });
     await rename(temporaryPath, path);
-    for (const subscriber of this.subscribers) subscriber(settings);
+    this.subscribers.notify(settings);
   }
 
   defaults(): StoredOrchestratorSettings {

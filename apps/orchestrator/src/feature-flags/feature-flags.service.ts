@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrchestratorSettingsStore } from '../settings/orchestrator-settings-store';
+import { SettingsSubscribers } from '../settings/settings-subscribers';
 import type { StoredOrchestratorSettings } from '../settings/orchestrator-settings-store';
 import type {
   FeatureFlagManifestDto,
@@ -41,7 +42,9 @@ export class FeatureDisabledException extends ConflictException {
 export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
   private snapshot: FeatureSnapshot;
   private unsubscribe?: () => void;
-  private readonly subscribers = new Set<() => void>();
+  private readonly subscribers = new SettingsSubscribers(
+    FeatureFlagsService.name,
+  );
 
   constructor(
     private readonly store: OrchestratorSettingsStore,
@@ -59,9 +62,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
         )
           return;
         this.snapshot = this.buildSnapshot(settings);
-        if (!initial) {
-          for (const subscriber of this.subscribers) subscriber();
-        }
+        if (!initial) this.subscribers.notify();
       },
     );
   }
@@ -96,8 +97,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
   }
 
   subscribe(subscriber: () => void) {
-    this.subscribers.add(subscriber);
-    return () => this.subscribers.delete(subscriber);
+    return this.subscribers.subscribe(subscriber);
   }
 
   markSynchronization(

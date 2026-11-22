@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import { normalizeAiModel } from './ai-provider-settings';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import { SettingsService } from './settings.service';
@@ -52,6 +53,30 @@ describe('OrchestratorSettingsStore', () => {
       'feature.workflows': true,
       'feature.ai': false,
     });
+  });
+
+  it('acknowledges a saved revision and updates later listeners when an observer throws', async () => {
+    const fail = () => {
+      throw new Error('Listener failed');
+    };
+    store.subscribe(fail);
+    const flags = new FeatureFlagsService(store, new ConfigService({}));
+    await flags.onModuleInit();
+    flags.subscribe(fail);
+    const observed = jest.fn(() => flags.isEnabled('feature.workflows'));
+    flags.subscribe(observed);
+    const changed = await flags.update({
+      revision: 0,
+      changes: [{ key: 'feature.workflows', enabled: false }],
+    });
+    expect(changed.revision).toBe(1);
+    expect(
+      (await store.getStoredSettings()).featureFlags.values[
+        'feature.workflows'
+      ],
+    ).toBe(false);
+    expect(observed).toHaveReturnedWith(false);
+    flags.onModuleDestroy();
   });
 
   it('orders the initial subscription between earlier and later writes', async () => {
