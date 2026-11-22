@@ -53,7 +53,7 @@ export function DockerMetricsDashboard({
   useEffect(() => {
     if (refreshKey !== lastRefreshKey.current) {
       lastRefreshKey.current = refreshKey
-      void mutate(undefined, { throwOnError: true }).then(
+      void mutate({ throwOnError: true }).then(
         () => onRefreshComplete?.(true),
         () => onRefreshComplete?.(false)
       )

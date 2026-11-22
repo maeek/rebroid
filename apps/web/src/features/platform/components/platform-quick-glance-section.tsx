@@ -22,7 +22,7 @@ export const PlatformQuickGlanceSection = ({
   useEffect(() => {
     if (refreshKey > 0 && refreshKey !== lastRefreshKey.current) {
       lastRefreshKey.current = refreshKey
-      void refresh(undefined, { throwOnError: true }).then(
+      void refresh({ throwOnError: true }).then(
         () => onRefreshComplete?.(true),
         () => onRefreshComplete?.(false)
       )

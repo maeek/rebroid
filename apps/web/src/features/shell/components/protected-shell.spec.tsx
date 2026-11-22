@@ -43,6 +43,7 @@ describe('protected shell service health', () => {
       error: undefined,
       isLoading: true,
       isValidating: true,
+      replaceData: vi.fn(),
       mutate: refresh
     })
     render(

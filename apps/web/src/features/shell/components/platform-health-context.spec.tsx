@@ -84,6 +84,7 @@ const mockPoll = (data?: OrchestratorHealth, error?: Error) =>
     error: key === 'orchestrator:health' ? error : undefined,
     isLoading: false,
     isValidating: false,
+    replaceData: vi.fn(),
     mutate: vi.fn()
   }))
 

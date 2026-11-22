@@ -1,14 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useEffectEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 type PollingQueryKey = string | readonly unknown[] | null
-
-interface MutateOptions {
-  revalidate?: boolean
-  throwOnError?: boolean
-}
 
 interface UsePollingQueryOptions<Error = unknown> {
   enabled?: boolean
@@ -17,13 +12,7 @@ interface UsePollingQueryOptions<Error = unknown> {
   revalidateOnMount?: boolean
 }
 
-const serializeKey = (key: PollingQueryKey) => {
-  if (!key) {
-    return null
-  }
-
-  return typeof key === 'string' ? key : JSON.stringify(key)
-}
+export const pollingQueryKey = (key: PollingQueryKey) => ['polling-query', key || null] as const
 
 export const usePollingQuery = <Data, Error = unknown>(
   key: PollingQueryKey,
@@ -31,18 +20,14 @@ export const usePollingQuery = <Data, Error = unknown>(
   { enabled = true, intervalMs = null, onError, revalidateOnMount = true }: UsePollingQueryOptions<Error> = {}
 ) => {
   const queryClient = useQueryClient()
-  const serializedKey = useMemo(() => serializeKey(key), [key])
-  const queryKey = useMemo(() => ['polling-query', serializedKey ?? 'disabled'] as const, [serializedKey])
-  const onErrorRef = useRef(onError)
-
-  useEffect(() => {
-    onErrorRef.current = onError
-  }, [onError])
+  const queryKey = pollingQueryKey(key)
+  const active = enabled && Boolean(key)
+  const reportError = useEffectEvent((error: Error) => onError?.(error))
 
   const query = useQuery<Data, Error>({
     queryKey,
     queryFn: fetcher,
-    enabled: enabled && serializedKey !== null,
+    enabled: active,
     refetchInterval: intervalMs ?? false,
     refetchIntervalInBackground: false,
     refetchOnMount: revalidateOnMount ? 'always' : false
@@ -51,32 +36,30 @@ export const usePollingQuery = <Data, Error = unknown>(
 
   useEffect(() => {
     if (query.error !== null) {
-      onErrorRef.current?.(query.error)
+      reportError(query.error)
     }
   }, [query.error])
 
   const mutate = useCallback(
-    async (overrideFetcher?: () => Promise<Data>, options?: MutateOptions) => {
-      if (!enabled || serializedKey === null) {
-        return undefined
-      }
-      if (options?.revalidate === false) {
-        return queryClient.getQueryData<Data>(queryKey)
-      }
-      if (overrideFetcher) {
-        return queryClient.fetchQuery({ queryKey, queryFn: overrideFetcher, staleTime: 0 })
-      }
-
+    async (options?: { throwOnError?: boolean }) => {
+      if (!active) return undefined
       return refetch({ cancelRefetch: false, throwOnError: options?.throwOnError }).then(result => result.data)
     },
-    [enabled, queryClient, queryKey, refetch, serializedKey]
+    [active, refetch]
   )
+
+  const replaceData = async (value: Data) => {
+    if (!active) return
+    await queryClient.cancelQueries({ queryKey, exact: true })
+    queryClient.setQueryData<Data>(queryKey, () => value)
+  }
 
   return {
     data: query.data,
     error: query.error ?? undefined,
     isLoading: query.isLoading,
     isValidating: query.isFetching,
-    mutate
+    mutate,
+    replaceData
   }
 }

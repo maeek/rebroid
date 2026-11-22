@@ -26,10 +26,14 @@ export const DockerOperationLimitsSection = ({
   onSaved: () => void
   loading?: boolean
 }) => {
-  const { data, error, isLoading, isValidating, mutate } = usePollingQuery('docker:operation-limits', loadLimits, {
-    intervalMs: null,
-    enabled: !loading
-  })
+  const { data, error, isLoading, isValidating, mutate, replaceData } = usePollingQuery(
+    'docker:operation-limits',
+    loadLimits,
+    {
+      intervalMs: null,
+      enabled: !loading
+    }
+  )
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<OperationLimitsDraft | null>(null)
   const [pending, setPending] = useState(false)
@@ -58,7 +62,7 @@ export const DockerOperationLimitsSection = ({
     setSaveError(null)
     try {
       const saved = await sendBff<DockerOperationLimits>(endpoint, parsed.data, 'PATCH')
-      await mutate(() => Promise.resolve(saved))
+      await replaceData(saved)
       setOpen(false)
       toast({ title: 'Docker operation limits saved', variant: 'success' })
       onSaved()

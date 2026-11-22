@@ -11,6 +11,7 @@ import { viewerSettingsFromDefaults } from '@/features/applications/viewer/setti
 import { AiAgentPreview } from '@/features/applications/viewer/tools/runtime-tools-panel/ai-agent/ai-agent-preview'
 import { DownloadsToolsSection } from '@/features/applications/viewer/tools/runtime-tools-panel/files/downloads-tools-section'
 import { RuntimeToolPanelLayout } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
+import { pollingQueryKey } from '@/hooks/use-polling-query'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
@@ -109,7 +110,7 @@ const AppResourcePreviewContent = ({ activity, agent = false, docked = false }: 
       defaultOptions: { queries: { staleTime: Infinity, refetchOnWindowFocus: false } }
     })
     for (const source of ['orchestrator', 'container', 'adb']) {
-      client.setQueryData(['polling-query', JSON.stringify(['applications', previewApp.id, 'logs', source])], {
+      client.setQueryData(pollingQueryKey(['applications', previewApp.id, 'logs', source]), {
         source,
         collectedAt: '2026-11-07T10:00:00Z',
         output: ''

@@ -15,7 +15,7 @@ describe('usePollingQuery', () => {
     await waitFor(() => expect(result.current.data).toBe('retained'))
     fetcher.mockRejectedValue(new Error('Offline'))
     await act(async () => {
-      await expect(result.current.mutate(undefined, { throwOnError: true })).rejects.toThrow('Offline')
+      await expect(result.current.mutate({ throwOnError: true })).rejects.toThrow('Offline')
     })
     expect(result.current.data).toBe('retained')
     await act(async () => {
@@ -23,6 +23,50 @@ describe('usePollingQuery', () => {
       expect(await result.current.mutate()).toBe('retained')
     })
     queryClient.clear()
+  })
+
+  it('keeps array, string, and disabled keys in separate cache entries', async () => {
+    const client = new QueryClient()
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(
+      () => ({
+        array: usePollingQuery(['same'], () => Promise.resolve('array')).data,
+        text: usePollingQuery('["same"]', () => Promise.resolve('text')).data,
+        literal: usePollingQuery('disabled', () => Promise.resolve('literal')).data,
+        absent: usePollingQuery(null, () => Promise.resolve('unused')).data
+      }),
+      { wrapper }
+    )
+    await waitFor(() =>
+      expect(result.current).toEqual({ array: 'array', text: 'text', literal: 'literal', absent: undefined })
+    )
+    client.clear()
+  })
+
+  it('keeps a confirmed write when an earlier read completes late', async () => {
+    const fetcher = vi.fn<() => Promise<string>>().mockResolvedValue('initial')
+    const client = new QueryClient()
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => usePollingQuery('limits', fetcher), { wrapper })
+    await waitFor(() => expect(result.current.data).toBe('initial'))
+    let finish!: (value: string) => void
+    fetcher.mockReturnValueOnce(
+      new Promise(resolve => {
+        finish = resolve
+      })
+    )
+    await act(async () => {
+      const pending = result.current.mutate()
+      const saving = result.current.replaceData('saved')
+      finish('outdated')
+      await Promise.all([pending, saving])
+    })
+    await waitFor(() => expect(result.current.data).toBe('saved'))
+    client.clear()
   })
 
   it('deduplicates concurrent reads with the same key', async () => {

@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
+import { pollingQueryKey } from '@/hooks/use-polling-query'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedShell } from './protected-shell'
@@ -33,7 +34,7 @@ export const ConsoleShellPreview = ({
 }) => {
   const [client] = useState(() => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
-    if (recentApps) queryClient.setQueryData(['polling-query', 'navigation:recent-apps'], recentApps)
+    if (recentApps) queryClient.setQueryData(pollingQueryKey('navigation:recent-apps'), recentApps)
     return queryClient
   })
   return (

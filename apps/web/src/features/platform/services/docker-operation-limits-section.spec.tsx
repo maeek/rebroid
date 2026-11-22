@@ -5,7 +5,7 @@ import { DockerOperationLimitsSection } from './docker-operation-limits-section'
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   send: vi.fn(),
-  mutate: vi.fn(),
+  replaceData: vi.fn(),
   toast: vi.fn()
 }))
 vi.mock('@/hooks/use-polling-query', () => ({ usePollingQuery: mocks.query }))
@@ -26,8 +26,14 @@ const openEditor = () => {
 describe('Docker operation limits', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.query.mockReturnValue({ data: limits, isLoading: false, isValidating: false, mutate: mocks.mutate })
-    mocks.mutate.mockResolvedValue(limits)
+    mocks.query.mockReturnValue({
+      data: limits,
+      isLoading: false,
+      isValidating: false,
+      mutate: vi.fn(),
+      replaceData: mocks.replaceData
+    })
+    mocks.replaceData.mockResolvedValue(limits)
   })
 
   it('shows a readable saved summary and discards cancelled edits', async () => {
@@ -64,6 +70,7 @@ describe('Docker operation limits', () => {
       { ...limits, maxConcurrentReads: 12 },
       'PATCH'
     )
+    expect(mocks.replaceData).toHaveBeenCalledExactlyOnceWith({ ...limits, maxConcurrentReads: 12 })
     expect(onSaved).toHaveBeenCalledOnce()
   })
 
