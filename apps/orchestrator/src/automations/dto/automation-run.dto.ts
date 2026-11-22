@@ -20,6 +20,7 @@ import {
 
 export class RunAutomationDto extends AutomationRunTargetDto {
   @ApiPropertyOptional({
+    type: String,
     example: '98a530d6-a45d-466a-9cb4-c023067c4971',
     nullable: true,
   })

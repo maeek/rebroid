@@ -3123,7 +3123,7 @@ export interface components {
             valid: boolean;
             definition: components["schemas"]["AutomationDefinitionDto"] | null;
             /** @example  */
-            yaml: Record<string, never> | null;
+            yaml: string | null;
             errors: string[];
         };
         DraftAutomationYamlClarificationDto: {
@@ -3163,10 +3163,10 @@ export interface components {
             ownerUserId: string;
             /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
             targetApplicationId: string;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
+            /** @enum {string|null} */
+            profileMode?: "persistent" | "temporary" | null;
             /** @example default */
-            profileName?: Record<string, never> | null;
+            profileName?: string | null;
             /**
              * @default require-running
              * @enum {string}
@@ -3252,10 +3252,10 @@ export interface components {
             targetApplicationId: string;
             /** @example Android 14 */
             appName: string;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
+            /** @enum {string|null} */
+            profileMode?: "persistent" | "temporary" | null;
             /** @example default */
-            profileName?: Record<string, never> | null;
+            profileName?: string | null;
             /** @example Turn on dark mode */
             currentPrompt?: string;
             conversation?: components["schemas"]["RunAdHocAiConversationMessageDto"][];
@@ -3466,10 +3466,10 @@ export interface components {
             description?: string | null;
             automationId: string;
             targetApplicationId: string;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
+            /** @enum {string|null} */
+            profileMode?: "persistent" | "temporary" | null;
             /** @example default */
-            profileName?: Record<string, never> | null;
+            profileName?: string | null;
             /** @default true */
             enabled: boolean;
             tags?: components["schemas"]["AutomationTagDto"][];
@@ -3491,10 +3491,10 @@ export interface components {
             description?: string | null;
             automationId?: string;
             targetApplicationId?: string;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
+            /** @enum {string|null} */
+            profileMode?: "persistent" | "temporary" | null;
             /** @example default */
-            profileName?: Record<string, never> | null;
+            profileName?: string | null;
             /** @default true */
             enabled: boolean;
             tags?: components["schemas"]["AutomationTagDto"][];
@@ -3507,11 +3507,11 @@ export interface components {
             /** @example user_123 */
             ownerUserId: string;
             /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            targetApplicationId?: Record<string, never> | null;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
+            targetApplicationId?: string | null;
+            /** @enum {string|null} */
+            profileMode?: "persistent" | "temporary" | null;
             /** @example default */
-            profileName?: Record<string, never> | null;
+            profileName?: string | null;
             /**
              * @default require-running
              * @enum {string}
@@ -3604,7 +3604,7 @@ export interface components {
         };
         ContainerImageBuildJob: {
             id: string;
-            recipeId?: Record<string, never> | null;
+            recipeId?: string | null;
             /** @example local/redroid-microg:14 */
             targetImage: string;
             /** @example redroid/redroid:14.0.0-latest */

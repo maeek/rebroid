@@ -16,7 +16,7 @@ import { ContainerImageBuildDefinition } from './container-image-build-definitio
 
 @Entity({ name: 'container_image_build_jobs' })
 export class ContainerImageBuildJob extends ContainerImageBuildDefinition {
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   @Column({ type: 'text', nullable: true })
   recipeId!: string | null;
 

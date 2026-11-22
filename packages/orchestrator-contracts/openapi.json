@@ -9579,7 +9579,7 @@
             ]
           },
           "yaml": {
-            "type": "object",
+            "type": "string",
             "example": "",
             "nullable": true
           },
@@ -9694,10 +9694,11 @@
             "enum": [
               "persistent",
               "temporary"
-            ]
+            ],
+            "nullable": true
           },
           "profileName": {
-            "type": "object",
+            "type": "string",
             "example": "default",
             "nullable": true
           },
@@ -9960,10 +9961,11 @@
             "enum": [
               "persistent",
               "temporary"
-            ]
+            ],
+            "nullable": true
           },
           "profileName": {
-            "type": "object",
+            "type": "string",
             "example": "default",
             "nullable": true
           },
@@ -10846,10 +10848,11 @@
             "enum": [
               "persistent",
               "temporary"
-            ]
+            ],
+            "nullable": true
           },
           "profileName": {
-            "type": "object",
+            "type": "string",
             "example": "default",
             "nullable": true
           },
@@ -10925,10 +10928,11 @@
             "enum": [
               "persistent",
               "temporary"
-            ]
+            ],
+            "nullable": true
           },
           "profileName": {
-            "type": "object",
+            "type": "string",
             "example": "default",
             "nullable": true
           },
@@ -10966,7 +10970,7 @@
             "example": "user_123"
           },
           "targetApplicationId": {
-            "type": "object",
+            "type": "string",
             "example": "98a530d6-a45d-466a-9cb4-c023067c4971",
             "nullable": true
           },
@@ -10975,10 +10979,11 @@
             "enum": [
               "persistent",
               "temporary"
-            ]
+            ],
+            "nullable": true
           },
           "profileName": {
-            "type": "object",
+            "type": "string",
             "example": "default",
             "nullable": true
           },
@@ -11246,7 +11251,7 @@
             "type": "string"
           },
           "recipeId": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "targetImage": {

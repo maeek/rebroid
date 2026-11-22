@@ -18,12 +18,12 @@ export class AutomationOwnerDto {
 }
 
 export class AutomationProfileTargetDto extends AutomationOwnerDto {
-  @ApiPropertyOptional({ enum: ApplicationProfileMode })
+  @ApiPropertyOptional({ enum: ApplicationProfileMode, nullable: true })
   @IsOptional()
   @IsEnum(ApplicationProfileMode)
   profileMode?: ApplicationProfileMode | null;
 
-  @ApiPropertyOptional({ example: 'default', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'default', nullable: true })
   @IsOptional()
   @IsString()
   @MaxLength(64)

@@ -248,7 +248,7 @@ export class AutomationValidationDto {
   @ApiProperty({ type: AutomationDefinitionDto, nullable: true })
   definition!: AutomationDefinitionDto | null;
 
-  @ApiProperty({ example: '', nullable: true })
+  @ApiProperty({ type: String, example: '', nullable: true })
   yaml!: string | null;
 
   @ApiProperty({ type: String, isArray: true })
