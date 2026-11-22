@@ -82,6 +82,47 @@ describe('AutomationRunEventBus', () => {
     unsubscribe();
   });
 
+  it.each([false, true])(
+    'counts distinct pending sequences toward the limit (overflow=%s)',
+    async (overflow) => {
+      const repository = {
+        latestSequence: jest.fn().mockResolvedValue(10),
+        listReplayPage: jest.fn(),
+        appendWhileRunning: jest.fn(),
+      };
+      const bus = new AutomationRunEventBus(repository as never);
+      const publish = async (sequence: number) => {
+        repository.appendWhileRunning.mockResolvedValueOnce(event(sequence));
+        await bus.emitWhileRunning({
+          runId: 'run-1',
+          ownerUserId: 'owner-1',
+          type: 'run.started',
+        });
+      };
+      repository.listReplayPage.mockImplementationOnce(async () => {
+        for (let i = 0; i < 1001; i++) await publish(overflow ? 11 + i : 11);
+        await publish(9);
+        return [event(10)];
+      });
+      const received: number[] = [];
+      const subscription = bus.subscribeWithReplay(
+        'owner-1',
+        'run-1',
+        9,
+        (record) => received.push(record.sequence),
+      );
+      if (overflow) {
+        await expect(subscription).rejects.toThrow('buffer exceeded');
+        await publish(1012);
+        expect(received).toEqual([]);
+      } else {
+        const unsubscribe = await subscription;
+        expect(received).toEqual([10, 11]);
+        unsubscribe();
+      }
+    },
+  );
+
   it('delegates reads/deletes and filters live events by owner', async () => {
     const repository = {
       latestSequence: jest.fn().mockResolvedValue(0),

@@ -109,21 +109,24 @@ export class AutomationRunEventBus {
     let lastSequence = Math.max(0, Math.trunc(after));
     let replaying = true;
     let overflow = false;
-    const buffered: AutomationRunEventRecord[] = [];
+    const buffered = new Map<number, AutomationRunEventRecord>();
     const removeListener = this.subscribe(runId, (event) => {
-      if (event.ownerUserId !== ownerUserId) {
+      if (
+        signal?.aborted ||
+        event.ownerUserId !== ownerUserId ||
+        event.sequence <= lastSequence
+      ) {
         return;
       }
-      if (signal?.aborted) return;
       if (replaying) {
-        if (buffered.length >= maxBufferedReplayEvents) {
+        if (buffered.has(event.sequence)) return;
+        if (buffered.size >= maxBufferedReplayEvents) {
           overflow = true;
           return;
         }
-        buffered.push(event);
+        buffered.set(event.sequence, event);
         return;
       }
-      if (event.sequence <= lastSequence) return;
       listener(event);
       lastSequence = event.sequence;
     });
@@ -151,6 +154,7 @@ export class AutomationRunEventBus {
           if (signal?.aborted || event.sequence > through) break;
           listener(event);
           lastSequence = event.sequence;
+          buffered.delete(event.sequence);
         }
         if (lastSequence === previousSequence) break;
       }
@@ -161,7 +165,7 @@ export class AutomationRunEventBus {
       if (overflow)
         throw new Error('Automation event replay buffer exceeded its limit.');
       replaying = false;
-      for (const event of buffered.sort(
+      for (const event of [...buffered.values()].sort(
         (left, right) => left.sequence - right.sequence,
       )) {
         if (signal?.aborted) break;
@@ -169,6 +173,7 @@ export class AutomationRunEventBus {
         listener(event);
         lastSequence = event.sequence;
       }
+      buffered.clear();
       return unsubscribe;
     } catch (error) {
       unsubscribe();
