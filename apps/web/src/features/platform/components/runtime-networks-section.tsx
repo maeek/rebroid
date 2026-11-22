@@ -12,8 +12,8 @@ import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { useResourceGridController } from '@/shared/ui/data-grid/use-resource-grid-controller'
 import { useRuntimeNetworkActions } from '../hooks/use-runtime-network-actions'
-import { useRuntimeResourceGridController } from '../hooks/use-runtime-resource-grid-controller'
 import { RuntimeNetworkFilters } from './runtime-grid-filter-controls'
 import {
   buildNetworksGridHref,
@@ -46,7 +46,7 @@ export const RuntimeNetworksSection = ({
     onPageSizeChange,
     deselectItems,
     refresh
-  } = useRuntimeResourceGridController({
+  } = useResourceGridController({
     items: networksPage.items,
     gridQuery,
     pageSize: networksPage.pageSize,

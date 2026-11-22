@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { buildAutomationGridHref } from '../shared/grid-query-utils'
-import {
-  deletedAutomationIdsFromResults,
-  selectedAutomationsFromIds,
-  summarizeAutomationDeleteResults
-} from './automations-table-model'
+import { deletedAutomationIdsFromResults, summarizeAutomationDeleteResults } from './automations-table-model'
 import type { AutomationGridRow } from '@/shared/contracts/automation'
 
 const automation = (id: string): AutomationGridRow => ({ id, name: id }) as AutomationGridRow
@@ -27,7 +23,6 @@ describe('automations table model', () => {
     const selectedIds = new Set(['a', 'b', 'c'])
 
     expect([...retainVisibleSelectedIds(automations, selectedIds)]).toEqual(['a', 'c'])
-    expect(selectedAutomationsFromIds(automations, selectedIds)).toEqual(automations)
   })
 
   it('extracts fulfilled delete ids', () => {

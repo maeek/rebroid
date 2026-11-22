@@ -12,8 +12,10 @@ import { AutomationTriggersPage } from './automation-triggers-page'
 import { AutomationTriggersPreview, previewTrigger } from './automation-triggers-preview'
 import type { AutomationRun } from '@/shared/contracts/automation'
 
+const push = vi.fn<(href: string) => void>()
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push, refresh: vi.fn() }),
   useSearchParams: () => new URLSearchParams(window.location.search)
 }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
@@ -29,6 +31,19 @@ beforeEach(() => {
 })
 
 describe('Triggers editor workflow', () => {
+  it('retains a pending sort when submitting a search before navigation finishes', () => {
+    render(<AutomationTriggersPreview />)
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger', exact: true }))
+    const first = new URL(push.mock.lastCall![0], 'https://rebroid.test')
+    const search = screen.getByPlaceholderText('Search triggers')
+    fireEvent.change(search, { target: { value: 'nightly' } })
+    fireEvent.keyDown(search, { key: 'Enter' })
+    const next = new URL(push.mock.lastCall![0], 'https://rebroid.test')
+    expect(first.searchParams.get('sort')).toBeTruthy()
+    expect(next.searchParams.get('sort')).toBe(first.searchParams.get('sort'))
+    expect(next.searchParams.get('q')).toBe('nightly')
+  })
+
   it('acknowledges Run now in the row and links the accepted run before refresh', async () => {
     const request = Promise.withResolvers<AutomationRun>()
     vi.mocked(runAutomationTriggerAction).mockReturnValue(request.promise)

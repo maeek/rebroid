@@ -7,44 +7,43 @@ import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { useRoutedGridQuery } from '@/shared/ui/data-grid/use-routed-grid-query'
 import type { OnChangeFn, SortingState } from '@tanstack/react-table'
 
-interface RuntimeResourceGridQuery {
+interface ResourceGridQuery {
   page?: number
   pageSize?: number
   q?: string
   sort?: string
 }
 
-interface RuntimeResourceGridHrefInput<TQuery extends RuntimeResourceGridQuery> {
+interface ResourceGridHrefInput<TQuery extends ResourceGridQuery> {
   gridQuery: TQuery
   pageSize: number
   patch: Partial<TQuery>
 }
 
-export const useRuntimeResourceGridController = <
-  TItem extends { id: string },
-  TQuery extends RuntimeResourceGridQuery
->({
+export const useResourceGridController = <TItem extends { id: string }, TQuery extends ResourceGridQuery>({
   items,
   gridQuery,
   pageSize,
   parseSort,
-  buildHref
+  buildHref,
+  history = 'replace'
 }: {
   items: TItem[]
   gridQuery: TQuery
   pageSize: number
   parseSort: (sort: string | undefined) => SortingState
-  buildHref: (input: RuntimeResourceGridHrefInput<TQuery>) => string
+  history?: 'replace' | 'push'
+  buildHref: (input: ResourceGridHrefInput<TQuery>) => string
 }) => {
   const router = useRouter()
   const { query, searchDraft, setSearchDraft, isNavigating, submit } = useRoutedGridQuery({
     committedQuery: gridQuery,
     hrefFor: next => buildHref({ gridQuery: next, pageSize, patch: {} }),
     searchFrom: next => next.q,
-    navigate: href => router.replace(href, { scroll: false })
+    navigate: href => (history === 'push' ? router.push(href) : router.replace(href, { scroll: false }))
   })
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const sorting = useMemo(() => parseSort(gridQuery.sort), [gridQuery.sort, parseSort])
+  const sorting = useMemo(() => parseSort(query.sort), [query.sort, parseSort])
 
   useEffect(() => {
     setSelectedIds(current => retainVisibleSelectedIds(items, current))

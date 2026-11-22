@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useResourceGridController } from '@/shared/ui/data-grid/use-resource-grid-controller'
 import { buildPlatformGridHref } from '../components/runtime-grid-query-utils'
-import { useRuntimeResourceGridController } from './use-runtime-resource-grid-controller'
 
 const replace = vi.fn<(href: string, options: { scroll: boolean }) => void>()
 
@@ -17,12 +17,12 @@ const buildHref = (input: { gridQuery: GridQuery; patch: Partial<GridQuery>; pag
   buildPlatformGridHref({ basePath: '/runtime/items', ...input })
 const requestedParams = () => new URL(replace.mock.lastCall![0], 'https://example.test').searchParams
 
-describe('useRuntimeResourceGridController', () => {
+describe('useResourceGridController', () => {
   beforeEach(() => replace.mockClear())
 
   it('updates search, sorting, and pagination through one href builder', () => {
     const { result } = renderHook(() =>
-      useRuntimeResourceGridController({
+      useResourceGridController({
         items: [{ id: 'a' }],
         gridQuery: { q: '', sort: 'name:asc' },
         pageSize: 20,
@@ -49,8 +49,7 @@ describe('useRuntimeResourceGridController', () => {
   it('merges rapid edits and preserves explicit clears after an earlier response', () => {
     const initialProps: GridQuery = { q: 'current', ownership: 'managed', page: 3 }
     const { result, rerender } = renderHook(
-      (gridQuery: GridQuery) =>
-        useRuntimeResourceGridController({ items: [], gridQuery, pageSize: 20, parseSort, buildHref }),
+      (gridQuery: GridQuery) => useResourceGridController({ items: [], gridQuery, pageSize: 20, parseSort, buildHref }),
       { initialProps }
     )
 
@@ -70,8 +69,7 @@ describe('useRuntimeResourceGridController', () => {
   it('retains newer search text after a response and clears pending edits on browser Back', () => {
     const initialProps: GridQuery = { q: 'previous', page: 1 }
     const { result, rerender } = renderHook(
-      (gridQuery: GridQuery) =>
-        useRuntimeResourceGridController({ items: [], gridQuery, pageSize: 20, parseSort, buildHref }),
+      (gridQuery: GridQuery) => useResourceGridController({ items: [], gridQuery, pageSize: 20, parseSort, buildHref }),
       { initialProps }
     )
 
@@ -95,7 +93,7 @@ describe('useRuntimeResourceGridController', () => {
   it('resolves selected items and prunes selections that leave the page', () => {
     const { result, rerender } = renderHook(
       ({ items }) =>
-        useRuntimeResourceGridController({
+        useResourceGridController({
           items,
           gridQuery: {},
           pageSize: 20,

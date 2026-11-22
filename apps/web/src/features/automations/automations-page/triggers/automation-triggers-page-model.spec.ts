@@ -9,7 +9,6 @@ import {
   deletedTriggerIdsFromResults,
   editTriggerFormState,
   newTriggerFormState,
-  selectedTriggersFromIds,
   summarizeTriggerBulkDeleteResults,
   summarizeTriggerBulkUpdateResults,
   triggerFormSavePayload,
@@ -168,7 +167,6 @@ describe('automation triggers page model', () => {
     const selectedIds = new Set(['a', 'missing', 'c'])
 
     expect([...retainVisibleSelectedIds(triggers, selectedIds)]).toEqual(['a', 'c'])
-    expect(selectedTriggersFromIds(triggers, selectedIds).map(item => item.id)).toEqual(['a', 'c'])
   })
 
   it('builds compact trigger grid hrefs', () => {

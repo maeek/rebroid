@@ -12,8 +12,8 @@ import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { useResourceGridController } from '@/shared/ui/data-grid/use-resource-grid-controller'
 import { useRuntimeImageActions } from '../hooks/use-runtime-image-actions'
-import { useRuntimeResourceGridController } from '../hooks/use-runtime-resource-grid-controller'
 import { RuntimeImageFilters } from './runtime-grid-filter-controls'
 import { buildImagesGridHref, canRemoveSelectedImages, getImageRemoveDialogLabel } from './runtime-images-section-model'
 import { createImageColumns } from './runtime-images-table-parts'
@@ -42,7 +42,7 @@ export const RuntimeImagesSection = ({
     onPageSizeChange,
     deselectItems,
     refresh
-  } = useRuntimeResourceGridController({
+  } = useResourceGridController({
     items: imagesPage.items,
     gridQuery,
     pageSize: imagesPage.pageSize,

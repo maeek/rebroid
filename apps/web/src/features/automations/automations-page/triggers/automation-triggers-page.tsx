@@ -16,9 +16,8 @@ import {
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { successfulBulkIds } from '@/shared/actions/bulk-action-results'
-import { serializeSortParam } from '@/shared/model/search-params'
-import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { useResourceGridController } from '@/shared/ui/data-grid/use-resource-grid-controller'
 import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { buildAutomationTagCatalog } from '../shared/automation-tags'
@@ -30,7 +29,6 @@ import {
   deletedTriggerIdsFromResults,
   editTriggerFormState,
   newTriggerFormState,
-  selectedTriggersFromIds,
   summarizeTriggerBulkDeleteResults,
   summarizeTriggerBulkUpdateResults,
   triggerFormSavePayload,
@@ -40,13 +38,13 @@ import { AutomationTriggersTable } from './automation-triggers-table'
 import { AutomationTriggersToolbar } from './automation-triggers-toolbar'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AutomationTriggersPageProps } from '../editor/types'
-import type { AutomationRun, AutomationTrigger, AutomationTriggersGridQuery } from '@/shared/contracts/automation'
+import type { AutomationRun, AutomationTrigger } from '@/shared/contracts/automation'
 
 export function AutomationTriggersPage({
   initialApplications,
   initialAutomations,
   triggersPage,
-  gridQuery,
+  gridQuery: committedQuery,
   ownedAppIds,
   canRun = false,
   canCreateApp = false,
@@ -64,18 +62,18 @@ export function AutomationTriggersPage({
   const mutationPending = useRef(false)
   const [bulkPending, setBulkPending] = useState<'enable' | 'disable' | 'delete' | null>(null)
   const [saving, setSaving] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [search, setSearch] = useState(gridQuery.q ?? '')
+  const grid = useResourceGridController({
+    items: triggersPage.items,
+    gridQuery: committedQuery,
+    pageSize: triggersPage.pageSize,
+    parseSort: sort => parseAutomationGridSort(sort, 'triggers'),
+    buildHref: input => buildAutomationGridHref('/automations/triggers', input),
+    history: 'push'
+  })
+  const { selectedIds, selectedItems: selectedTriggers } = grid
   const [pendingDelete, setPendingDelete] = useState<AutomationTrigger | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
-  const sorting = useMemo(() => parseAutomationGridSort(gridQuery.sort, 'triggers'), [gridQuery.sort])
-
   useEffect(() => {
-    setSearch(gridQuery.q ?? '')
-  }, [gridQuery.q])
-
-  useEffect(() => {
-    setSelectedIds(current => retainVisibleSelectedIds(triggersPage.items, current))
     setTriggerRuns(current => {
       const observed = triggersPage.items.filter(trigger => {
         const receipt = current.get(trigger.id)
@@ -107,11 +105,6 @@ export function AutomationTriggersPage({
   )
   const targetApps = ownedAppIds ? initialApplications.filter(app => ownedAppIds.includes(app.id)) : initialApplications
   const canCreate = initialAutomations.length > 0 && targetApps.length > 0
-  const selectedTriggers = selectedTriggersFromIds(triggersPage.items, selectedIds)
-
-  const pushGridParams = (patch: Partial<AutomationTriggersGridQuery>) => {
-    router.push(buildAutomationGridHref('/automations/triggers', { gridQuery, pageSize: triggersPage.pageSize, patch }))
-  }
 
   const openCreate = () => {
     const automation = initialAutomations[0]
@@ -250,7 +243,7 @@ export function AutomationTriggersPage({
     setBusyId(trigger.id)
     try {
       await deleteAutomationTriggerAction(trigger.id)
-      setSelectedIds(current => new Set(Array.from(current).filter(id => id !== trigger.id)))
+      grid.deselectItems(new Set([trigger.id]))
       setPendingDelete(null)
       router.refresh()
       toast({ title: 'Trigger deleted', variant: 'success' })
@@ -275,7 +268,7 @@ export function AutomationTriggersPage({
         selectedTriggers.map(trigger => updateAutomationTriggerAction(trigger.id, { enabled }))
       )
       const updated = successfulBulkIds(selectedTriggers, results)
-      setSelectedIds(current => new Set([...current].filter(id => !updated.has(id))))
+      grid.deselectItems(updated)
       router.refresh()
       toast(summarizeTriggerBulkUpdateResults(results, enabled))
     } finally {
@@ -292,7 +285,7 @@ export function AutomationTriggersPage({
       const items = selectedTriggers
       const results = await Promise.allSettled(items.map(trigger => deleteAutomationTriggerAction(trigger.id)))
       const deletedIds = deletedTriggerIdsFromResults(results, items)
-      setSelectedIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
+      grid.deselectItems(deletedIds)
       setBulkDeleteOpen(false)
       router.refresh()
       toast(summarizeTriggerBulkDeleteResults(results, deletedIds))
@@ -330,14 +323,14 @@ export function AutomationTriggersPage({
         <AutomationTriggersToolbar
           applications={initialApplications}
           tags={triggersPage.facets.tags}
-          gridQuery={gridQuery}
-          search={search}
-          onSearchChange={setSearch}
-          onSearchSubmit={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
+          gridQuery={grid.query}
+          search={grid.search}
+          onSearchChange={grid.setSearch}
+          onSearchSubmit={grid.onSearch}
           selectedCount={selectedTriggers.length}
           pending={bulkPending}
           disabled={busy}
-          onUpdateGrid={pushGridParams}
+          onUpdateGrid={grid.pushGridParams}
           onDelete={() => setBulkDeleteOpen(true)}
           onDisable={() => void updateSelectedEnabled(false)}
           onEnable={() => void updateSelectedEnabled(true)}
@@ -352,7 +345,7 @@ export function AutomationTriggersPage({
             busyId={busyId}
             disabled={busy}
             selectedIds={selectedIds}
-            sorting={sorting}
+            sorting={grid.sorting}
             triggers={triggersPage.items}
             triggerRuns={triggerRuns}
             onDelete={setPendingDelete}
@@ -361,8 +354,8 @@ export function AutomationTriggersPage({
             onEdit={openEdit}
             onEnableSelected={() => updateSelectedEnabled(true)}
             onRun={canRun ? runNow : undefined}
-            onSelectedIdsChange={setSelectedIds}
-            onSortingChange={nextSorting => pushGridParams({ sort: serializeSortParam(nextSorting), page: 1 })}
+            onSelectedIdsChange={grid.setSelectedIds}
+            onSortingChange={grid.onSortingChange}
             onToggleEnabled={toggleEnabled}
             toggleFeedback={toggleFeedback}
           />
@@ -371,8 +364,8 @@ export function AutomationTriggersPage({
             totalItems={triggersPage.total}
             pageIndex={triggersPage.page - 1}
             pageSize={triggersPage.pageSize}
-            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+            onPageIndexChange={grid.onPageIndexChange}
+            onPageSizeChange={grid.onPageSizeChange}
           />
         </AutomationTriggersToolbar>
       </PageContent>

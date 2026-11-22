@@ -19,7 +19,7 @@ import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationOption, AutomationRun, AutomationTrigger } from '@/shared/contracts/automation'
 import type { StateViewAction } from '@/shared/ui/state-view'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
-import type { CellContext, ColumnDef, SortingState } from '@tanstack/react-table'
+import type { CellContext, ColumnDef, OnChangeFn, SortingState } from '@tanstack/react-table'
 import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const triggerEmptyState = (missingApps: boolean, missingWorkflows: boolean, canCreateApp: boolean) => {
@@ -124,7 +124,7 @@ export function AutomationTriggersTable({
   onEnableSelected: () => Promise<void>
   onRun?: (trigger: AutomationTrigger) => Promise<void>
   onSelectedIdsChange: (ids: Set<string>) => void
-  onSortingChange: (sorting: SortingState) => void
+  onSortingChange: OnChangeFn<SortingState>
   toggleFeedback?: { pendingId: string | null; savedId: string | null }
   onToggleEnabled: (trigger: AutomationTrigger, enabled: boolean) => Promise<void>
 }) {
@@ -297,7 +297,7 @@ export function AutomationTriggersTable({
         pageSize={triggers.length || 20}
         getRowId={trigger => trigger.id}
         sorting={sorting}
-        onSortingChange={updater => onSortingChange(typeof updater === 'function' ? updater(sorting) : updater)}
+        onSortingChange={onSortingChange}
         selection={{
           disabled,
           selectedIds,

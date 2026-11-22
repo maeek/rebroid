@@ -6,9 +6,6 @@ type AutomationOperationToast = {
   variant?: 'danger'
 }
 
-export const selectedAutomationsFromIds = (automations: AutomationGridRow[], selectedIds: Set<string>) =>
-  automations.filter(automation => selectedIds.has(automation.id))
-
 export const deletedAutomationIdsFromResults = (items: AutomationGridRow[], results: PromiseSettledResult<unknown>[]) =>
   new Set(
     results

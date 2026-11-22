@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { parseAutomationGridSort } from '@rebroid/automation-core/grid-sort'
 import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
@@ -10,21 +10,16 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { RowActionButton } from '@/components/ui/row-actions'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
-import { serializeSortParam } from '@/shared/model/search-params'
-import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { useResourceGridController } from '@/shared/ui/data-grid/use-resource-grid-controller'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { buildAutomationGridHref } from '../shared/grid-query-utils'
 import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-run-result'
-import {
-  deletedAutomationIdsFromResults,
-  selectedAutomationsFromIds,
-  summarizeAutomationDeleteResults
-} from './automations-table-model'
+import { deletedAutomationIdsFromResults, summarizeAutomationDeleteResults } from './automations-table-model'
 import { AutomationsTableToolbar } from './automations-table-toolbar'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationGridRow, AutomationsGridPage, AutomationsGridQuery } from '@/shared/contracts/automation'
@@ -53,7 +48,7 @@ const workflowStepLabel = (count: number) => {
 export function AutomationsTable({
   applications,
   automationsPage,
-  gridQuery,
+  gridQuery: committedQuery,
   loading = false
 }: {
   loading?: boolean
@@ -62,33 +57,25 @@ export function AutomationsTable({
   gridQuery: AutomationsGridQuery
 }) {
   const router = useRouter()
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [search, setSearch] = useState(gridQuery.q ?? '')
+  const grid = useResourceGridController({
+    items: automationsPage.items,
+    gridQuery: committedQuery,
+    pageSize: automationsPage.pageSize,
+    parseSort: sort => parseAutomationGridSort(sort, 'workflows'),
+    buildHref: input => buildAutomationGridHref('/automations', input),
+    history: 'push'
+  })
+  const { selectedIds, selectedItems: selectedAutomations } = grid
   const [pendingDelete, setPendingDelete] = useState<AutomationGridRow | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const sorting = useMemo(() => parseAutomationGridSort(gridQuery.sort, 'workflows'), [gridQuery.sort])
-
-  useEffect(() => {
-    setSearch(gridQuery.q ?? '')
-  }, [gridQuery.q])
-
-  useEffect(() => {
-    setSelectedIds(current => retainVisibleSelectedIds(automationsPage.items, current))
-  }, [automationsPage.items])
-
   const appNameById = useMemo(() => new Map(applications.map(app => [app.id, app.name])), [applications])
-  const selectedAutomations = selectedAutomationsFromIds(automationsPage.items, selectedIds)
-
-  const pushGridParams = (patch: Partial<AutomationsGridQuery>) => {
-    router.push(buildAutomationGridHref('/automations', { gridQuery, pageSize: automationsPage.pageSize, patch }))
-  }
 
   const deleteMany = async (items: AutomationGridRow[]) => {
     setBusy(true)
     const results = await Promise.allSettled(items.map(item => deleteAutomationAction(item.id)))
     const deletedIds = deletedAutomationIdsFromResults(items, results)
-    setSelectedIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
+    grid.deselectItems(deletedIds)
     setPendingDelete(null)
     setBulkDeleteOpen(false)
     setBusy(false)
@@ -221,14 +208,14 @@ export function AutomationsTable({
       <AutomationsTableToolbar
         applications={applications}
         automationsPage={automationsPage}
-        gridQuery={gridQuery}
-        search={search}
+        gridQuery={grid.query}
+        search={grid.search}
         selectedCount={selectedAutomations.length}
         busy={busy || loading}
         onBulkDelete={() => setBulkDeleteOpen(true)}
-        onSearchChange={setSearch}
-        onSearchSubmit={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
-        onUpdateGrid={pushGridParams}
+        onSearchChange={grid.setSearch}
+        onSearchSubmit={grid.onSearch}
+        onUpdateGrid={grid.pushGridParams}
       >
         <DataGrid
           loading={loading}
@@ -238,15 +225,12 @@ export function AutomationsTable({
           pageIndex={automationsPage.page - 1}
           pageSize={automationsPage.pageSize}
           getRowId={automation => automation.id}
-          sorting={sorting}
-          onSortingChange={updater => {
-            const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-            pushGridParams({ sort: serializeSortParam(nextSorting), page: 1 })
-          }}
+          sorting={grid.sorting}
+          onSortingChange={grid.onSortingChange}
           selection={{
             disabled: busy || loading,
             selectedIds,
-            onSelectedIdsChange: setSelectedIds
+            onSelectedIdsChange: grid.setSelectedIds
           }}
           minWidth='60rem'
           emptyState={
@@ -305,8 +289,8 @@ export function AutomationsTable({
           totalItems={automationsPage.total}
           pageIndex={automationsPage.page - 1}
           pageSize={automationsPage.pageSize}
-          onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-          onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+          onPageIndexChange={grid.onPageIndexChange}
+          onPageSizeChange={grid.onPageSizeChange}
         />
       </AutomationsTableToolbar>
 

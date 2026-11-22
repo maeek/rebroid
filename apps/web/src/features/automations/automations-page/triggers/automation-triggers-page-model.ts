@@ -18,9 +18,6 @@ export const defaultTriggerName = (automation: AutomationOption | undefined, app
   return 'New workflow trigger'
 }
 
-export const selectedTriggersFromIds = (triggers: AutomationTrigger[], selectedIds: Set<string>) =>
-  triggers.filter(trigger => selectedIds.has(trigger.id))
-
 export const deletedTriggerIdsFromResults = (results: PromiseSettledResult<unknown>[], triggers: AutomationTrigger[]) =>
   new Set(
     results

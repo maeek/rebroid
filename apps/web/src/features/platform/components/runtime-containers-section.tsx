@@ -13,8 +13,8 @@ import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { useResourceGridController } from '@/shared/ui/data-grid/use-resource-grid-controller'
 import { useRuntimeContainerActions } from '../hooks/use-runtime-container-actions'
-import { useRuntimeResourceGridController } from '../hooks/use-runtime-resource-grid-controller'
 import {
   buildContainersGridHref,
   canRunBulkContainerAction,
@@ -47,7 +47,7 @@ export const RuntimeContainersSection = ({
     onPageSizeChange,
     deselectItems,
     refresh
-  } = useRuntimeResourceGridController({
+  } = useResourceGridController({
     items: containersPage.items,
     gridQuery,
     pageSize: containersPage.pageSize,
