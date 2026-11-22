@@ -1,40 +1,19 @@
 import { QueryRunner, Table } from 'typeorm';
+import {
+  createdAtColumn,
+  idColumn,
+  timestampColumns,
+} from './initial-schema-columns';
 
 const buildRuntimeColumns = [
-  {
-    name: 'runtimeKind',
-    type: 'varchar',
-    isNullable: false,
-    default: "'redroid'",
-  },
+  { name: 'runtimeKind', type: 'varchar', default: "'redroid'" },
   { name: 'androidVersion', type: 'text', isNullable: true },
   { name: 'architecture', type: 'text', isNullable: true },
-  {
-    name: 'gmsMode',
-    type: 'varchar',
-    isNullable: false,
-    default: "'microg'",
-  },
+  { name: 'gmsMode', type: 'varchar', default: "'microg'" },
   {
     name: 'signatureSpoofing',
     type: 'varchar',
-    isNullable: false,
     default: "'external_required'",
-  },
-];
-
-const timestamps = [
-  {
-    name: 'createdAt',
-    type: 'datetime',
-    isNullable: false,
-    default: "datetime('now')",
-  },
-  {
-    name: 'updatedAt',
-    type: 'datetime',
-    isNullable: false,
-    default: "datetime('now')",
   },
 ];
 
@@ -43,34 +22,18 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
     new Table({
       name: 'container_image_runtime_metadata',
       columns: [
-        {
-          name: 'imageRef',
-          type: 'varchar',
-          isPrimary: true,
-          isNullable: false,
-        },
+        { name: 'imageRef', type: 'varchar', isPrimary: true },
         { name: 'imageId', type: 'text', isNullable: true },
-        {
-          name: 'runtimeKind',
-          type: 'varchar',
-          isNullable: false,
-          default: "'generic'",
-        },
+        { name: 'runtimeKind', type: 'varchar', default: "'generic'" },
         { name: 'androidVersion', type: 'text', isNullable: true },
         { name: 'architecture', type: 'text', isNullable: true },
-        {
-          name: 'gmsMode',
-          type: 'varchar',
-          isNullable: false,
-          default: "'none'",
-        },
+        { name: 'gmsMode', type: 'varchar', default: "'none'" },
         {
           name: 'signatureSpoofing',
           type: 'varchar',
-          isNullable: false,
           default: "'not_applicable'",
         },
-        ...timestamps,
+        ...timestampColumns,
       ],
     }),
   );
@@ -79,18 +42,13 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
     new Table({
       name: 'container_image_build_context_files',
       columns: [
-        { name: 'id', type: 'varchar', isPrimary: true, isNullable: false },
-        { name: 'originalName', type: 'varchar', isNullable: false },
-        { name: 'contextPath', type: 'varchar', isNullable: false },
-        { name: 'storedPath', type: 'varchar', isNullable: false },
-        { name: 'sizeBytes', type: 'integer', isNullable: false },
-        { name: 'sha256', type: 'varchar', isNullable: false },
-        {
-          name: 'createdAt',
-          type: 'datetime',
-          isNullable: false,
-          default: "datetime('now')",
-        },
+        idColumn,
+        { name: 'originalName', type: 'varchar' },
+        { name: 'contextPath', type: 'varchar' },
+        { name: 'storedPath', type: 'varchar' },
+        { name: 'sizeBytes', type: 'integer' },
+        { name: 'sha256', type: 'varchar' },
+        createdAtColumn,
       ],
     }),
   );
@@ -99,19 +57,14 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
     new Table({
       name: 'container_image_build_recipes',
       columns: [
-        { name: 'id', type: 'varchar', isPrimary: true, isNullable: false },
-        { name: 'name', type: 'varchar', isNullable: false },
-        { name: 'targetImage', type: 'varchar', isNullable: false },
-        { name: 'baseImage', type: 'varchar', isNullable: false },
+        idColumn,
+        { name: 'name', type: 'varchar' },
+        { name: 'targetImage', type: 'varchar' },
+        { name: 'baseImage', type: 'varchar' },
         ...buildRuntimeColumns,
-        { name: 'dockerfile', type: 'text', isNullable: false },
-        {
-          name: 'contextFileIdsJson',
-          type: 'text',
-          isNullable: false,
-          default: "'[]'",
-        },
-        ...timestamps,
+        { name: 'dockerfile', type: 'text' },
+        { name: 'contextFileIdsJson', type: 'text', default: "'[]'" },
+        ...timestampColumns,
       ],
     }),
   );
@@ -120,62 +73,27 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
     new Table({
       name: 'container_image_build_jobs',
       columns: [
-        { name: 'id', type: 'varchar', isPrimary: true, isNullable: false },
+        idColumn,
         { name: 'recipeId', type: 'text', isNullable: true },
-        { name: 'targetImage', type: 'varchar', isNullable: false },
-        { name: 'baseImage', type: 'varchar', isNullable: false },
-        {
-          name: 'status',
-          type: 'varchar',
-          isNullable: false,
-          default: "'queued'",
-        },
-        {
-          name: 'buildKind',
-          type: 'varchar',
-          isNullable: false,
-          default: "'dockerfile_overlay'",
-        },
-        {
-          name: 'phase',
-          type: 'varchar',
-          isNullable: false,
-          default: "'queued'",
-        },
+        { name: 'targetImage', type: 'varchar' },
+        { name: 'baseImage', type: 'varchar' },
+        { name: 'status', type: 'varchar', default: "'queued'" },
+        { name: 'buildKind', type: 'varchar', default: "'dockerfile_overlay'" },
+        { name: 'phase', type: 'varchar', default: "'queued'" },
         ...buildRuntimeColumns,
         { name: 'resolvedBaseDigest', type: 'text', isNullable: true },
         { name: 'mindTheGappsRevision', type: 'text', isNullable: true },
         { name: 'packageSha256', type: 'text', isNullable: true },
-        {
-          name: 'cacheState',
-          type: 'varchar',
-          isNullable: false,
-          default: "'not_applicable'",
-        },
-        {
-          name: 'validationResults',
-          type: 'text',
-          isNullable: false,
-          default: "'{}'",
-        },
-        { name: 'dockerfile', type: 'text', isNullable: false },
-        {
-          name: 'contextFileIdsJson',
-          type: 'text',
-          isNullable: false,
-          default: "'[]'",
-        },
-        {
-          name: 'logTail',
-          type: 'text',
-          isNullable: false,
-          default: "''",
-        },
+        { name: 'cacheState', type: 'varchar', default: "'not_applicable'" },
+        { name: 'validationResults', type: 'text', default: "'{}'" },
+        { name: 'dockerfile', type: 'text' },
+        { name: 'contextFileIdsJson', type: 'text', default: "'[]'" },
+        { name: 'logTail', type: 'text', default: "''" },
         { name: 'imageId', type: 'text', isNullable: true },
         { name: 'error', type: 'text', isNullable: true },
         { name: 'startedAt', type: 'datetime', isNullable: true },
         { name: 'finishedAt', type: 'datetime', isNullable: true },
-        ...timestamps,
+        ...timestampColumns,
       ],
     }),
   );
