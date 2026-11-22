@@ -1,4 +1,6 @@
+import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidApplication } from '../../android-application.entity';
+import { AndroidApplicationLifecycleStage } from '../../contracts/android-application-status';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsRuntimeActivationService } from './android-apps-runtime-activation.service';
@@ -20,6 +22,10 @@ describe('AndroidAppsRuntimeActivationService', () => {
       .mockResolvedValue({ id: 'replacement' });
     const createRuntimeBoundary = jest.fn();
     const updateProgress = jest.fn().mockResolvedValue(true);
+    const images = {
+      imageExists: jest.fn().mockResolvedValue(true),
+      pullImage: jest.fn(),
+    };
     const readAndroidRendering = jest.fn().mockResolvedValue({
       mode: 'host',
       renderDevice: '/dev/dri/renderD128',
@@ -55,11 +61,14 @@ describe('AndroidAppsRuntimeActivationService', () => {
       config,
       lifecycle as never,
       { createApplicationContainer } as never,
-      { imageExists: jest.fn().mockResolvedValue(true) } as never,
+      images as never,
       { engineSummary: jest.fn().mockResolvedValue({}) } as never,
       android as never,
       network as never,
-      { updateProgress } as never,
+      {
+        updateProgress,
+        advanceJob: AndroidAppsLifecycleTransitionService.prototype.advanceJob,
+      } as never,
       tracker as never,
       { append: jest.fn() } as never,
       new AndroidAppsRuntimeConfigurationService(
@@ -69,7 +78,7 @@ describe('AndroidAppsRuntimeActivationService', () => {
         { remove: jest.fn() } as never,
       ),
     );
-    const app = Object.assign(new AndroidApplication(), {
+    const app: AndroidApplication = Object.assign(new AndroidApplication(), {
       id: 'app',
       containerId: 'old',
       networkName: 'app-network',
@@ -81,6 +90,7 @@ describe('AndroidAppsRuntimeActivationService', () => {
       service,
       android,
       network,
+      images,
       tracker,
       error,
       startContainer,
@@ -105,6 +115,58 @@ describe('AndroidAppsRuntimeActivationService', () => {
   async function flush() {
     for (let turn = 0; turn < 30; turn += 1) await Promise.resolve();
   }
+
+  it.each([
+    [AndroidApplicationLifecycleStage.ImagePulling, 'existing'],
+    [AndroidApplicationLifecycleStage.ContainerStarting, 'existing'],
+    [AndroidApplicationLifecycleStage.VolumeCreating, 'new'],
+    [AndroidApplicationLifecycleStage.ContainerCreating, 'new'],
+  ])(
+    'stops before runtime work when %s loses the reservation',
+    async (stage, container) => {
+      const {
+        app,
+        service,
+        images,
+        network,
+        startContainer,
+        createApplicationContainer,
+        updateProgress,
+        lifecycle,
+      } = setup(true, false);
+      if (container === 'new') app.containerId = null;
+      images.imageExists.mockResolvedValue(
+        stage !== AndroidApplicationLifecycleStage.ImagePulling,
+      );
+      updateProgress.mockImplementation(
+        async (_reservation, patch) => patch.lifecycleStage !== stage,
+      );
+      await expect(service.activate(app, reservation, 'start')).rejects.toThrow(
+        'no longer reserved',
+      );
+      expect(images.pullImage).not.toHaveBeenCalled();
+      if (stage !== AndroidApplicationLifecycleStage.ContainerCreating)
+        expect(network.createRuntimeBoundary).not.toHaveBeenCalled();
+      expect(network.attachRuntimeSupport).not.toHaveBeenCalled();
+      expect(createApplicationContainer).not.toHaveBeenCalled();
+      expect(startContainer).not.toHaveBeenCalled();
+      expect(lifecycle.getContainerRuntimeState).not.toHaveBeenCalled();
+    },
+  );
+
+  it('stops after attachment if the reservation is lost before starting the container', async () => {
+    const { app, service, updateProgress, network, startContainer } = setup(
+      true,
+      false,
+    );
+    updateProgress.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    await expect(service.activate(app, reservation, 'start')).rejects.toThrow(
+      'no longer reserved',
+    );
+    expect(network.attachRuntimeSupport).toHaveBeenCalledTimes(1);
+    expect(network.startWithPolicy).not.toHaveBeenCalled();
+    expect(startContainer).not.toHaveBeenCalled();
+  });
 
   it('admits Android preparation only after guarded startup', async () => {
     const { app, service, android, network, updateProgress } = setup(

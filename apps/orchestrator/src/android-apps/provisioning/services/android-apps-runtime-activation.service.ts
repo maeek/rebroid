@@ -18,7 +18,10 @@ import {
   type DockerResourceRuntimePort,
 } from '../../../docker/contracts/docker-resource-runtime.port';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
+import {
+  AndroidAppsLifecycleTransitionService,
+  AndroidAppReservationLostError,
+} from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
@@ -71,6 +74,7 @@ export class AndroidAppsRuntimeActivationService {
     try {
       await this.activateContainer(app, reservation, source, configuration);
     } catch (error) {
+      if (error instanceof AndroidAppReservationLostError) throw error;
       this.tracker.ensureActive(app.id);
       const containerId = app.containerId;
       if (
@@ -140,7 +144,7 @@ export class AndroidAppsRuntimeActivationService {
     }
 
     this.tracker.ensureActive(app.id);
-    await this.transitions.updateProgress(reservation, {
+    await this.transitions.advanceJob(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
       statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
     });
@@ -181,18 +185,17 @@ export class AndroidAppsRuntimeActivationService {
     ) {
       app.containerId = null;
       app.appliedRendering = null;
-      const updated = await this.transitions.updateProgress(reservation, {
+      await this.transitions.advanceJob(reservation, {
         containerId: null,
         appliedRendering: null,
         statusMessage:
           'Runtime configuration changed. Creating a replacement container.',
       });
-      if (!updated)
-        throw new Error('Application activation is no longer reserved.');
+
       this.tracker.ensureActive(app.id);
     }
     if (app.containerId) {
-      await this.transitions.updateProgress(reservation, {
+      await this.transitions.advanceJob(reservation, {
         lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
         statusMessage: 'Starting application container.',
       });
@@ -200,13 +203,13 @@ export class AndroidAppsRuntimeActivationService {
       return;
     }
 
-    await this.transitions.updateProgress(reservation, {
+    await this.transitions.advanceJob(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.VolumeCreating,
       statusMessage: 'Preparing application storage and network boundary.',
     });
     await this.network.createRuntimeBoundary(app);
     this.tracker.ensureActive(app.id);
-    await this.transitions.updateProgress(reservation, {
+    await this.transitions.advanceJob(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.ContainerCreating,
       statusMessage: `Creating application container ${app.containerName}.`,
     });
@@ -242,7 +245,7 @@ export class AndroidAppsRuntimeActivationService {
       ? { containerId: container.id, ...configuration.rendering }
       : null;
     app.recreateContainerOnNextStart = false;
-    const recorded = await this.transitions.updateProgress(
+    await this.transitions.advanceJob(
       reservation,
       { containerId: container.id, appliedRendering: app.appliedRendering },
       {
@@ -251,8 +254,7 @@ export class AndroidAppsRuntimeActivationService {
         cpuLimitCpus: app.cpuLimitCpus,
       },
     );
-    if (!recorded)
-      throw new Error('Application activation is no longer reserved.');
+
     await this.logs.append(
       app.id,
       source === 'provision'
@@ -274,7 +276,7 @@ export class AndroidAppsRuntimeActivationService {
     if (!app.containerId) {
       throw new Error('Runtime container was not created.');
     }
-    await this.transitions.updateProgress(reservation, {
+    await this.transitions.advanceJob(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
       statusMessage: 'Starting application container.',
     });
@@ -309,20 +311,18 @@ export class AndroidAppsRuntimeActivationService {
       return;
     }
 
-    const admitted = await this.transitions.updateProgress(reservation, {
+    await this.transitions.advanceJob(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
       statusMessage: 'Waiting for Android to finish booting.',
     });
-    if (!admitted)
-      throw new Error('Application activation is no longer reserved.');
+
     this.tracker.ensureActive(app.id);
     await this.android.prepareRuntime(app, reservation.id, async () => {
-      const preparing = await this.transitions.updateProgress(reservation, {
+      await this.transitions.advanceJob(reservation, {
         lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
         statusMessage: 'Preparing Android remote access.',
       });
-      if (!preparing)
-        throw new Error('Application activation is no longer reserved.');
+
       this.tracker.ensureActive(app.id);
     });
   }

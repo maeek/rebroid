@@ -58,6 +58,12 @@ const allowedStatusTransitions: Record<
   [AndroidApplicationStatus.Removed]: [AndroidApplicationStatus.Removed],
 };
 
+export class AndroidAppReservationLostError extends Error {
+  constructor() {
+    super('Application activation is no longer reserved.');
+  }
+}
+
 type JobPayload = Record<string, unknown> | undefined;
 
 type RuntimeConfigurationUsed = Pick<
@@ -349,6 +355,14 @@ export class AndroidAppsLifecycleTransitionService {
       this.recordLifecycle(applicationId, patch);
     }
     return changed;
+  }
+
+  async advanceJob(
+    ...args: Parameters<AndroidAppsLifecycleTransitionService['updateProgress']>
+  ) {
+    if (!(await this.updateProgress(...args))) {
+      throw new AndroidAppReservationLostError();
+    }
   }
 
   async updateProgress(

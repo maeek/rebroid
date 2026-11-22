@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
+import {
+  AndroidAppsLifecycleTransitionService,
+  AndroidAppReservationLostError,
+} from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
@@ -44,7 +47,7 @@ export class AndroidAppsStartLifecycleService {
         await this.cleanup.removeRuntimeForRecreation(app);
         app.containerId = null;
         app.recreateContainerOnNextStart = false;
-        await this.transitions.updateProgress(reservation, {
+        await this.transitions.advanceJob(reservation, {
           containerId: null,
           recreateContainerOnNextStart: false,
         });
@@ -55,7 +58,7 @@ export class AndroidAppsStartLifecycleService {
         existingContainerId: app.containerId,
         image: app.containerImage,
       });
-      await this.transitions.updateProgress(reservation, {
+      await this.transitions.advanceJob(reservation, {
         lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
         statusMessage:
           'Checking whether the container image is available locally.',
@@ -80,6 +83,7 @@ export class AndroidAppsStartLifecycleService {
         provisioningCompletedAt: new Date(),
       });
     } catch (error) {
+      if (error instanceof AndroidAppReservationLostError) return;
       if (this.tracker.isCancelled(applicationId)) {
         this.logger.log(`Start cancelled for ${applicationId}.`);
         return;

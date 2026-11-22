@@ -5,7 +5,10 @@ import {
   type DockerContainerLifecyclePort,
 } from '../../../docker/contracts/docker-container-lifecycle.port';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
+import {
+  AndroidAppsLifecycleTransitionService,
+  AndroidAppReservationLostError,
+} from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
@@ -45,6 +48,7 @@ export class AndroidAppsProvisioningService {
       }
       await this.finishProvisioning(reservation);
     } catch (error) {
+      if (error instanceof AndroidAppReservationLostError) return;
       if (this.tracker.isCancelled(applicationId)) {
         this.logger.log(`Provisioning cancelled for ${applicationId}.`);
         await this.removeCancelledProvisioningContainer(app);
@@ -65,7 +69,7 @@ export class AndroidAppsProvisioningService {
   private async beginProvisioning(reservation: AndroidAppLifecycleReservation) {
     const { applicationId } = reservation;
     this.tracker.ensureActive(applicationId);
-    await this.transitions.updateProgress(reservation, {
+    await this.transitions.advanceJob(reservation, {
       status: AndroidApplicationStatus.Provisioning,
       lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
       statusMessage:
