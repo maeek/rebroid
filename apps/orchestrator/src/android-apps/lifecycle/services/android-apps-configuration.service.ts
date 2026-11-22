@@ -271,9 +271,7 @@ export class AndroidAppsConfigurationService {
   }
 
   async switchProfile(id: string, dto: SwitchApplicationProfileDto) {
-    const app = await this.reconciler.reconcileById(id);
-    this.assertMutable(app);
-    await this.assertRuntimeNotRecreating(app);
+    const app = await this.getAppForProfileChange(id);
     if (this.backgroundJobs.hasWork(id)) {
       throw new ConflictException(
         'Wait for the active application job before switching profiles.',
@@ -284,8 +282,7 @@ export class AndroidAppsConfigurationService {
   }
 
   async deleteSavedProfile(id: string, profileName: string) {
-    const app = await this.reconciler.reconcileById(id);
-    await this.assertRuntimeNotRecreating(app);
+    const app = await this.getAppForProfileChange(id);
     await this.runtimePreparation.deleteSavedPersistentProfile(
       app,
       profileName,
@@ -338,11 +335,19 @@ export class AndroidAppsConfigurationService {
     return this.queries.getStored(id);
   }
 
-  private assertRuntimeNotRecreating(app: AndroidApplication) {
-    return this.transitions.assertNoRecreation(app.id);
+  private async getAppForProfileChange(id: string) {
+    const app = await this.reconciler.reconcileById(id);
+    this.assertMutable(app);
+    await this.transitions.assertNoRecreation(id);
+    return app;
   }
 
   private assertMutable(app: AndroidApplication) {
+    if (app.status === AndroidApplicationStatus.Removing) {
+      throw new ConflictException(
+        'Cannot update an application being removed.',
+      );
+    }
     if (app.status === AndroidApplicationStatus.Removed) {
       throw new ConflictException('Removed applications cannot be updated.');
     }

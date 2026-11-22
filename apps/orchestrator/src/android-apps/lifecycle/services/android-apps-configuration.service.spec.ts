@@ -1,6 +1,43 @@
 import { KeyedSerialQueue } from '../../../common/keyed-serial-queue';
 import { AndroidAppsConfigurationService } from './android-apps-configuration.service';
 
+it.each(['removing', 'removed'])(
+  'rejects profile commands before touching storage for a %s app',
+  async (status) => {
+    const service = Object.create(
+      AndroidAppsConfigurationService.prototype,
+    ) as AndroidAppsConfigurationService;
+    const runtimePreparation = {
+      switchProfile: jest.fn(),
+      deleteSavedPersistentProfile: jest.fn(),
+    };
+    Object.assign(service, {
+      reconciler: {
+        reconcileById: async () => ({
+          id: 'app',
+          status,
+          removeDataOnRemoval: false,
+        }),
+      },
+      transitions: { assertNoRecreation: jest.fn() },
+      backgroundJobs: { hasWork: () => false },
+      runtimePreparation,
+      writer: { saveRuntimeReplacement: jest.fn() },
+      queries: { decorate: jest.fn() },
+    });
+    await expect(
+      service.deleteSavedProfile('app', 'Work'),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      service.switchProfile('app', { profileName: 'Work' }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      runtimePreparation.deleteSavedPersistentProfile,
+    ).not.toHaveBeenCalled();
+    expect(runtimePreparation.switchProfile).not.toHaveBeenCalled();
+  },
+);
+
 describe('APK owner authorization', () => {
   const service = Object.create(
     AndroidAppsConfigurationService.prototype,
