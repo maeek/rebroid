@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,23 +52,12 @@ for (const contract of selectedContracts) {
     );
   }
 
-  const temporaryPath = check ? `${schemaPath}.check` : schemaPath;
-  mkdirSync(dirname(schemaPath), { recursive: true });
   execFileSync(
     resolve(root, "node_modules/.bin/openapi-typescript"),
-    [specPath, "--output", temporaryPath],
+    [specPath, "--output", schemaPath, ...(check ? ["--check"] : [])],
     {
       cwd: root,
       stdio: "inherit",
     },
   );
-  if (check) {
-    const expected = readFileSync(schemaPath, "utf8");
-    const actual = readFileSync(temporaryPath, "utf8");
-    rmSync(temporaryPath);
-    if (actual !== expected)
-      throw new Error(
-        `${contract.name} generated schema is stale. Run pnpm openapi:generate.`,
-      );
-  }
 }
