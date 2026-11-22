@@ -2,7 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validatePolicy } from "@rebroid/firewall-policy-core/policy";
 import { IptablesAdapter, type FirewallCommandRunner } from "./firewall";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FirewallPolicyStore } from "./policy-store";
@@ -172,6 +179,38 @@ test("policy storage atomically replaces and reloads desired state", () => {
       3,
     );
     assert.deepEqual(new FirewallPolicyStore(statePath).load(), state);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a rejected policy commit keeps durable state and other staging files intact", () => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-"));
+  try {
+    const path = join(directory, "policies.json");
+    const store = new FirewallPolicyStore(path);
+    const original = store.load();
+    store.save(original);
+    const foreignStage = `${path}.${process.pid}.tmp`;
+    writeFileSync(foreignStage, "left by a previous writer");
+    const next = { ...original, lastReconciledAt: 42 };
+    assert.throws(
+      () =>
+        store.save(next, () => {
+          throw new Error("cancelled");
+        }),
+      /cancelled/,
+    );
+    assert.deepEqual(store.snapshot(), original);
+    assert.deepEqual(new FirewallPolicyStore(path).load(), original);
+    assert.equal(
+      readFileSync(foreignStage, "utf8"),
+      "left by a previous writer",
+    );
+    assert.equal(readdirSync(directory).length, 2);
+    store.save(next);
+    assert.equal(statSync(path).mode & 0o777, 0o600);
+    assert.deepEqual(new FirewallPolicyStore(path).load(), next);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

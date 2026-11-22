@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   closeSync,
   existsSync,
@@ -83,9 +84,9 @@ export class FirewallPolicyStore {
       lastReconciledAt: committed.lastReconciledAt,
     };
     mkdirSync(dirname(this.statePath), { recursive: true });
-    const temporaryPath = `${this.statePath}.${process.pid}.tmp`;
+    const temporaryPath = `${this.statePath}.${randomUUID()}.tmp`;
+    const descriptor = openSync(temporaryPath, "wx", 0o600);
     try {
-      const descriptor = openSync(temporaryPath, "w", 0o600);
       try {
         writeFileSync(descriptor, JSON.stringify(stored));
         fsyncSync(descriptor);
