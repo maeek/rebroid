@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import {
   maximumProviderJsonBytes,
-  createProviderRequestScope,
   providerRequestHeaders,
   readBoundedProviderText,
   readProviderJson,
@@ -18,17 +17,33 @@ it('builds authenticated JSON provider headers', () => {
   );
 });
 
-it('propagates cancellation and bounds provider response text', async () => {
-  const parent = new AbortController();
-  const scope = createProviderRequestScope({
-    abortSignal: parent.signal,
-    timeoutMs: 10_000,
-  });
-  parent.abort();
-  assert.equal(scope.signal.aborted, true);
-  assert.equal(scope.wasCanceled(), true);
-  scope.cleanup();
+it('skips requests canceled or expired before dispatch', async () => {
+  const fetch = jest.spyOn(globalThis, 'fetch');
+  try {
+    const abortSignal = AbortSignal.abort();
+    await expect(
+      withProviderResponse(
+        'http://provider.test',
+        {},
+        { abortSignal },
+        readProviderJson,
+      ),
+    ).rejects.toMatchObject({ kind: 'canceled' });
+    await expect(
+      withProviderResponse(
+        'http://provider.test',
+        {},
+        { timeoutMs: 0 },
+        readProviderJson,
+      ),
+    ).rejects.toMatchObject({ kind: 'timeout' });
+    expect(fetch).not.toHaveBeenCalled();
+  } finally {
+    fetch.mockRestore();
+  }
+});
 
+it('bounds provider error response text', async () => {
   const response = new Response('abcdef');
   assert.equal(await readBoundedProviderText(response, 3), 'abc');
 });
@@ -64,6 +79,37 @@ it('enforces the timeout while reading a response body', async () => {
     jest.useRealTimers();
   }
 });
+
+it.each(['timeout', 'canceled'] as const)(
+  'retains the first abort cause when body cleanup is delayed (%s)',
+  async (first) => {
+    jest.useFakeTimers();
+    const fetch = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response());
+    const parent = new AbortController();
+    let finish!: () => void;
+    const body = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    try {
+      const pending = withProviderResponse(
+        'http://provider.test',
+        {},
+        { abortSignal: parent.signal, timeoutMs: 25 },
+        () => body,
+      );
+      if (first === 'canceled') parent.abort();
+      await jest.advanceTimersByTimeAsync(25);
+      parent.abort();
+      finish();
+      await expect(pending).rejects.toMatchObject({ kind: first });
+    } finally {
+      fetch.mockRestore();
+      jest.useRealTimers();
+    }
+  },
+);
 
 it('decodes only the requested prefix of a large error chunk, including a split BOM', async () => {
   const bytes = new TextEncoder().encode(

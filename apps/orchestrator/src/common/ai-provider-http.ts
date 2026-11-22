@@ -24,40 +24,6 @@ export const providerRequestHeaders = (
   return Object.fromEntries(headers.entries());
 };
 
-export const createProviderRequestScope = ({
-  timeoutMs,
-  deadline,
-  abortSignal,
-}: ProviderRequestScopeOptions) => {
-  const controller = new AbortController();
-  const remainingMs = deadline === undefined ? Infinity : deadline - Date.now();
-  const boundedTimeout = Math.max(
-    0,
-    Math.min(
-      remainingMs,
-      timeoutMs ?? (deadline === undefined ? 60_000 : Infinity),
-    ),
-  );
-  let timedOut = false;
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, boundedTimeout);
-  const abort = () => controller.abort();
-  if (abortSignal?.aborted) abort();
-  else abortSignal?.addEventListener('abort', abort, { once: true });
-
-  return {
-    signal: controller.signal,
-    wasCanceled: () => Boolean(abortSignal?.aborted),
-    wasTimedOut: () => timedOut,
-    cleanup: () => {
-      clearTimeout(timeout);
-      abortSignal?.removeEventListener('abort', abort);
-    },
-  };
-};
-
 export class ProviderRequestAbort extends Error {
   constructor(
     readonly kind: 'canceled' | 'timeout',
@@ -79,27 +45,36 @@ export async function withProviderResponse<T>(
   options: ProviderRequestScopeOptions,
   consume: (response: Response) => Promise<T>,
 ): Promise<T> {
-  const scope = createProviderRequestScope(options);
+  const { abortSignal, deadline, timeoutMs } = options;
+  const timeout = new AbortController();
+  const signal = abortSignal
+    ? AbortSignal.any([abortSignal, timeout.signal])
+    : timeout.signal;
+  const remaining = deadline === undefined ? Infinity : deadline - Date.now();
+  const delay = Math.min(
+    remaining,
+    timeoutMs ?? (deadline === undefined ? 60_000 : Infinity),
+  );
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    scope.signal.throwIfAborted();
-    if (options.deadline !== undefined && options.deadline <= Date.now()) {
-      throw new ProviderRequestAbort('timeout');
-    }
-    const response = await fetch(url, { ...init, signal: scope.signal });
+    signal.throwIfAborted();
+    if (delay <= 0) throw new ProviderRequestAbort('timeout');
+    timer = setTimeout(() => timeout.abort(), delay);
+    const response = await fetch(url, { ...init, signal });
     const result = await consume(response);
-    scope.signal.throwIfAborted();
+    signal.throwIfAborted();
     return result;
   } catch (error) {
-    if (scope.wasCanceled()) throw new ProviderRequestAbort('canceled', error);
-    if (
-      scope.wasTimedOut() ||
-      (isProviderAbortError(error) && !(error instanceof ProviderRequestAbort))
-    ) {
-      throw new ProviderRequestAbort('timeout', error);
+    if (signal.aborted) {
+      const timedOut =
+        timeout.signal.aborted && signal.reason === timeout.signal.reason;
+      throw new ProviderRequestAbort(timedOut ? 'timeout' : 'canceled', error);
     }
+    if (isProviderAbortError(error) && !(error instanceof ProviderRequestAbort))
+      throw new ProviderRequestAbort('timeout', error);
     throw error;
   } finally {
-    scope.cleanup();
+    clearTimeout(timer);
   }
 }
 
