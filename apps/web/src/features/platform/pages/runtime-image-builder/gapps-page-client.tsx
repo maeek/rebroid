@@ -87,6 +87,7 @@ const pendingController: GappsBuildController = {
   isSettingDefault: false,
   preset: undefined,
   targetImage: '',
+  targetImageError: undefined,
   cancelBuild: () => Promise.resolve(),
   clearCache: () => Promise.resolve(),
   selectVersion: noop,

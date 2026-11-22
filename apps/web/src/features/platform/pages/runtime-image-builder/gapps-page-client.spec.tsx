@@ -59,6 +59,41 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
     expect(screen.getByRole('link', { name: 'Custom builder' })).toBeTruthy()
   })
 
+  it('uses the displayed fallback preset for cache and build requests', async () => {
+    const fallback = presetResponse.presets.find(preset => preset.androidVersion === '16')!
+    vi.mocked(sendBff)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        id: 'fallback-job',
+        status: 'queued',
+        targetImage: fallback.defaultTargetImage,
+        logTail: ''
+      } satisfies Partial<ContainerImageBuildJob>)
+    render(
+      <RuntimeGappsImageBuilderPageClient
+        presetResponse={{ ...presetResponse, presets: [fallback] }}
+        initialJob={null}
+      />
+    )
+    expect(screen.getByRole('textbox', { name: 'Target image' })).toHaveValue(fallback.defaultTargetImage)
+    fireEvent.click(screen.getByRole('button', { name: /^Package cache/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear cache' }))
+    await waitFor(() =>
+      expect(sendBff).toHaveBeenCalledWith(
+        '/api/bff/platform/image-builds/gapps/cache',
+        { androidVersion: '16' },
+        'DELETE'
+      )
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Build image' }))
+    await waitFor(() =>
+      expect(sendBff).toHaveBeenCalledWith('/api/bff/platform/image-builds/gapps', {
+        androidVersion: '16',
+        targetImage: fallback.defaultTargetImage
+      })
+    )
+  })
+
   it('requires a writable target tag before queueing a build', () => {
     render(
       <RuntimeGappsImageBuilderPageClient

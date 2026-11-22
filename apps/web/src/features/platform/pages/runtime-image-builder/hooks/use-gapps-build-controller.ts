@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { sendBff } from '@/lib/http/bff'
@@ -7,7 +7,6 @@ import { gappsBuildPhases } from '../model/gapps-build'
 import { useActiveImageBuild } from './use-active-image-build'
 import type {
   ContainerImageBuildJob,
-  GappsBuildPreset,
   GappsBuildPresetsResponse,
   SupportedGappsAndroidVersion
 } from '@/shared/contracts/platform'
@@ -18,39 +17,15 @@ interface GappsBuildControllerInput {
   uploadedApkId?: string
 }
 
-export interface GappsBuildController {
-  activeJob: ContainerImageBuildJob | null
-  androidVersion: SupportedGappsAndroidVersion
-  presets: GappsBuildPreset[]
-  createAppHref: string
-  currentPhaseIndex: number
-  isClearing: boolean
-  isCancelling: boolean
-  isRunning: boolean
-  isStarting: boolean
-  isSettingDefault: boolean
-  preset: GappsBuildPreset | undefined
-  targetImage: string
-  targetImageError?: string
-  cancelBuild: () => Promise<void>
-  clearCache: () => Promise<void>
-  selectVersion: (version: SupportedGappsAndroidVersion) => void
-  setAsDefault: () => Promise<void>
-  setTargetImage: (value: string) => void
-  startBuild: () => Promise<void>
-}
-
-export const useGappsBuildController = ({
-  presetResponse,
-  initialJob,
-  uploadedApkId
-}: GappsBuildControllerInput): GappsBuildController => {
-  const [androidVersion, setAndroidVersion] = useState<SupportedGappsAndroidVersion>('14')
-  const preset = useMemo(
-    () => presetResponse.presets.find(item => item.androidVersion === androidVersion) ?? presetResponse.presets[0],
-    [androidVersion, presetResponse.presets]
-  )
-  const [targetImage, setTargetImage] = useState(preset?.defaultTargetImage ?? 'local/redroid-gapps:14')
+export const useGappsBuildController = ({ presetResponse, initialJob, uploadedApkId }: GappsBuildControllerInput) => {
+  const [selection, setSelection] = useState<{ version: SupportedGappsAndroidVersion; targetImage?: string }>({
+    version: '14'
+  })
+  const preset =
+    presetResponse.presets.find(item => item.androidVersion === selection.version) ?? presetResponse.presets.at(0)
+  const androidVersion = preset?.androidVersion ?? selection.version
+  const editedTarget = androidVersion === selection.version ? selection.targetImage : undefined
+  const targetImage = editedTarget ?? preset?.defaultTargetImage ?? ''
   const {
     activeJob,
     isIdle,
@@ -67,12 +42,6 @@ export const useGappsBuildController = ({
   const targetImageError = buildTargetImageError(targetImage)
   const currentPhaseIndex = gappsBuildPhases.findIndex(phase => phase.id === (activeJob?.phase ?? 'queued'))
 
-  const selectVersion = (version: SupportedGappsAndroidVersion) => {
-    const nextPreset = presetResponse.presets.find(item => item.androidVersion === version)
-    setAndroidVersion(version)
-    if (nextPreset) setTargetImage(nextPreset.defaultTargetImage)
-  }
-
   const startBuild = async () => {
     if (clearing.current || !presetResponse.resources.canBuild || !preset || targetImageError) return
     await startActiveBuild(
@@ -82,7 +51,7 @@ export const useGappsBuildController = ({
   }
 
   const clearCache = async () => {
-    if (clearing.current || !isIdle()) return
+    if (clearing.current || !isIdle() || !preset) return
     clearing.current = true
     setIsClearing(true)
     try {
@@ -115,9 +84,11 @@ export const useGappsBuildController = ({
     targetImageError,
     cancelBuild,
     clearCache,
-    selectVersion,
+    selectVersion: (version: SupportedGappsAndroidVersion) => setSelection({ version }),
     setAsDefault,
-    setTargetImage,
+    setTargetImage: (value: string) => setSelection({ version: androidVersion, targetImage: value }),
     startBuild
   }
 }
+
+export type GappsBuildController = ReturnType<typeof useGappsBuildController>
