@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { IncomingHttpHeaders } from 'node:http';
 import type { Readable } from 'node:stream';
 import Busboy from 'busboy';
@@ -34,16 +34,7 @@ export const consumeSingleFileUpload = <Result>({
 }: SingleFileUploadOptions<Result>) => {
   signal?.throwIfAborted();
   if (request.destroyed) throw canceledError();
-  const contentType = request.headers['content-type'];
-  const value = Array.isArray(contentType) ? contentType[0] : contentType;
-  if (!value?.toLowerCase().startsWith('multipart/form-data')) {
-    throw new ConflictException('A multipart file upload is required.');
-  }
-  const parser = Busboy({
-    headers: request.headers,
-    // Busboy emits its limit event on equality. The configured maximum is inclusive.
-    limits: { files: 1, fileSize: maxBytes + 1 },
-  });
+  const parser = createUploadParser(request.headers, maxBytes);
 
   let upload: Promise<Result> | null = null;
   const inputCanceled = () => {
@@ -97,3 +88,17 @@ export const consumeSingleFileUpload = <Result>({
     await upload?.catch(() => undefined);
   });
 };
+
+function createUploadParser(headers: IncomingHttpHeaders, maxBytes: number) {
+  const contentType = headers['content-type'];
+  const value = Array.isArray(contentType) ? contentType[0] : contentType;
+  if (!value?.toLowerCase().startsWith('multipart/form-data')) {
+    throw new ConflictException('A multipart file upload is required.');
+  }
+  try {
+    // Busboy emits its limit event on equality. The configured maximum is inclusive.
+    return Busboy({ headers, limits: { files: 1, fileSize: maxBytes + 1 } });
+  } catch (cause) {
+    throw new BadRequestException('Invalid multipart content type.', { cause });
+  }
+}

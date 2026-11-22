@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { PassThrough, Readable } from 'node:stream';
 import { text } from 'node:stream/consumers';
 import {
@@ -34,6 +35,25 @@ it.each(['123', '1234', '12345'])(
     expect(request.listeners('error')).toEqual([existingErrorListener]);
   },
 );
+
+it('reports a malformed multipart declaration before consuming a file', () => {
+  const request = Object.assign(Readable.from([]), {
+    headers: { 'content-type': 'multipart/form-data' },
+  });
+  const consume = jest.fn();
+  expect(() =>
+    consumeSingleFileUpload({
+      request,
+      consume,
+      fieldName: 'file',
+      maxBytes: 16,
+      missingError: () => new Error('missing'),
+      limitError: () => new Error('too large'),
+      canceledError: () => new Error('canceled'),
+    }),
+  ).toThrow(BadRequestException);
+  expect(consume).not.toHaveBeenCalled();
+});
 
 it.each(['abort', 'close'])(
   'stops the file consumer on request %s',
