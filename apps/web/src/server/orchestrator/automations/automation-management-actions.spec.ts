@@ -3,11 +3,8 @@ import { saveAutomationAction } from './automation-management-actions'
 import { orchestratorAutomationsClient } from './client'
 vi.mock('next/headers', () => ({ headers: () => Promise.resolve(new Headers()) }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
-vi.mock('@/server/orchestrator/current-user', () => ({
-  getCurrentUserContext: () => Promise.resolve({ ownerUserId: 'actor' })
-}))
 vi.mock('./action-helpers', () => ({
-  assertAutomationPermission: vi.fn(),
+  requireAutomationUser: () => Promise.resolve({ ownerUserId: 'actor' }),
   assertDefinitionPermissions: vi.fn(),
   recordAutomationAudit: vi.fn()
 }))

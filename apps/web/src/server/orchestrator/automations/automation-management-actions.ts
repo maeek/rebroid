@@ -5,7 +5,6 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { adHocAiRunPrompt, finalAiRunEvent } from '@/shared/model/ad-hoc-ai-run-events'
 import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-automation-draft-stream'
 import {
@@ -13,20 +12,19 @@ import {
   assertDefinitionPermissions,
   listPermittedAutomationCommands,
   listPermittedDraftCommands,
-  recordAutomationAudit
+  recordAutomationAudit,
+  requireAutomationUser
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type { AutomationRunEvent, DraftAutomationYamlInput, SaveAutomationInput } from '@/shared/contracts/automation'
 
 export const listAutomationCommandsAction = async () => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
+  const user = await requireAutomationUser('automations:manage')
   return listPermittedAutomationCommands(user)
 }
 
 export const validateAutomationYamlAction = async (yaml: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
+  const user = await requireAutomationUser('automations:manage')
   const validation = await orchestratorAutomationsClient.validateYaml(yaml)
   if (validation.definition) {
     await assertDefinitionPermissions(user, validation.definition)
@@ -116,8 +114,7 @@ export const draftWorkflowFromAdHocRunAction = async ({
   visionProviderId?: string
   visionModelId?: string
 }) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
+  const user = await requireAutomationUser('automations:manage')
   assertAutomationPermission(user, 'automations:run-ai')
   const run = await orchestratorAutomationsClient.getRun(user.ownerUserId, runId)
   if (run.status !== 'success') {
@@ -145,13 +142,14 @@ export const draftWorkflowFromAdHocRunAction = async ({
     allowedTools: await listPermittedDraftCommands(user)
   })
   await assertDefinitionPermissions(user, draft.definition)
-  await recordAutomationAudit('automation.ai.draft-from-run', run.automationId, 'Ad-hoc AI automation', { runId })
+  recordAutomationAudit(user.ownerUserId, 'automation.ai.draft-from-run', run.automationId, 'Ad-hoc AI automation', {
+    runId
+  })
   return draft
 }
 
 export const getAutomationAction = async (id: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
+  const user = await requireAutomationUser('automations:manage')
   return orchestratorAutomationsClient.get(user.ownerUserId, id)
 }
 
@@ -160,8 +158,7 @@ const saveWorkflowInput = z.object({ yaml: z.string() }).strict()
 export const saveAutomationAction = async (id: string | null, input: SaveAutomationInput) =>
   runSafeAction(
     async () => {
-      const user = await getCurrentUserContext()
-      assertAutomationPermission(user, 'automations:manage')
+      const user = await requireAutomationUser('automations:manage')
       const { yaml } = saveWorkflowInput.parse(input)
       const validation = await orchestratorAutomationsClient.validateYaml(yaml)
       if (!validation.valid || !validation.definition) {
@@ -174,7 +171,8 @@ export const saveAutomationAction = async (id: string | null, input: SaveAutomat
         ? await orchestratorAutomationsClient.update(user.ownerUserId, id, payload)
         : await orchestratorAutomationsClient.create(user.ownerUserId, payload)
       revalidatePath('/automations')
-      await recordAutomationAudit(
+      recordAutomationAudit(
+        user.ownerUserId,
         id ? 'automation.update' : 'automation.create',
         automation.id,
         automation.name,
@@ -186,10 +184,9 @@ export const saveAutomationAction = async (id: string | null, input: SaveAutomat
   )
 
 export const deleteAutomationAction = async (id: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
+  const user = await requireAutomationUser('automations:manage')
   const automation = await orchestratorAutomationsClient.remove(user.ownerUserId, id)
   revalidatePath('/automations')
-  await recordAutomationAudit('automation.delete', automation.id, automation.name)
+  recordAutomationAudit(user.ownerUserId, 'automation.delete', automation.id, automation.name)
   return automation
 }

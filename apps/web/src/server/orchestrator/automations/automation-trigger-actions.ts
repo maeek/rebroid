@@ -1,27 +1,16 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import {
-  assertAutomationPermission,
-  assertDefinitionPermissions,
-  assertRunProfilePermission,
-  assertTriggerTarget,
-  recordAutomationAudit
-} from './action-helpers'
+import { requireRunnableWorkflow, recordAutomationAudit, requireAutomationUser } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type { SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 
 export const createAutomationTriggerAction = async (input: SaveAutomationTriggerInput) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
-  await assertTriggerTarget(input)
-  assertRunProfilePermission(user, input)
-  const automation = await orchestratorAutomationsClient.get(user.ownerUserId, input.automationId)
-  await assertDefinitionPermissions(user, automation.definition)
+  const user = await requireAutomationUser('automations:manage')
+  await requireRunnableWorkflow(user, input.automationId, input)
   const trigger = await orchestratorAutomationsClient.createTrigger(user.ownerUserId, input)
   revalidatePath('/automations/triggers')
-  await recordAutomationAudit('automation.trigger.create', trigger.id, trigger.name, {
+  recordAutomationAudit(user.ownerUserId, 'automation.trigger.create', trigger.id, trigger.name, {
     automationId: trigger.automationId,
     targetApplicationId: trigger.targetApplicationId
   })
@@ -29,42 +18,36 @@ export const createAutomationTriggerAction = async (input: SaveAutomationTrigger
 }
 
 export const updateAutomationTriggerAction = async (id: string, input: Partial<SaveAutomationTriggerInput>) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
+  const user = await requireAutomationUser('automations:manage')
   const current = await orchestratorAutomationsClient.getTrigger(user.ownerUserId, id)
-  const effective = { ...current, ...input }
-  await assertTriggerTarget(effective)
-  assertRunProfilePermission(user, effective)
-  const automation = await orchestratorAutomationsClient.get(user.ownerUserId, effective.automationId)
-  await assertDefinitionPermissions(user, automation.definition)
-  const trigger = await orchestratorAutomationsClient.updateTrigger(user.ownerUserId, id, input)
+  const patch = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined))
+  const effective = { ...current, ...patch }
+  await requireRunnableWorkflow(user, effective.automationId, effective)
+  const trigger = await orchestratorAutomationsClient.updateTrigger(user.ownerUserId, id, patch)
   revalidatePath('/automations/triggers')
-  await recordAutomationAudit('automation.trigger.update', trigger.id, trigger.name, { fields: Object.keys(input) })
+  recordAutomationAudit(user.ownerUserId, 'automation.trigger.update', trigger.id, trigger.name, {
+    fields: Object.keys(patch)
+  })
   return trigger
 }
 
 export const deleteAutomationTriggerAction = async (id: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
+  const user = await requireAutomationUser('automations:manage')
   const trigger = await orchestratorAutomationsClient.removeTrigger(user.ownerUserId, id)
   revalidatePath('/automations/triggers')
-  await recordAutomationAudit('automation.trigger.delete', trigger.id, trigger.name)
+  recordAutomationAudit(user.ownerUserId, 'automation.trigger.delete', trigger.id, trigger.name)
   return trigger
 }
 
 export const runAutomationTriggerAction = async (id: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
+  const user = await requireAutomationUser('automations:run')
   const trigger = await orchestratorAutomationsClient.getTrigger(user.ownerUserId, id)
-  await assertTriggerTarget(trigger)
-  assertRunProfilePermission(user, trigger)
-  const automation = await orchestratorAutomationsClient.get(user.ownerUserId, trigger.automationId)
-  await assertDefinitionPermissions(user, automation.definition)
+  await requireRunnableWorkflow(user, trigger.automationId, trigger)
   const run = await orchestratorAutomationsClient.runTrigger(user.ownerUserId, id)
   revalidatePath('/automations/triggers')
   revalidatePath('/automations')
   revalidatePath(`/automations/${run.automationId}`)
-  await recordAutomationAudit('automation.trigger.run', id, id, {
+  recordAutomationAudit(user.ownerUserId, 'automation.trigger.run', id, id, {
     runId: run.id,
     targetApplicationId: run.targetApplicationId
   })

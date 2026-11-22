@@ -9,7 +9,7 @@ import {
   ownedRuntimeControlMessage
 } from '../applications/actions/common/action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type { AutomationCommand, RunAutomationInput, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
+import type { AutomationCommand, RunAutomationInput } from '@/shared/contracts/automation'
 
 export type CurrentAutomationUser = Pick<Awaited<ReturnType<typeof getCurrentUserContext>>, 'permissions'>
 
@@ -118,22 +118,28 @@ export const assertRunProfilePermission = (
   }
 }
 
-export const assertTriggerTarget = async (input: Partial<SaveAutomationTriggerInput>) => {
-  if (input.targetApplicationId) {
-    await assertTargetApplication(input.targetApplicationId)
-  }
+export const requireRunnableWorkflow = async (
+  user: CurrentAutomationUser & { ownerUserId: string },
+  automationId: string,
+  target: RunAutomationInput
+) => {
+  await assertTargetApplication(target.targetApplicationId)
+  assertRunProfilePermission(user, target)
+  const workflow = await orchestratorAutomationsClient.get(user.ownerUserId, automationId)
+  await assertDefinitionPermissions(user, workflow.definition)
+  return workflow
 }
 
-export const recordAutomationAudit = async (
+export const recordAutomationAudit = (
+  actorUserId: string,
   action: string,
   resourceId: string,
   resourceLabel: string,
   details?: Record<string, unknown>
 ) => {
-  const user = await getCurrentUserContext()
   recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
+    actorUserId,
+    actorLabel: actorUserId,
     category: 'application',
     action,
     resourceType: 'automation',

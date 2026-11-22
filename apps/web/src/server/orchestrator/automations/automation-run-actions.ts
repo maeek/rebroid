@@ -1,14 +1,14 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import {
   assertAutomationPermission,
-  assertDefinitionPermissions,
+  requireRunnableWorkflow,
   assertRunProfilePermission,
   assertTargetApplication,
   listPermittedDefaultAiCapabilities,
-  recordAutomationAudit
+  recordAutomationAudit,
+  requireAutomationUser
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type {
@@ -18,16 +18,12 @@ import type {
 } from '@/shared/contracts/automation'
 
 export const runAutomationAction = async (id: string, input: RunAutomationInput) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  await assertTargetApplication(input.targetApplicationId)
-  assertRunProfilePermission(user, input)
-  const automation = await orchestratorAutomationsClient.get(user.ownerUserId, id)
-  await assertDefinitionPermissions(user, automation.definition)
+  const user = await requireAutomationUser('automations:run')
+  const automation = await requireRunnableWorkflow(user, id, input)
   const run = await orchestratorAutomationsClient.run(user.ownerUserId, id, input)
   revalidatePath('/automations')
   revalidatePath(`/automations/${id}`)
-  await recordAutomationAudit('automation.run', automation.id, automation.name, {
+  recordAutomationAudit(user.ownerUserId, 'automation.run', automation.id, automation.name, {
     runId: run.id,
     targetApplicationId: run.targetApplicationId,
     targetProfileMode: run.targetProfileMode,
@@ -37,8 +33,7 @@ export const runAutomationAction = async (id: string, input: RunAutomationInput)
 }
 
 export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInput) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
+  const user = await requireAutomationUser('automations:run')
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(input.targetApplicationId)
   if (input.startPolicy === 'start-if-needed') assertRunProfilePermission(user, input)
@@ -51,7 +46,7 @@ export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInpu
     rawShellPolicy: rawShellRequested ? 'allowlisted' : 'deny'
   })
   revalidatePath('/automations')
-  await recordAutomationAudit('automation.ai.run', run.automationId, 'Ad-hoc AI automation', {
+  recordAutomationAudit(user.ownerUserId, 'automation.ai.run', run.automationId, 'Ad-hoc AI automation', {
     runId: run.id,
     targetApplicationId: run.targetApplicationId,
     rawShellPolicy: rawShellRequested ? 'allowlisted' : 'deny'
@@ -60,8 +55,7 @@ export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInpu
 }
 
 export const suggestAdHocAiPromptsAction = async (input: SuggestAdHocAiPromptsInput) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
+  const user = await requireAutomationUser('automations:run')
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(input.targetApplicationId)
   return orchestratorAutomationsClient.suggestAdHocAiPrompts(user.ownerUserId, {
@@ -71,8 +65,7 @@ export const suggestAdHocAiPromptsAction = async (input: SuggestAdHocAiPromptsIn
 }
 
 export const cancelAutomationRunAction = async (runId: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
+  const user = await requireAutomationUser('automations:run')
   const run = await orchestratorAutomationsClient.cancelRun(user.ownerUserId, runId)
   revalidatePath('/automations')
   revalidatePath(`/automations/${run.automationId}`)
@@ -80,16 +73,14 @@ export const cancelAutomationRunAction = async (runId: string) => {
 }
 
 export const listAdHocAiAutomationRunHistoryAction = async (targetApplicationId: string, limit = 20) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
+  const user = await requireAutomationUser('automations:run')
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(targetApplicationId)
   return orchestratorAutomationsClient.listAdHocAiRunHistory(user.ownerUserId, targetApplicationId, limit)
 }
 
 export const clearAdHocAiAutomationRunsAction = async (targetApplicationId: string) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
+  const user = await requireAutomationUser('automations:run')
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(targetApplicationId)
   return orchestratorAutomationsClient.clearAdHocAiRuns(user.ownerUserId, targetApplicationId)
