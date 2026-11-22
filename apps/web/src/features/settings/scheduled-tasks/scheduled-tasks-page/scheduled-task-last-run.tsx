@@ -15,7 +15,6 @@ import {
 import { Notice } from '@/components/ui/notice'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { DetailFields } from '@/shared/ui/detail-fields'
-import { dateLabel } from './schedule-utils'
 import { useScheduledTasksControllerContext } from './scheduled-tasks-context'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 
@@ -64,7 +63,9 @@ export const ScheduledTaskLastRun = ({ task }: { task: ScheduledTask }) => {
               <DialogTitle>Last run failed</DialogTitle>
               <DialogDescription>{task.name}</DialogDescription>
             </DialogHeader>
-            <DetailFields fields={[{ label: 'Run time', value: dateLabel(task.lastRunAt) }]} />
+            <DetailFields
+              fields={[{ label: 'Run time', value: task.lastRunAt ? new Date(task.lastRunAt).toLocaleString() : '-' }]}
+            />
             <Notice
               tone='danger'
               title='Failure details'

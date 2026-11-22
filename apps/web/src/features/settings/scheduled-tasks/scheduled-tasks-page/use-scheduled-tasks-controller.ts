@@ -4,7 +4,6 @@ import { useMemo, useRef, useState } from 'react'
 import {
   defaultForm,
   normalizePayload,
-  scheduleToCron,
   taskToForm
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import { useImmediateSave } from '@/hooks/use-immediate-save'
@@ -17,6 +16,7 @@ import {
 } from '@/server/orchestrator/scheduled-tasks/actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { isWorkflowHistoryRetentionTask } from '@/shared/contracts/scheduled-task'
+import { scheduleToCron } from '@/shared/model/automation-schedule'
 import type { FormState, ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 

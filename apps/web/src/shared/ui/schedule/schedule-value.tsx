@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { cronToSchedule, scheduleLabel, weekdays } from '@/shared/model/schedule/schedule-format'
+import { cronToSchedule, weekdays } from '@/shared/model/automation-schedule'
 
 const scheduleParts = (expression: string) => {
   const schedule = cronToSchedule(expression)
@@ -7,7 +7,10 @@ const scheduleParts = (expression: string) => {
     return { frequency: expression, time: 'Cron expression' }
   }
   if (schedule.frequency === 'hourly') {
-    return { frequency: schedule.intervalHours === 1 ? 'Every hour' : scheduleLabel(expression), time: null }
+    return {
+      frequency: schedule.intervalHours === 1 ? 'Every hour' : `Every ${schedule.intervalHours} hours`,
+      time: null
+    }
   }
   if (schedule.frequency === 'weekly') {
     return {

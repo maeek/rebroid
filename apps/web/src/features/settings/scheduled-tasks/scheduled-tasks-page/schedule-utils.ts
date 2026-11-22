@@ -1,16 +1,7 @@
 import { defaultWorkflowHistoryRetentionDays } from '@/shared/contracts/scheduled-task'
-import {
-  cronToSchedule,
-  dateLabel,
-  defaultSchedule,
-  scheduleLabel,
-  scheduleToCron,
-  weekdays
-} from '@/shared/model/schedule/schedule-format'
+import { cronToSchedule, defaultSchedule } from '@/shared/model/automation-schedule'
 import type { FormState } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 import type { ScheduledTask, ScheduledTaskActionType } from '@/shared/contracts/scheduled-task'
-
-export { cronToSchedule, dateLabel, defaultSchedule, scheduleLabel, scheduleToCron, weekdays }
 
 export const actionNeedsDanglingOnly = (type: ScheduledTaskActionType) => type === 'prune_images'
 

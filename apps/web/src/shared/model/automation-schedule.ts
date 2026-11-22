@@ -27,14 +27,14 @@ export const weekdays = [
   { value: '6', label: 'Saturday' }
 ] as const
 
-const clampInteger = (value: number, minimum: number, maximum: number) =>
+export const clampScheduleInteger = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, Math.trunc(Number.isFinite(value) ? value : minimum)))
 
 const timeParts = (time: string) => {
   const [hour = '3', minute = '0'] = time.split(':')
   return {
-    hour: clampInteger(Number(hour), 0, 23),
-    minute: clampInteger(Number(minute), 0, 59)
+    hour: clampScheduleInteger(Number(hour), 0, 23),
+    minute: clampScheduleInteger(Number(minute), 0, 59)
   }
 }
 
@@ -42,13 +42,13 @@ export const scheduleToCron = (schedule: ScheduleDraft) => {
   if (schedule.originalCron !== undefined) return schedule.originalCron
   const { hour, minute } = timeParts(schedule.time)
   if (schedule.frequency === 'hourly') {
-    return `0 */${clampInteger(schedule.intervalHours, 1, 24)} * * *`
+    return `0 */${clampScheduleInteger(schedule.intervalHours, 1, 24)} * * *`
   }
   if (schedule.frequency === 'weekly') {
     return `${minute} ${hour} * * ${schedule.weekday}`
   }
   if (schedule.frequency === 'monthly') {
-    return `${minute} ${hour} ${clampInteger(schedule.monthDay, 1, 28)} * *`
+    return `${minute} ${hour} ${clampScheduleInteger(schedule.monthDay, 1, 28)} * *`
   }
   return `${minute} ${hour} * * *`
 }
@@ -59,7 +59,7 @@ const editableScheduleFromCron = (cronExpression: string): ScheduleDraft | undef
     return {
       ...defaultSchedule,
       frequency: 'hourly',
-      intervalHours: clampInteger(Number(hour.slice(2)), 1, 24)
+      intervalHours: clampScheduleInteger(Number(hour.slice(2)), 1, 24)
     }
   }
   if (dayOfMonth === '*' && month === '*' && dayOfWeek && dayOfWeek !== '*') {
@@ -75,7 +75,7 @@ const editableScheduleFromCron = (cronExpression: string): ScheduleDraft | undef
       ...defaultSchedule,
       frequency: 'monthly',
       time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
-      monthDay: clampInteger(Number(dayOfMonth), 1, 28)
+      monthDay: clampScheduleInteger(Number(dayOfMonth), 1, 28)
     }
   }
   if (dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {

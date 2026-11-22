@@ -5,11 +5,8 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
-import { defaultSchedule, weekdays } from '@/shared/model/schedule/schedule-format'
+import { clampScheduleInteger, defaultSchedule, weekdays } from '@/shared/model/automation-schedule'
 import type { ScheduleDraft } from '@/shared/model/automation-schedule'
-
-const clampInteger = (value: number, minimum: number, maximum: number) =>
-  Math.min(maximum, Math.max(minimum, Math.trunc(Number.isFinite(value) ? value : minimum)))
 
 export const ScheduleEditor = ({
   schedule,
@@ -83,7 +80,9 @@ export const ScheduleEditor = ({
               min={1}
               max={24}
               value={schedule.intervalHours}
-              onChange={event => updateSchedule({ intervalHours: clampInteger(Number(event.target.value), 1, 24) })}
+              onChange={event =>
+                updateSchedule({ intervalHours: clampScheduleInteger(Number(event.target.value), 1, 24) })
+              }
             />
           </FormField>
         </Visible>
@@ -139,7 +138,7 @@ export const ScheduleEditor = ({
               min={1}
               max={28}
               value={schedule.monthDay}
-              onChange={event => updateSchedule({ monthDay: clampInteger(Number(event.target.value), 1, 28) })}
+              onChange={event => updateSchedule({ monthDay: clampScheduleInteger(Number(event.target.value), 1, 28) })}
             />
           </FormField>
         </Visible>
