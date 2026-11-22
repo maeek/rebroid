@@ -1,10 +1,11 @@
 import { cronToSchedule, defaultSchedule, scheduleToCron } from '@/shared/model/automation-schedule'
 import { appProfileMode, appProfileName, getScheduleCron, getStartPolicy } from './automation-trigger-utils'
+import type { TriggerApplication } from './automation-trigger-resource-options'
 import type { TriggerFormState } from './automation-trigger-types'
-import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
+import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { AutomationOption, AutomationTrigger, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 
-export const defaultTriggerName = (automation: AutomationOption | undefined, app: AndroidApplication | undefined) => {
+export const defaultTriggerName = (automation: AutomationOption | undefined, app: TriggerApplication | undefined) => {
   if (automation && app) {
     return `${automation.name} on ${app.name}`.slice(0, 120)
   }
@@ -17,7 +18,7 @@ export const newTriggerFormState = ({
   app
 }: {
   automation: AutomationOption
-  app: AndroidApplication
+  app: TriggerApplication
 }): TriggerFormState => ({
   name: defaultTriggerName(automation, app),
   description: '',
@@ -36,7 +37,7 @@ export const editTriggerFormState = ({
   app
 }: {
   trigger: AutomationTrigger
-  app: AndroidApplication | undefined
+  app: TriggerApplication | undefined
 }): TriggerFormState => ({
   id: trigger.id,
   name: trigger.name,
@@ -54,9 +55,9 @@ export const editTriggerFormState = ({
 export const applyTriggerTargetApplication = (
   form: TriggerFormState,
   targetApplicationId: string,
-  app: AndroidApplication | undefined,
+  app: TriggerApplication | undefined,
   workflow?: AutomationOption,
-  previousApp?: AndroidApplication
+  previousApp?: TriggerApplication
 ): TriggerFormState => ({
   ...form,
   name:
@@ -72,7 +73,7 @@ export const applyTriggerWorkflow = (
   form: TriggerFormState,
   workflow: AutomationOption | undefined,
   previousWorkflow: AutomationOption | undefined,
-  app: AndroidApplication | undefined
+  app: TriggerApplication | undefined
 ): TriggerFormState => ({
   ...form,
   automationId: workflow?.id ?? '',

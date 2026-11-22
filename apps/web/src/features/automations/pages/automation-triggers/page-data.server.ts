@@ -4,6 +4,7 @@ import { requireAutomationUser } from '@/server/orchestrator/automations/action-
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { validatedSearchParam } from '@/shared/model/search-params'
 import { hasPermission } from '@/shared/permissions/permissions'
+import { toTriggerApplication } from '../../automations-page/triggers/automation-trigger-resource-options'
 import { workflowGridQueryFromSearchParams, type WorkflowGridSearchParams } from '../workflow-grid-query'
 import type { AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 
@@ -23,8 +24,8 @@ export const loadAutomationTriggersPageData = (searchParams: WorkflowGridSearchP
         orchestratorAutomationsClient.listTriggersGrid(user.ownerUserId, gridQuery)
       ])
       return {
-        applications,
-        ownedAppIds: applications.filter(app => app.ownerUserId === user.ownerUserId).map(app => app.id),
+        applications: applications.map(({ id, name }) => ({ id, name })),
+        targetApps: applications.filter(app => app.ownerUserId === user.ownerUserId).map(toTriggerApplication),
         canRun: hasPermission(user.permissions, 'automations:run'),
         canCreateApp: hasPermission(user.permissions, 'applications:create'),
         automations,

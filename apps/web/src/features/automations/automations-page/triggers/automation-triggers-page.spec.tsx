@@ -92,6 +92,7 @@ describe('Triggers editor workflow', () => {
     render(
       <AutomationTriggersPage
         initialApplications={[]}
+        targetApps={[]}
         initialAutomations={[previewWorkflowOption]}
         canCreateApp={canCreateApp}
         gridQuery={{}}
@@ -208,6 +209,7 @@ describe('Triggers editor workflow', () => {
     render(
       <AutomationTriggersPage
         initialApplications={[applicationPreview]}
+        targetApps={[applicationPreview]}
         initialAutomations={[]}
         triggersPage={{
           items: [previewTrigger],
@@ -227,6 +229,42 @@ describe('Triggers editor workflow', () => {
     expect(within(dialog).getByRole('button', { name: 'Save changes' })).toBeDisabled()
     expect(createAutomationTriggerAction).not.toHaveBeenCalled()
     expect(updateAutomationTriggerAction).not.toHaveBeenCalled()
+  })
+
+  it('keeps a visible former target in the grid and requires an owned replacement to save', async () => {
+    const replacement = { ...applicationPreview, id: 'owned', name: 'Owned worker' }
+    vi.mocked(updateAutomationTriggerAction).mockResolvedValue(actionOk(previewTrigger))
+    render(
+      <AutomationTriggersPage
+        initialApplications={[applicationPreview, replacement]}
+        targetApps={[replacement]}
+        initialAutomations={[previewWorkflowOption]}
+        triggersPage={{
+          items: [previewTrigger],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+          facets: { tags: [], targetApplicationIds: [] }
+        }}
+        gridQuery={{}}
+      />
+    )
+    expect(screen.getByRole('link', { name: applicationPreview.name })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Morning inventory' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Edit trigger' }))
+    const target = dialog.getByRole('combobox', { name: /Target app/ })
+    expect(target).toHaveAccessibleDescription(/no longer available/)
+    const save = dialog.getByRole('button', { name: 'Save changes' })
+    expect(save).toBeDisabled()
+    fireEvent.click(target)
+    fireEvent.input(target, { target: { value: 'Owned worker' } })
+    fireEvent.click(await screen.findByRole('option', { name: /Owned worker/ }))
+    fireEvent.click(save)
+    await waitFor(() =>
+      expect(updateAutomationTriggerAction).toHaveBeenCalledExactlyOnceWith(previewTrigger.id, {
+        targetApplicationId: 'owned'
+      })
+    )
   })
 
   it('locks the editor while saving and keeps its draft after failure', async () => {

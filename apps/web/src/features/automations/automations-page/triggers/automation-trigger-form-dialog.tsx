@@ -22,8 +22,8 @@ import { ScheduleEditor } from '@/shared/ui/schedule/schedule-editor'
 import { triggerApplicationOption, triggerWorkflowOption } from './automation-trigger-resource-options'
 import { AutomationTriggerTagPicker } from './automation-trigger-tag-picker'
 import { appProfileMode, appProfileName, appSavedProfiles } from './automation-trigger-utils'
+import type { TriggerApplication } from './automation-trigger-resource-options'
 import type { TriggerFormState } from './automation-trigger-types'
-import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationOption } from '@/shared/contracts/automation'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 
@@ -43,7 +43,7 @@ export function AutomationTriggerFormDialog({
   onUpdateWorkflow,
   onUpdateTargetApplication
 }: {
-  applications: AndroidApplication[]
+  applications: TriggerApplication[]
   automations: AutomationOption[]
   tagSuggestions: AutomationTag[]
   form: TriggerFormState | null
@@ -51,7 +51,7 @@ export function AutomationTriggerFormDialog({
   open: boolean
   onOpenChangeComplete: (open: boolean) => void
   saving: boolean
-  selectedApplication?: AndroidApplication
+  selectedApplication?: TriggerApplication
   onOpenChange: (open: boolean) => void
   onSave: () => void
   onUpdateForm: (updater: (current: TriggerFormState) => TriggerFormState) => void

@@ -16,13 +16,13 @@ export async function AutomationTriggersPageEntry({
         requestId={result.requestId}
       />
     )
-  const { applications, automations, gridQuery, triggersPage, ownedAppIds, canRun, canCreateApp } = result.data
+  const { applications, automations, gridQuery, triggersPage, targetApps, canRun, canCreateApp } = result.data
 
   return (
     <AutomationTriggersPage
       initialApplications={applications}
       initialAutomations={automations}
-      ownedAppIds={ownedAppIds}
+      targetApps={targetApps}
       canRun={canRun}
       canCreateApp={canCreateApp}
       triggersPage={triggersPage}

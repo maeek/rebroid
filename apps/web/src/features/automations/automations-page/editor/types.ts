@@ -1,5 +1,6 @@
+import type { TriggerApplication } from '../triggers/automation-trigger-resource-options'
 import type { ActionResult } from '@/shared/actions/action-result'
-import type { AndroidApplication, ApplicationName } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type {
   Automation,
   AutomationCommand,
@@ -30,10 +31,10 @@ export interface AutomationEditorPageProps {
 
 export interface AutomationTriggersPageProps {
   loading?: boolean
-  ownedAppIds?: string[]
+  targetApps: TriggerApplication[]
   canRun?: boolean
   canCreateApp?: boolean
-  initialApplications: AndroidApplication[]
+  initialApplications: ApplicationName[]
   initialAutomations: AutomationOption[]
   triggersPage: AutomationTriggersGridPage
   gridQuery: AutomationTriggersGridQuery

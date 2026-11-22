@@ -12,7 +12,20 @@ export function triggerWorkflowOption(workflow: AutomationOption) {
   }
 }
 
-export function triggerApplicationOption(application: AndroidApplication) {
+export const toTriggerApplication = ({ id, name, apk, runtime, storage }: AndroidApplication) => ({
+  id,
+  name,
+  apk: { packageName: apk.packageName },
+  runtime: { image: runtime.image },
+  storage: {
+    profileMode: storage.profileMode,
+    profileName: storage.profileName,
+    savedProfiles: storage.savedProfiles
+  }
+})
+export type TriggerApplication = ReturnType<typeof toTriggerApplication>
+
+export function triggerApplicationOption(application: TriggerApplication) {
   return {
     value: application.id,
     label: application.name,

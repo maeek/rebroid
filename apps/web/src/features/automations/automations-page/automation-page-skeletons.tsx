@@ -34,6 +34,7 @@ export const AutomationTriggersPageSkeleton = () => {
 
   return (
     <AutomationTriggersPage
+      targetApps={[]}
       initialApplications={[]}
       initialAutomations={[]}
       triggersPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}

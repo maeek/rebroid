@@ -15,7 +15,7 @@ import { ScheduleValue } from '@/shared/ui/schedule/schedule-value'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { WorkflowRunResult } from '../shared/workflow-run-result'
 import { getScheduleCron } from './automation-trigger-utils'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type { AutomationOption, AutomationRun, AutomationTrigger } from '@/shared/contracts/automation'
 import type { StateViewAction } from '@/shared/ui/state-view'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
@@ -105,7 +105,7 @@ export function AutomationTriggersTable({
   onToggleEnabled,
   toggleFeedback
 }: {
-  applicationById: Map<string, AndroidApplication>
+  applicationById: Map<string, ApplicationName>
   automationById: Map<string, AutomationOption>
   busyId: string | null
   canCreateApp: boolean

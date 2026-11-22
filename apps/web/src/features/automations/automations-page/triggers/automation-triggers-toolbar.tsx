@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { AutomationGridFilterControls, automationGridFilterSummary } from '../shared/automation-grid-filter-controls'
 import { allFilterValue } from '../shared/grid-query-utils'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ApplicationName } from '@/shared/contracts/application'
 import type { AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 
 export const AutomationTriggersToolbar = ({
@@ -26,7 +26,7 @@ export const AutomationTriggersToolbar = ({
   onEnable,
   children
 }: {
-  applications: AndroidApplication[]
+  applications: ApplicationName[]
   tags: string[]
   gridQuery: AutomationTriggersGridQuery
   search: string

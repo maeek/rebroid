@@ -23,10 +23,12 @@ export const previewTrigger: AutomationTrigger = {
   createdAt: '2026-11-07T10:00:00Z',
   updatedAt: '2026-11-07T10:00:00Z'
 }
+const applications = [applicationPreview, { ...applicationPreview, id: 'reports-app', name: 'Reports worker' }]
 export const AutomationTriggersPreview = () => (
   <AutomationTriggersPage
     canRun
-    initialApplications={[applicationPreview, { ...applicationPreview, id: 'reports-app', name: 'Reports worker' }]}
+    initialApplications={applications}
+    targetApps={applications}
     initialAutomations={[
       {
         ...previewWorkflowOption,

@@ -43,7 +43,7 @@ export function AutomationTriggersPage({
   initialAutomations,
   triggersPage,
   gridQuery: committedQuery,
-  ownedAppIds,
+  targetApps,
   canRun = false,
   canCreateApp = false,
   loading = false
@@ -92,7 +92,8 @@ export function AutomationTriggersPage({
     () => new Map(initialApplications.map(application => [application.id, application])),
     [initialApplications]
   )
-  const selectedApplication = form ? applicationById.get(form.targetApplicationId) : undefined
+  const targetById = useMemo(() => new Map(targetApps.map(app => [app.id, app])), [targetApps])
+  const selectedApplication = form ? targetById.get(form.targetApplicationId) : undefined
   const tagSuggestions = useMemo(
     () =>
       buildAutomationTagCatalog(triggersPage.facets.tags, [
@@ -101,7 +102,6 @@ export function AutomationTriggersPage({
       ]),
     [triggersPage.facets.tags, triggersPage.items, initialAutomations]
   )
-  const targetApps = ownedAppIds ? initialApplications.filter(app => ownedAppIds.includes(app.id)) : initialApplications
   const canCreate = initialAutomations.length > 0 && targetApps.length > 0
 
   const openCreate = () => {
@@ -126,7 +126,7 @@ export function AutomationTriggersPage({
   }, [createRequested, loading, saving, formOpen])
 
   const openEdit = (trigger: AutomationTrigger) => {
-    const app = applicationById.get(trigger.targetApplicationId)
+    const app = targetById.get(trigger.targetApplicationId)
     const next = editTriggerFormState({ trigger, app })
     setForm(next)
     setBaselineForm(next)
@@ -134,7 +134,7 @@ export function AutomationTriggersPage({
   }
 
   const updateTargetApplication = (targetApplicationId: string) => {
-    const app = applicationById.get(targetApplicationId)
+    const app = targetById.get(targetApplicationId)
     setForm(current =>
       current
         ? applyTriggerTargetApplication(
@@ -142,7 +142,7 @@ export function AutomationTriggersPage({
             targetApplicationId,
             app,
             automationById.get(current.automationId),
-            applicationById.get(current.targetApplicationId)
+            targetById.get(current.targetApplicationId)
           )
         : current
     )
@@ -155,7 +155,7 @@ export function AutomationTriggersPage({
             current,
             automationById.get(automationId),
             automationById.get(current.automationId),
-            applicationById.get(current.targetApplicationId)
+            targetById.get(current.targetApplicationId)
           )
         : current
     )
@@ -164,7 +164,7 @@ export function AutomationTriggersPage({
   const save = async () => {
     if (!form || mutationPending.current) return
     if (form.id && !baselineForm) return
-    if (!automationById.has(form.automationId) || !applicationById.has(form.targetApplicationId)) return
+    if (!automationById.has(form.automationId) || !selectedApplication) return
     mutationPending.current = true
     setSaving(true)
     try {
