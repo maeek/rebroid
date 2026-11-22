@@ -15,7 +15,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
+import { AutomationProfileTargetDto } from './automation-request-target.dto';
 import { AutomationLastStatus } from '../entities/automation.entity';
 import {
   AutomationStartPolicy,
@@ -53,13 +53,7 @@ export class AutomationScheduleTriggerConfigDto {
   startPolicy?: AutomationStartPolicy;
 }
 
-export class CreateAutomationTriggerDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-
+export class CreateAutomationTriggerDto extends AutomationProfileTargetDto {
   @ApiProperty({ example: 'Daily setup' })
   @IsString()
   @MinLength(2)
@@ -81,17 +75,6 @@ export class CreateAutomationTriggerDto {
   @IsString()
   @MaxLength(120)
   targetApplicationId!: string;
-
-  @ApiPropertyOptional({ enum: ApplicationProfileMode })
-  @IsOptional()
-  @IsEnum(ApplicationProfileMode)
-  profileMode?: ApplicationProfileMode | null;
-
-  @ApiPropertyOptional({ example: 'default', nullable: true })
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  profileName?: string | null;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()

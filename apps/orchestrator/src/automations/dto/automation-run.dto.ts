@@ -2,29 +2,23 @@ import { AutomationRunEventDto } from './automation-run-event.dto';
 import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Max,
   MaxLength,
   Min,
-  MinLength,
 } from 'class-validator';
-import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import {
   AutomationRunStatus,
   AutomationRunTrigger,
 } from '../entities/automation-run.entity';
-import { AutomationStartPolicy } from '../entities/automation-trigger.entity';
+import {
+  AutomationOwnerDto,
+  AutomationRunTargetDto,
+} from './automation-request-target.dto';
 
-export class RunAutomationDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-
+export class RunAutomationDto extends AutomationRunTargetDto {
   @ApiPropertyOptional({
     example: '98a530d6-a45d-466a-9cb4-c023067c4971',
     nullable: true,
@@ -33,34 +27,9 @@ export class RunAutomationDto {
   @IsString()
   @MaxLength(120)
   targetApplicationId?: string | null;
-
-  @ApiPropertyOptional({ enum: ApplicationProfileMode })
-  @IsOptional()
-  @IsEnum(ApplicationProfileMode)
-  profileMode?: ApplicationProfileMode | null;
-
-  @ApiPropertyOptional({ example: 'default', nullable: true })
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  profileName?: string | null;
-
-  @ApiPropertyOptional({
-    enum: AutomationStartPolicy,
-    default: AutomationStartPolicy.RequireRunning,
-  })
-  @IsOptional()
-  @IsEnum(AutomationStartPolicy)
-  startPolicy?: AutomationStartPolicy;
 }
 
-export class ListAutomationRunsQueryDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-
+export class ListAutomationRunsQueryDto extends AutomationOwnerDto {
   @ApiPropertyOptional({ example: 50, minimum: 1, maximum: 100 })
   @IsOptional()
   @Type(() => Number)
@@ -70,13 +39,7 @@ export class ListAutomationRunsQueryDto {
   limit?: number;
 }
 
-export class ListActiveAutomationRunsQueryDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-}
+export class ListActiveAutomationRunsQueryDto extends AutomationOwnerDto {}
 
 export class ActiveAutomationRunDto {
   @ApiProperty()

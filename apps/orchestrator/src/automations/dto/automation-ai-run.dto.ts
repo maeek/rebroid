@@ -1,9 +1,13 @@
 import { AUTOMATION_AI_RUN_MAX_TIMEOUT_MS } from '@rebroid/automation-core/ai-run';
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  IntersectionType,
+  PickType,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsEnum,
   IsIn,
   IsInt,
   IsObject,
@@ -15,8 +19,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
-import { AutomationStartPolicy } from '../entities/automation-trigger.entity';
+import { AutomationRunTargetDto } from './automation-request-target.dto';
 
 import { AutomationAiModelSelectionDto } from './automation-ai-model-selection.dto';
 
@@ -32,36 +35,14 @@ export class RunAdHocAiConversationMessageDto {
   content!: string;
 }
 
-export class RunAdHocAiAutomationDto extends AutomationAiModelSelectionDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-
+export class RunAdHocAiAutomationDto extends IntersectionType(
+  AutomationRunTargetDto,
+  AutomationAiModelSelectionDto,
+) {
   @ApiProperty({ example: '98a530d6-a45d-466a-9cb4-c023067c4971' })
   @IsString()
   @MaxLength(120)
   targetApplicationId!: string;
-
-  @ApiPropertyOptional({ enum: ApplicationProfileMode })
-  @IsOptional()
-  @IsEnum(ApplicationProfileMode)
-  profileMode?: ApplicationProfileMode | null;
-
-  @ApiPropertyOptional({ example: 'default', nullable: true })
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  profileName?: string | null;
-
-  @ApiPropertyOptional({
-    enum: AutomationStartPolicy,
-    default: AutomationStartPolicy.RequireRunning,
-  })
-  @IsOptional()
-  @IsEnum(AutomationStartPolicy)
-  startPolicy?: AutomationStartPolicy;
 
   @ApiProperty({ example: 'Open settings and verify Wi-Fi is visible.' })
   @IsString()

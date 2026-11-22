@@ -22,15 +22,10 @@ import {
   AutomationTagDto,
 } from './automation-definition.dto';
 
+import { AutomationOwnerDto } from './automation-request-target.dto';
 import { AutomationAiModelSelectionDto } from './automation-ai-model-selection.dto';
 
-export class CreateAutomationDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-
+export class CreateAutomationDto extends AutomationOwnerDto {
   @ApiPropertyOptional({
     description:
       'YAML automation definition. Required unless definition is supplied.',
@@ -100,13 +95,7 @@ export class DraftAutomationYamlDto extends AutomationAiModelSelectionDto {
   clarifications?: DraftAutomationYamlClarificationDto[];
 }
 
-export class ListAutomationsGridQueryDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-
+export class ListAutomationsGridQueryDto extends AutomationOwnerDto {
   @ApiPropertyOptional({ example: 1, minimum: 1 })
   @IsOptional()
   @Type(() => Number)
