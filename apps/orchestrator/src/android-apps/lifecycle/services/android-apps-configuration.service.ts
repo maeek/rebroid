@@ -16,7 +16,6 @@ import {
   type UploadedApkReference,
 } from '../../../apk/contracts/apk-catalog.port';
 import { SettingsService } from '../../../settings/settings.service';
-import { AndroidApplication } from '../../android-application.entity';
 import { CloneAndroidApplicationDto } from '../../common/dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';
