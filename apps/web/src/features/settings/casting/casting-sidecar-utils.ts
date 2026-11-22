@@ -1,3 +1,4 @@
+import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession } from '@/shared/contracts/diagnostics'
 import type { SortingState } from '@tanstack/react-table'
 
@@ -52,16 +53,25 @@ export const sortSessions = (sessions: DisplaySidecarSession[], sorting: Sorting
   })
 }
 
-export const filterSessions = <TApp extends { id: string; name: string }>(
+export type CastingApplication = Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId'>
+
+export const sessionOwnerId = (session: DisplaySidecarSession, app?: CastingApplication) =>
+  session.ownerUserId ?? app?.ownerUserId
+
+export const filterSessions = (
   sessions: DisplaySidecarSession[],
-  appsById: Map<string, TApp>,
-  search: string
+  appsById: ReadonlyMap<string, CastingApplication>,
+  { search, status, applicationId, ownerId }: { search: string; status: string; applicationId: string; ownerId: string }
 ) => {
   const query = search.trim().toLowerCase()
-  if (!query) return sessions
   return sessions.filter(session => {
+    if (status !== 'all' && session.status !== status) return false
+    if (applicationId !== 'all' && session.applicationId !== applicationId) return false
     const app = session.applicationId ? appsById.get(session.applicationId) : undefined
-    return [session.id, session.applicationId, app?.name, session.ownerUserId, session.status]
+    const owner = sessionOwnerId(session, app)
+    if (ownerId !== 'all' && owner !== ownerId) return false
+    if (!query) return true
+    return [session.id, session.applicationId, app?.name, owner, session.status]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()

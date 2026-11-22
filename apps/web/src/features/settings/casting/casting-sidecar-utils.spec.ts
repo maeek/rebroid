@@ -32,11 +32,15 @@ describe('casting sidecar utils', () => {
 
   it('filters sessions by related app name', () => {
     const appsById = new Map([
-      ['app-a', { id: 'app-a', name: 'Calculator' }],
-      ['app-b', { id: 'app-b', name: 'Browser' }]
+      ['app-a', { id: 'app-a', name: 'Calculator', ownerUserId: 'app-owner' }],
+      ['app-b', { id: 'app-b', name: 'Browser', ownerUserId: 'owner-b' }]
     ])
 
-    expect(filterSessions(sessions, appsById, 'calc')).toEqual([sessions[1]])
+    const filters = { search: 'calc', status: 'all', applicationId: 'all', ownerId: 'all' }
+    expect(filterSessions(sessions, appsById, filters)).toEqual([sessions[1]])
+    const legacy = { ...sessions[1], ownerUserId: null }
+    expect(filterSessions([legacy, ...sessions], appsById, { ...filters, ownerId: 'app-owner' })).toEqual([legacy])
+    expect(filterSessions([legacy], appsById, { ...filters, search: 'app-owner' })).toEqual([legacy])
   })
 
   it('sorts sessions by requested fields', () => {

@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import {
   getDisplaySidecarHealthAction,
   listDisplaySidecarSessionsAction
@@ -13,7 +13,7 @@ export const loadCastingPageData = async (health: OrchestratorHealth) => {
 
   const [sidecarHealth, applications, users] = await Promise.all([
     getDisplaySidecarHealthAction(),
-    listApplicationsAction(),
+    orchestratorAppCatalogClient.listApplicationGallery(),
     userService.listUsers()
   ])
   const [sessions, containers] = await Promise.all([
@@ -22,7 +22,7 @@ export const loadCastingPageData = async (health: OrchestratorHealth) => {
   ])
 
   return {
-    applications,
+    applications: applications.map(({ id, name, ownerUserId }) => ({ id, name, ownerUserId })),
     owners: users.map(user => ({ id: user.id, name: user.name || user.username })),
     sessions,
     containerId: containers.display?.id,

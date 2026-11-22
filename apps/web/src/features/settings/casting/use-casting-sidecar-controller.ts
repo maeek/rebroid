@@ -11,7 +11,7 @@ import {
 import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { retainVisibleSelectedIds } from '@/shared/model/visible-selection'
 import { activeStatuses, castingErrorMessage, filterSessions, sortSessions } from './casting-sidecar-utils'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { CastingApplication } from './casting-sidecar-utils'
 import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { SortingState } from '@tanstack/react-table'
 
@@ -24,7 +24,7 @@ export const useCastingSidecarController = ({
 }: {
   initialHealth: ServiceHealth
   initialSessions: DisplaySidecarSession[]
-  applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
+  applications: CastingApplication[]
   refreshKey: number
   onRefreshComplete?: (succeeded: boolean) => void
 }) => {
@@ -45,11 +45,11 @@ export const useCastingSidecarController = ({
   const appsById = useMemo(() => new Map(applications.map(app => [app.id, app])), [applications])
   const filteredSessions = useMemo(
     () =>
-      filterSessions(sessions, appsById, submittedSearch).filter(session => {
-        if (statusFilter !== 'all' && session.status !== statusFilter) return false
-        if (applicationFilter !== 'all' && session.applicationId !== applicationFilter) return false
-        if (ownerFilter !== 'all' && session.ownerUserId !== ownerFilter) return false
-        return true
+      filterSessions(sessions, appsById, {
+        search: submittedSearch,
+        status: statusFilter,
+        applicationId: applicationFilter,
+        ownerId: ownerFilter
       }),
     [applicationFilter, appsById, ownerFilter, sessions, statusFilter, submittedSearch]
   )

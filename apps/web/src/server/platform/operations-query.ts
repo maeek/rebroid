@@ -1,6 +1,6 @@
 import 'server-only'
 import { requireAdmin } from '@/server/auth/authorization'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import {
   canInspectActiveWorkflowRuns,
   listActiveWorkflowRuns
@@ -18,14 +18,14 @@ export const getPlatformOperations = async (): Promise<PlatformOperationsSnapsho
   await requireAdmin()
   const user = await getCurrentUserContext()
   const [apps, runs, manifest] = await Promise.all([
-    listApplicationsAction(),
+    orchestratorAppCatalogClient.listApplicationGallery(),
     canInspectActiveWorkflowRuns(user.permissions) ? listActiveWorkflowRuns(user.ownerUserId) : null,
     hasPermission(user.permissions, 'automations:manage') ? loadFeatureFlags() : null
   ])
   return {
     collectedAt: new Date().toISOString(),
-    failedCount: apps.filter(app => app.status.currentStatus === 'error').length,
-    pendingCount: apps.filter(app => isAppInProgress(app.status.currentStatus, app.status.lifecycleStage)).length,
+    failedCount: apps.filter(app => app.status === 'error').length,
+    pendingCount: apps.filter(app => isAppInProgress(app.status, app.lifecycleStage)).length,
     activeRunCount: runs?.length ?? null,
     activeRuns: (runs ?? []).slice(0, overviewItemLimit).map(run => ({
       id: run.id,

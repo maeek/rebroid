@@ -7,7 +7,7 @@ import { ServiceDetailLayout } from '@/shared/ui/platform/service-detail-layout'
 import { CastingSessionsSection } from './casting-sessions-section'
 import { CastingSidecarServiceSection } from './casting-sidecar-service-section'
 import { useCastingSidecarController } from './use-casting-sidecar-controller'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { CastingApplication } from './casting-sidecar-utils'
 import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
 
 export const CastingSettingsPageClient = ({
@@ -22,7 +22,7 @@ export const CastingSettingsPageClient = ({
   initialHealth: ServiceHealth
   containerId?: string
   initialSessions: DisplaySidecarSession[]
-  applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
+  applications: CastingApplication[]
   owners: Array<{ id: string; name: string }>
 }) => {
   const [refreshKey, setRefreshKey] = useState(0)

@@ -1,17 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { requireAdmin } from '@/server/auth/authorization'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { loadFeatureFlags } from '@/server/orchestrator/features'
 import { getPlatformOperations } from './operations-query'
-import type { AndroidApplication } from '@/shared/contracts/application'
 
 vi.mock('@/server/auth/authorization', () => ({ requireAdmin: vi.fn() }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('@/server/orchestrator/features', () => ({ loadFeatureFlags: vi.fn() }))
-vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
-  listApplicationsAction: vi.fn()
+vi.mock('@/server/orchestrator/applications/catalog-client', () => ({
+  orchestratorAppCatalogClient: { listApplicationGallery: vi.fn() }
 }))
 vi.mock('@/server/orchestrator/automations/client', () => ({
   orchestratorAutomationsClient: { listActiveRuns: vi.fn() }
@@ -27,7 +26,7 @@ describe('getPlatformOperations', () => {
   it('rejects access before reading any platform resources', async () => {
     vi.mocked(requireAdmin).mockRejectedValue(new Error('Forbidden'))
     await expect(getPlatformOperations()).rejects.toThrow('Forbidden')
-    expect(listApplicationsAction).not.toHaveBeenCalled()
+    expect(orchestratorAppCatalogClient.listApplicationGallery).not.toHaveBeenCalled()
     expect(orchestratorAutomationsClient.listActiveRuns).not.toHaveBeenCalled()
   })
   it('counts failures and all in-progress apps including stopping apps', async () => {
@@ -35,17 +34,19 @@ describe('getPlatformOperations', () => {
       id: `app-${index}`,
       name: `App ${index}`,
       updatedAt: new Date(index * 1000).toISOString(),
-      status: { currentStatus: index < 8 ? 'error' : 'provisioning', lifecycleStage: 'queued' }
+      status: index < 8 ? 'error' : 'provisioning',
+      lifecycleStage: 'queued'
     }))
-    vi.mocked(listApplicationsAction).mockResolvedValue([
+    vi.mocked(orchestratorAppCatalogClient.listApplicationGallery).mockResolvedValue([
       ...apps,
       {
         id: 'stopping',
         name: 'Stopping app',
         updatedAt: new Date(20_000).toISOString(),
-        status: { currentStatus: 'running', lifecycleStage: 'stopping' }
+        status: 'running',
+        lifecycleStage: 'stopping'
       }
-    ] as AndroidApplication[])
+    ] as Awaited<ReturnType<typeof orchestratorAppCatalogClient.listApplicationGallery>>)
     const result = await getPlatformOperations()
     expect(result).toMatchObject({
       failedCount: 8,
@@ -63,7 +64,7 @@ describe('getPlatformOperations', () => {
       ...user,
       permissions: { 'automations:run': true, 'automations:manage': true }
     })
-    vi.mocked(listApplicationsAction).mockResolvedValue([])
+    vi.mocked(orchestratorAppCatalogClient.listApplicationGallery).mockResolvedValue([])
     vi.mocked(orchestratorAutomationsClient.listActiveRuns).mockResolvedValue([
       { ...runFields, id: 'queued', automationId: 'workflow', status: 'queued', workflowName: 'Inventory' },
       { ...runFields, id: 'running', automationId: 'workflow', status: 'running', workflowName: 'Inventory' },
@@ -87,7 +88,7 @@ describe('getPlatformOperations', () => {
       ...user,
       permissions: { 'automations:run': true, 'automations:manage': true }
     })
-    vi.mocked(listApplicationsAction).mockResolvedValue([])
+    vi.mocked(orchestratorAppCatalogClient.listApplicationGallery).mockResolvedValue([])
     vi.mocked(orchestratorAutomationsClient.listActiveRuns).mockResolvedValue([
       { ...runFields, id: 'ai-run', automationId: 'ephemeral-ai-run', status: 'running', workflowName: null },
       { ...runFields, id: 'queued', automationId: 'workflow', status: 'queued', workflowName: null }

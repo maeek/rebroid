@@ -1,18 +1,16 @@
 import { StatusBadge } from '@/components/ui/status-badge'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import { formatTimestamp } from './casting-sidecar-utils'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import { formatTimestamp, sessionOwnerId } from './casting-sidecar-utils'
+import type { CastingApplication } from './casting-sidecar-utils'
 import type { DisplaySidecarSession } from '@/shared/contracts/diagnostics'
 import type { ColumnDef } from '@tanstack/react-table'
 import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
-
-type CastingApp = Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>
 
 export const createCastingSessionColumns = ({
   appsById,
   ownerNames
 }: {
-  appsById: Map<string, CastingApp>
+  appsById: Map<string, CastingApplication>
   ownerNames: Map<string, string>
 }): ColumnDef<DisplaySidecarSession>[] => [
   {
@@ -73,12 +71,12 @@ const CastingSessionIdentity = ({
   className
 }: {
   session: DisplaySidecarSession
-  appsById: Map<string, CastingApp>
+  appsById: Map<string, CastingApplication>
   ownerNames: Map<string, string>
   className?: string
 }) => {
   const app = session.applicationId ? appsById.get(session.applicationId) : undefined
-  const ownerId = session.ownerUserId ?? app?.ownerUserId
+  const ownerId = sessionOwnerId(session, app)
 
   return (
     <div className={`${className ?? 'flex min-w-0 flex-col gap-1'} ${styles.settingsStack}`}>

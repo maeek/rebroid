@@ -12,8 +12,8 @@ import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { createCastingSessionColumns } from './casting-sessions-grid'
 import { activeStatuses } from './casting-sidecar-utils'
+import type { CastingApplication } from './casting-sidecar-utils'
 import type { CastingSidecarController } from './use-casting-sidecar-controller'
-import type { AndroidApplication } from '@/shared/contracts/application'
 
 export const CastingSessionsSection = ({
   loading = false,
@@ -23,7 +23,7 @@ export const CastingSessionsSection = ({
 }: {
   loading?: boolean
   controller: CastingSidecarController
-  applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
+  applications: CastingApplication[]
   owners: Array<{ id: string; name: string }>
 }) => {
   const {
