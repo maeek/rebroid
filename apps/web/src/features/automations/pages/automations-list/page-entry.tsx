@@ -6,12 +6,15 @@ import { AutomationsListPageLoading } from './page-loading'
 import type { WorkflowGridSearchParams } from '../workflow-grid-query'
 
 const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Promise<WorkflowGridSearchParams> }) => {
-  const { applications, automationsPage, gridQuery, orchestratorError, workflowHistoryRetention } =
-    await loadAutomationsListPageData((await searchParams) ?? {})
-
-  if (orchestratorError) {
-    return <AutomationPageUnavailable title='Workflows' />
-  }
+  const result = await loadAutomationsListPageData((await searchParams) ?? {})
+  if (!result.ok)
+    return (
+      <AutomationPageUnavailable
+        title='Workflows'
+        requestId={result.requestId}
+      />
+    )
+  const { applications, automationsPage, gridQuery, workflowHistoryRetention } = result.data
 
   return (
     <AutomationsListPage

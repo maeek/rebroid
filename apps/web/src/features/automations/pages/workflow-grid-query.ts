@@ -6,17 +6,6 @@ export type WorkflowGridSearchParams = Record<string, string | string[] | undefi
 const statuses = new Set<AutomationLastStatus>(['never_run', 'running', 'success', 'failed'])
 const lastRuns = new Set<NonNullable<AutomationsGridQuery['lastRun']>>(['all', 'never', '7d', '30d', '90d'])
 
-export const emptyWorkflowGridPage = ({ page, pageSize }: { page: number; pageSize: number }) => ({
-  items: [],
-  total: 0,
-  page,
-  pageSize,
-  facets: {
-    tags: [],
-    targetApplicationIds: []
-  }
-})
-
 export const workflowGridQueryFromSearchParams = (searchParams: WorkflowGridSearchParams) =>
   ({
     ...paginationFromSearchParams(searchParams),

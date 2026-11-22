@@ -8,12 +8,15 @@ export async function AutomationTriggersPageEntry({
 }: {
   searchParams?: Promise<WorkflowGridSearchParams>
 }) {
-  const { applications, automations, gridQuery, orchestratorError, triggersPage, ownedAppIds, canRun, canCreateApp } =
-    await loadAutomationTriggersPageData((await searchParams) ?? {})
-
-  if (orchestratorError) {
-    return <AutomationPageUnavailable title='Triggers' />
-  }
+  const result = await loadAutomationTriggersPageData((await searchParams) ?? {})
+  if (!result.ok)
+    return (
+      <AutomationPageUnavailable
+        title='Triggers'
+        requestId={result.requestId}
+      />
+    )
+  const { applications, automations, gridQuery, triggersPage, ownedAppIds, canRun, canCreateApp } = result.data
 
   return (
     <AutomationTriggersPage

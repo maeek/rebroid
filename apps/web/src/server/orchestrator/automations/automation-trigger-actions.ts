@@ -12,14 +12,6 @@ import {
 import { orchestratorAutomationsClient } from './client'
 import type { SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 
-export const listAutomationTriggersGridAction = async (
-  input: Parameters<typeof orchestratorAutomationsClient.listTriggersGrid>[1] = {}
-) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
-  return orchestratorAutomationsClient.listTriggersGrid(user.ownerUserId, input)
-}
-
 export const createAutomationTriggerAction = async (input: SaveAutomationTriggerInput) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')

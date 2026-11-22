@@ -19,6 +19,12 @@ export const assertAutomationPermission = (user: CurrentAutomationUser, permissi
   }
 }
 
+export const requireAutomationUser = async (permission: PermissionId) => {
+  const user = await getCurrentUserContext()
+  assertAutomationPermission(user, permission)
+  return user
+}
+
 const commandPermissionIsKnown = (permission: string): permission is PermissionId =>
   allPermissionIds.some(candidate => candidate === permission)
 

@@ -33,7 +33,7 @@ beforeEach(() => {
 describe('Triggers editor workflow', () => {
   it('retains a pending sort when submitting a search before navigation finishes', () => {
     render(<AutomationTriggersPreview />)
-    fireEvent.click(screen.getByRole('button', { name: 'Trigger', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger' }))
     const first = new URL(push.mock.lastCall![0], 'https://rebroid.test')
     const search = screen.getByPlaceholderText('Search triggers')
     fireEvent.change(search, { target: { value: 'nightly' } })

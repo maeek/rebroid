@@ -149,20 +149,6 @@ export const draftWorkflowFromAdHocRunAction = async ({
   return draft
 }
 
-export const listAutomationOptionsAction = async () => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
-  return orchestratorAutomationsClient.listOptions(user.ownerUserId)
-}
-
-export const listAutomationsGridAction = async (
-  input: Parameters<typeof orchestratorAutomationsClient.listGrid>[1] = {}
-) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
-  return orchestratorAutomationsClient.listGrid(user.ownerUserId, input)
-}
-
 export const getAutomationAction = async (id: string) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')
