@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { text } from './ai-provider-values';
+import { replaceAiProvider, requireAiProvider } from './ai-provider-catalog';
 import { aiProviderErrorMessage } from './utils/ai-provider-health.utils';
 import { isOfficialOpenAiProvider } from '../common/ai-provider-request';
 import { getOpenAiBillingIssue } from '../common/openai-billing';
@@ -51,12 +53,12 @@ export class AiProviderSettingsService {
   ) {}
 
   async listProviders() {
-    const settings = await this.getStoredSettings();
+    const settings = await this.store.getStoredSettings();
     return settings.aiProviders.map(providerResponse);
   }
 
   async listEnabledModelCatalog() {
-    const settings = await this.getStoredSettings();
+    const settings = await this.store.getStoredSettings();
     return settings.aiProviders
       .filter((provider) => provider.enabled)
       .map((provider) => ({
@@ -75,7 +77,7 @@ export class AiProviderSettingsService {
     modelId?: string,
     role: AutomationAiProviderModelRole = 'controller',
   ) {
-    const settings = await this.getStoredSettings();
+    const settings = await this.store.getStoredSettings();
     const providers = settings.aiProviders.filter(
       (provider) => provider.enabled,
     );
@@ -121,13 +123,10 @@ export class AiProviderSettingsService {
     ) {
       throw new BadRequestException(`Unsupported AI model role "${role}".`);
     }
-    const settings = await this.getStoredSettings();
-    const provider = settings.aiProviders.find(
-      (item) => item.id === providerId,
+    const provider = requireAiProvider(
+      await this.store.getStoredSettings(),
+      providerId,
     );
-    if (!provider) {
-      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
-    }
     return this.aiProviderHealth.checkProviderHealth(provider, modelId, role);
   }
 
@@ -141,13 +140,10 @@ export class AiProviderSettingsService {
   }
 
   async listRemoteModels(providerId: string) {
-    const settings = await this.getStoredSettings();
-    const provider = settings.aiProviders.find(
-      (item) => item.id === providerId,
+    const provider = requireAiProvider(
+      await this.store.getStoredSettings(),
+      providerId,
     );
-    if (!provider) {
-      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
-    }
     try {
       return await this.aiProviderHealth.listRemoteModels(provider);
     } catch (error) {
@@ -172,42 +168,23 @@ export class AiProviderSettingsService {
   }
 
   async updateProvider(providerId: string, dto: UpdateAutomationAiProviderDto) {
-    let next: ReturnType<typeof normalizeAiProvider> | undefined;
-    await this.store.updateSettings((settings) => {
-      const index = settings.aiProviders.findIndex(
-        (provider) => provider.id === providerId,
-      );
-      if (index < 0) {
-        throw new NotFoundException(
-          `AI provider "${providerId}" was not found.`,
-        );
-      }
-      const current = settings.aiProviders[index];
-      next = normalizeAiProvider(
-        {
-          ...current,
-          ...dto,
-          id: dto.id ?? current.id,
-          apiKey: resolveUpdatedApiKey(current.apiKey, dto.apiKey),
-          models: dto.models ?? current.models,
-        },
-        current,
-      );
-      if (
-        next.id !== providerId &&
-        settings.aiProviders.some((provider) => provider.id === next?.id)
-      ) {
-        throw new BadRequestException(
-          `AI provider "${next.id}" already exists.`,
-        );
-      }
-      const providers = [...settings.aiProviders];
-      providers[index] = next;
-      return { ...settings, aiProviders: providers };
-    });
-    if (!next)
-      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
-    return providerResponse(next);
+    const settings = await this.store.updateSettings((current) =>
+      replaceAiProvider(current, providerId, (provider) =>
+        normalizeAiProvider(
+          {
+            ...provider,
+            ...dto,
+            id: dto.id ?? provider.id,
+            apiKey: resolveUpdatedApiKey(provider.apiKey, dto.apiKey),
+            models: dto.models ?? provider.models,
+          },
+          provider,
+        ),
+      ),
+    );
+    return providerResponse(
+      requireAiProvider(settings, text(dto.id) || providerId),
+    );
   }
 
   async deleteProvider(providerId: string) {
@@ -228,15 +205,18 @@ export class AiProviderSettingsService {
     providerId: string,
     dto: CreateAutomationAiProviderModelDto,
   ) {
-    const provider = await this.updateProviderModels(providerId, (models) => {
-      if (models.some((model) => model.id === dto.id.trim())) {
-        throw new BadRequestException(
-          `AI model "${dto.id}" already exists for provider "${providerId}".`,
-        );
-      }
-      return [...models, normalizeAiModel(dto)];
-    });
-    return provider.models.find((model) => model.id === dto.id.trim());
+    const updatedModels = await this.updateProviderModels(
+      providerId,
+      (models) => {
+        if (models.some((model) => model.id === dto.id.trim())) {
+          throw new BadRequestException(
+            `AI model "${dto.id}" already exists for provider "${providerId}".`,
+          );
+        }
+        return [...models, normalizeAiModel(dto)];
+      },
+    );
+    return updatedModels.find((model) => model.id === dto.id.trim());
   }
 
   async updateProviderModel(
@@ -244,29 +224,35 @@ export class AiProviderSettingsService {
     modelId: string,
     dto: UpdateAutomationAiProviderModelDto,
   ) {
-    const provider = await this.updateProviderModels(providerId, (models) => {
-      const index = models.findIndex((model) => model.id === modelId);
-      if (index < 0) {
-        throw new NotFoundException(
-          `AI model "${modelId}" was not found for provider "${providerId}".`,
-        );
-      }
-      const next = normalizeAiModel({
-        ...models[index],
-        ...dto,
-        id: dto.id ?? models[index].id,
-      });
-      if (next.id !== modelId && models.some((model) => model.id === next.id)) {
-        throw new BadRequestException(
-          `AI model "${next.id}" already exists for provider "${providerId}".`,
-        );
-      }
-      const updated = [...models];
-      updated[index] = next;
-      return updated;
-    });
+    const updatedModels = await this.updateProviderModels(
+      providerId,
+      (models) => {
+        const index = models.findIndex((model) => model.id === modelId);
+        if (index < 0) {
+          throw new NotFoundException(
+            `AI model "${modelId}" was not found for provider "${providerId}".`,
+          );
+        }
+        const next = normalizeAiModel({
+          ...models[index],
+          ...dto,
+          id: dto.id ?? models[index].id,
+        });
+        if (
+          next.id !== modelId &&
+          models.some((model) => model.id === next.id)
+        ) {
+          throw new BadRequestException(
+            `AI model "${next.id}" already exists for provider "${providerId}".`,
+          );
+        }
+        const updated = [...models];
+        updated[index] = next;
+        return updated;
+      },
+    );
     const nextId = dto.id?.trim() || modelId;
-    return provider.models.find((model) => model.id === nextId);
+    return updatedModels.find((model) => model.id === nextId);
   }
 
   async deleteProviderModel(providerId: string, modelId: string) {
@@ -297,43 +283,18 @@ export class AiProviderSettingsService {
     return this.aiProviderModelDownloads.get(providerId, downloadId);
   }
 
-  private async getStoredSettings() {
-    return this.store.getStoredSettings();
-  }
-
   private async updateProviderModels(
     providerId: string,
     update: (
       models: AutomationAiProviderModel[],
     ) => AutomationAiProviderModel[],
   ) {
-    let updatedProvider:
-      | Awaited<
-          ReturnType<OrchestratorSettingsStore['getStoredSettings']>
-        >['aiProviders'][number]
-      | undefined;
-    await this.store.updateSettings((settings) => {
-      const index = settings.aiProviders.findIndex(
-        (provider) => provider.id === providerId,
-      );
-      if (index < 0) {
-        throw new NotFoundException(
-          `AI provider "${providerId}" was not found.`,
-        );
-      }
-      updatedProvider = {
-        ...settings.aiProviders[index],
-        models: normalizeDefaultModel(
-          update(settings.aiProviders[index].models),
-        ),
-      };
-      const providers = [...settings.aiProviders];
-      providers[index] = updatedProvider;
-      return { ...settings, aiProviders: providers };
-    });
-    if (!updatedProvider) {
-      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
-    }
-    return maskProvider(updatedProvider);
+    const settings = await this.store.updateSettings((current) =>
+      replaceAiProvider(current, providerId, (provider) => ({
+        ...provider,
+        models: normalizeDefaultModel(update(provider.models)),
+      })),
+    );
+    return requireAiProvider(settings, providerId).models;
   }
 }

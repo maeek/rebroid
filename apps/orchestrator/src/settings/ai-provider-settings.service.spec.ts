@@ -236,6 +236,27 @@ describe('AiProviderSettingsService', () => {
     expect(result.model.id).toBe('vision');
   });
 
+  it('returns the saved provider after a rename and rejects a name already in use', async () => {
+    const initial = createSettings();
+    initial.aiProviders.push({ ...initial.aiProviders[0], id: 'other' });
+    const { service, settings } = createService(initial);
+    const renamed = await service.updateProvider('primary', {
+      id: ' renamed ',
+    });
+    expect(renamed.id).toBe('renamed');
+    expect(renamed.apiKey).not.toBe(settings.aiProviders[0].apiKey);
+    await expect(
+      service.updateProvider('renamed', { id: 'other' }),
+    ).rejects.toThrow('already exists');
+    expect(settings.aiProviders.map((provider) => provider.id)).toEqual([
+      'renamed',
+      'other',
+    ]);
+    await expect(service.listRemoteModels('primary')).rejects.toThrow(
+      'was not found',
+    );
+  });
+
   it('rejects duplicate provider ids on create', async () => {
     const { service, settings, store } = createService();
 

@@ -10,17 +10,15 @@ import {
   normalizeDefaultModel,
   text,
 } from './ai-provider-settings';
+import { replaceAiProvider, requireAiProvider } from './ai-provider-catalog';
 import { aiProviderErrorMessage } from './utils/ai-provider-health.utils';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import type { AutomationAiProviderModelDownloadDto } from './dto/automation-ai-provider-download.dto';
 import { downloadOllamaModel } from './ollama-model-download';
 
-type AutomationAiProviderModelDownloadJob =
-  AutomationAiProviderModelDownloadDto;
-
 type ActiveDownload = {
   endpoint: string;
-  job: AutomationAiProviderModelDownloadJob;
+  job: AutomationAiProviderModelDownloadDto;
 };
 
 const maxFinishedDownloads = 128;
@@ -31,20 +29,14 @@ export class AiProviderModelDownloadService {
   private readonly active = new Map<string, ActiveDownload>();
   private readonly finished = new Map<
     string,
-    AutomationAiProviderModelDownloadJob
+    AutomationAiProviderModelDownloadDto
   >();
 
   constructor(private readonly store: OrchestratorSettingsStore) {}
 
   async download(providerId: string, modelId: string, label?: string) {
     const settings = await this.store.getStoredSettings();
-    const index = settings.aiProviders.findIndex(
-      (provider) => provider.id === providerId,
-    );
-    if (index < 0) {
-      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
-    }
-    const provider = settings.aiProviders[index];
+    const provider = requireAiProvider(settings, providerId);
     if (provider.kind !== 'ollama') {
       throw new BadRequestException(
         'Only Ollama providers support model downloads.',
@@ -66,7 +58,7 @@ export class AiProviderModelDownloadService {
     }
 
     const now = new Date().toISOString();
-    const job: AutomationAiProviderModelDownloadJob = {
+    const job: AutomationAiProviderModelDownloadDto = {
       id: randomUUID(),
       providerId,
       modelId: id,
@@ -153,8 +145,8 @@ export class AiProviderModelDownloadService {
   }
 
   private updateDownload(
-    job: AutomationAiProviderModelDownloadJob,
-    patch: Partial<AutomationAiProviderModelDownloadJob>,
+    job: AutomationAiProviderModelDownloadDto,
+    patch: Partial<AutomationAiProviderModelDownloadDto>,
   ) {
     Object.assign(job, patch, { updatedAt: new Date().toISOString() });
   }
@@ -165,43 +157,32 @@ export class AiProviderModelDownloadService {
     modelId: string,
     label?: string,
   ) {
-    await this.store.updateSettings((settings) => {
-      const index = settings.aiProviders.findIndex(
-        (provider) => provider.id === providerId,
-      );
-      if (index < 0) {
-        throw new NotFoundException(
-          `AI provider "${providerId}" was not found.`,
+    await this.store.updateSettings((settings) =>
+      replaceAiProvider(settings, providerId, (provider) => {
+        if (
+          provider.kind !== 'ollama' ||
+          normalizeEndpoint(provider.baseUrl) !== endpoint
+        ) {
+          throw new ConflictException(
+            'The AI provider connection changed during the model download.',
+          );
+        }
+        const existingIndex = provider.models.findIndex(
+          (model) => model.id === modelId,
         );
-      }
-      const provider = settings.aiProviders[index];
-      if (
-        provider.kind !== 'ollama' ||
-        normalizeEndpoint(provider.baseUrl) !== endpoint
-      ) {
-        throw new ConflictException(
-          'The AI provider connection changed during the model download.',
-        );
-      }
-      const existingIndex = provider.models.findIndex(
-        (model) => model.id === modelId,
-      );
-      const nextModel = normalizeAiModel({
-        ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
-        id: modelId,
-        label: text(label) || provider.models[existingIndex]?.label || modelId,
-        enabled: true,
-        settings: provider.models[existingIndex]?.settings ?? {},
-      });
-      const nextModels = [...provider.models];
-      if (existingIndex >= 0) nextModels[existingIndex] = nextModel;
-      else nextModels.push(nextModel);
-      const providers = [...settings.aiProviders];
-      providers[index] = {
-        ...provider,
-        models: normalizeDefaultModel(nextModels),
-      };
-      return { ...settings, aiProviders: providers };
-    });
+        const nextModel = normalizeAiModel({
+          ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
+          id: modelId,
+          label:
+            text(label) || provider.models[existingIndex]?.label || modelId,
+          enabled: true,
+          settings: provider.models[existingIndex]?.settings ?? {},
+        });
+        const nextModels = [...provider.models];
+        if (existingIndex >= 0) nextModels[existingIndex] = nextModel;
+        else nextModels.push(nextModel);
+        return { ...provider, models: normalizeDefaultModel(nextModels) };
+      }),
+    );
   }
 }
