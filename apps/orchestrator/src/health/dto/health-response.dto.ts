@@ -14,7 +14,7 @@ export class ServiceHealthDto {
   details?: Record<string, unknown>;
 }
 
-export class OrchestratorDiagnosticsServicesDto {
+class OrchestratorDiagnosticsServicesDto {
   @ApiProperty({ type: ServiceHealthDto })
   orchestrator!: ServiceHealthDto;
 

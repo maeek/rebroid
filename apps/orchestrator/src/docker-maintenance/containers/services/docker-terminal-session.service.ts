@@ -23,7 +23,7 @@ import {
 } from './docker-terminal-session-monitor';
 import { streamDockerTerminal } from './docker-terminal-stream';
 
-export type DockerTerminalTarget = {
+type DockerTerminalTarget = {
   containerId: string;
   startedAt: string;
   user?: string;

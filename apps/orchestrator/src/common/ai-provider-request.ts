@@ -86,7 +86,7 @@ const providerOpenAiRoot = (provider: AutomationAiProvider) => {
   return baseUrl;
 };
 
-export const chatCompletionsEndpoint = (provider: AutomationAiProvider) =>
+const chatCompletionsEndpoint = (provider: AutomationAiProvider) =>
   providerProtocol(provider) === 'ollama-native-chat'
     ? `${provider.baseUrl.replace(/\/+$/, '')}/api/chat`
     : `${providerOpenAiRoot(provider)}/chat/completions`;

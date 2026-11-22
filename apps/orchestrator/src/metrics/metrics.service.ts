@@ -8,7 +8,7 @@ import {
 } from 'prom-client';
 
 export type DockerOperationClass = 'read' | 'mutation' | 'long';
-export type DockerOperationOutcome = 'success' | 'error' | 'timeout';
+type DockerOperationOutcome = 'success' | 'error' | 'timeout';
 
 interface DockerOperationAggregate {
   class: DockerOperationClass;

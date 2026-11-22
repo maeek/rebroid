@@ -37,7 +37,7 @@ export class ListAutomationTriggersGridQueryDto extends ListAutomationsGridQuery
   enabled?: 'true' | 'false';
 }
 
-export class AutomationScheduleTriggerConfigDto {
+class AutomationScheduleTriggerConfigDto {
   @ApiProperty({ example: '0 9 * * *' })
   @IsString()
   @MinLength(5)
@@ -176,7 +176,7 @@ export class AutomationTriggerDto {
   updatedAt!: string;
 }
 
-export class AutomationTriggersGridFacetsDto extends AutomationsGridFacetsDto {}
+class AutomationTriggersGridFacetsDto extends AutomationsGridFacetsDto {}
 
 export class AutomationTriggersGridPageDto {
   @ApiProperty({ type: AutomationTriggerDto, isArray: true })

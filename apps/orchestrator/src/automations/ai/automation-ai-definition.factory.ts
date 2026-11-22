@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AutomationDefinition } from '@rebroid/automation-core/definition';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 
-export type AutomationAiDefinitionInput = {
+type AutomationAiDefinitionInput = {
   name: string;
   prompt: string;
   conversation?: Array<{ role: 'user' | 'assistant'; content: string }>;

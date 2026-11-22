@@ -3,7 +3,7 @@ interface AndroidBootReadiness {
   probe: string;
 }
 
-export const androidBootProbeProperties = [
+const androidBootProbeProperties = [
   'dev.bootcomplete',
   'service.bootanim.exit',
   'init.svc.bootanim',

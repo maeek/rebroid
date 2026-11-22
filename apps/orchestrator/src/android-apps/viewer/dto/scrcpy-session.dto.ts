@@ -4,7 +4,7 @@ import {
   type ViewerTransport,
 } from '@rebroid/android-application-core/viewer-control';
 
-export class ScrcpyViewerErrorDto {
+class ScrcpyViewerErrorDto {
   @ApiProperty({
     enum: ['sidecar_unavailable', 'adb_missing', 'adb_unreachable', 'unknown'],
   })
@@ -29,7 +29,7 @@ export class ScrcpyViewerErrorDto {
   stderr!: string | null;
 }
 
-export class DisplayNewDisplayDto {
+class DisplayNewDisplayDto {
   @ApiProperty()
   width!: number;
 
@@ -40,7 +40,7 @@ export class DisplayNewDisplayDto {
   dpi!: number;
 }
 
-export class DisplaySurfaceDto {
+class DisplaySurfaceDto {
   @ApiProperty()
   id!: string;
 

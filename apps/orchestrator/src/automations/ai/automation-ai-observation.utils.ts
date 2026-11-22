@@ -1,4 +1,4 @@
-export interface PreparedUiXml {
+interface PreparedUiXml {
   xml: string;
   nodeCount: number;
   truncated: boolean;

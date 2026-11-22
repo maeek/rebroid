@@ -18,7 +18,7 @@ import {
 } from '../contracts/ai-provider';
 import { openAiBillingCodes } from '../../common/openai-billing';
 
-export class AutomationAiProviderModelSettingsDto {
+class AutomationAiProviderModelSettingsDto {
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()
@@ -152,7 +152,7 @@ export class AutomationAiProviderModelDto {
   defaultFor!: AutomationAiProviderModelRole[];
 }
 
-export class AutomationAiProviderDto {
+class AutomationAiProviderDto {
   @ApiProperty({ example: 'local-ollama' })
   @IsString()
   @MinLength(1)
@@ -213,7 +213,7 @@ export class AutomationAiProviderDto {
   enabled!: boolean;
 }
 
-export class OpenAiBillingIssueDto {
+class OpenAiBillingIssueDto {
   @ApiProperty({ enum: [...openAiBillingCodes] })
   code!: (typeof openAiBillingCodes)[number];
 

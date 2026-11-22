@@ -11,7 +11,7 @@ import {
 import { ValidateBy, type ValidationOptions } from 'class-validator';
 import { normalizeIpv4Cidr } from './utils/network-policy.utils';
 
-export const toStringArray = (value: unknown) => {
+const toStringArray = (value: unknown) => {
   if (Array.isArray(value)) return value;
   if (typeof value !== 'string') return value;
   return value
@@ -20,7 +20,7 @@ export const toStringArray = (value: unknown) => {
     .filter(Boolean);
 };
 
-export const IsIpv4Cidr = (validationOptions?: ValidationOptions) =>
+const IsIpv4Cidr = (validationOptions?: ValidationOptions) =>
   ValidateBy(
     {
       name: 'isIpv4Cidr',

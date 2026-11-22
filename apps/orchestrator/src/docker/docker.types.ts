@@ -35,7 +35,7 @@ export interface ContainerRuntimeState {
   finishedAt: string | null;
 }
 
-export interface ManagedContainerResourceUsage {
+interface ManagedContainerResourceUsage {
   cpuUsagePercent: number;
   memoryUsageBytes: number;
 }

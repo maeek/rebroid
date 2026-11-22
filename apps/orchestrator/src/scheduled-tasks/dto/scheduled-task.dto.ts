@@ -18,7 +18,7 @@ import {
   ScheduledTaskLastStatus,
 } from '../entities/scheduled-task.entity';
 
-export class ScheduledTaskPayloadDto {
+class ScheduledTaskPayloadDto {
   @ApiPropertyOptional({
     description: 'Only for prune_images. Defaults to true.',
     example: true,

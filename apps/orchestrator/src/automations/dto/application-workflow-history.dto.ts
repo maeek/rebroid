@@ -46,7 +46,7 @@ export class ListApplicationWorkflowRunsDto extends ApplicationWorkflowScopeDto 
   q?: string;
 }
 
-export class ApplicationWorkflowRunRowDto extends PickType(AutomationRunDto, [
+class ApplicationWorkflowRunRowDto extends PickType(AutomationRunDto, [
   'id',
   'automationId',
   'status',

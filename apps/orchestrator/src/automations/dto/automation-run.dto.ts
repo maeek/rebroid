@@ -64,7 +64,7 @@ export class ActiveAutomationRunDto {
   workflowName!: string | null;
 }
 
-export class AutomationStepResultDto {
+class AutomationStepResultDto {
   @ApiProperty({ example: 'wake-device' })
   stepId!: string;
 

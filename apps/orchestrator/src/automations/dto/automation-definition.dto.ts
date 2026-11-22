@@ -8,7 +8,7 @@ export class AutomationTagDto {
   color!: string;
 }
 
-export class AutomationDefinitionMetadataDto {
+class AutomationDefinitionMetadataDto {
   @ApiProperty({ example: 'Prepare app environment' })
   name!: string;
 
@@ -26,7 +26,7 @@ export class AutomationDefinitionMetadataDto {
   tags?: AutomationTagDto[];
 }
 
-export class AutomationDefinitionSpecDto {
+class AutomationDefinitionSpecDto {
   @ApiProperty({ type: Object, isArray: true })
   steps!: unknown[];
 }

@@ -1,6 +1,6 @@
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 
-export interface AndroidApplicationSavedProfile {
+interface AndroidApplicationSavedProfile {
   mode: ApplicationProfileMode;
   name: string;
 }

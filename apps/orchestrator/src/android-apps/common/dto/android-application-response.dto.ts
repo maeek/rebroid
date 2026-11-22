@@ -27,7 +27,7 @@ import {
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
 
-export class AndroidApplicationStatusResponseDto {
+class AndroidApplicationStatusResponseDto {
   @ApiProperty({ enum: AndroidApplicationStatus })
   currentStatus!: AndroidApplicationStatus;
 
@@ -65,7 +65,7 @@ export class AndroidApplicationStatusResponseDto {
   provisioningCompletedAt!: string | null;
 }
 
-export class AndroidApplicationErrorResponseDto {
+class AndroidApplicationErrorResponseDto {
   @ApiProperty({ type: String, nullable: true })
   lastError!: string | null;
 
@@ -73,7 +73,7 @@ export class AndroidApplicationErrorResponseDto {
   application!: AndroidApplicationError | null;
 }
 
-export class AndroidApplicationRuntimeResourcesDto {
+class AndroidApplicationRuntimeResourcesDto {
   @ApiProperty({ type: Number, nullable: true })
   memoryLimitMb!: number | null;
 
@@ -81,7 +81,7 @@ export class AndroidApplicationRuntimeResourcesDto {
   cpuLimitCpus!: number | null;
 }
 
-export class AndroidApplicationRuntimeDto {
+class AndroidApplicationRuntimeDto {
   @ApiProperty()
   image!: string;
 
@@ -116,7 +116,7 @@ export class AndroidApplicationRuntimeDto {
   resources!: AndroidApplicationRuntimeResourcesDto;
 }
 
-export class AndroidApplicationStorageDto {
+class AndroidApplicationStorageDto {
   @ApiProperty()
   volumeName!: string;
 
@@ -130,7 +130,7 @@ export class AndroidApplicationStorageDto {
   savedProfiles!: AndroidApplicationSavedProfileDto[];
 }
 
-export class AndroidApplicationSavedProfileDto {
+class AndroidApplicationSavedProfileDto {
   @ApiProperty({ enum: ApplicationProfileMode })
   mode!: ApplicationProfileMode;
 
@@ -138,7 +138,7 @@ export class AndroidApplicationSavedProfileDto {
   name!: string;
 }
 
-export class AndroidApplicationNetworkPolicyDto {
+class AndroidApplicationNetworkPolicyDto {
   @ApiProperty()
   enabled!: boolean;
 
@@ -155,7 +155,7 @@ export class AndroidApplicationNetworkPolicyDto {
   appliedAt!: string | null;
 }
 
-export class AndroidApplicationNetworkDto {
+class AndroidApplicationNetworkDto {
   @ApiProperty()
   networkName!: string;
 
@@ -163,7 +163,7 @@ export class AndroidApplicationNetworkDto {
   policy!: AndroidApplicationNetworkPolicyDto;
 }
 
-export class AndroidApplicationApkDto {
+class AndroidApplicationApkDto {
   @ApiProperty({ type: String, nullable: true })
   filePath!: string | null;
 

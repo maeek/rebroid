@@ -58,7 +58,7 @@ export const normalizedPointToPixels = (
   };
 };
 
-export const pointWithinBox = (point: NormalizedPoint, box: NormalizedBox) => {
+const pointWithinBox = (point: NormalizedPoint, box: NormalizedBox) => {
   const p = normalizePoint(point);
   const b = normalizeBox(box);
   return (

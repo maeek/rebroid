@@ -13,7 +13,7 @@ import { DockerConnection } from './docker-connection.factory';
 import { DockerErrorClassifier } from './docker-error-classifier.service';
 import { DockerMetricsObserver } from './docker-metrics-observer.service';
 
-export class DockerLongOperationTimeoutError extends Error {
+class DockerLongOperationTimeoutError extends Error {
   constructor(operation: string, timeoutMs: number) {
     super(`${operation} timed out after ${timeoutMs}ms.`);
     this.name = 'DockerLongOperationTimeoutError';

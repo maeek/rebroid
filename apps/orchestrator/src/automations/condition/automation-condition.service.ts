@@ -18,7 +18,7 @@ const conditionOperatorSet = new Set<AutomationConditionOperator>(
   conditionOperators,
 );
 
-export interface AutomationConditionRuntimeState {
+interface AutomationConditionRuntimeState {
   runId: string;
   trigger: string;
   targetProfileMode: string | null;

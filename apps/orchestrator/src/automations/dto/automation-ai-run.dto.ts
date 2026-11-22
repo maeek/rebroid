@@ -23,7 +23,7 @@ import { AutomationRunTargetDto } from './automation-request-target.dto';
 
 import { AutomationAiModelSelectionDto } from './automation-ai-model-selection.dto';
 
-export class RunAdHocAiConversationMessageDto {
+class RunAdHocAiConversationMessageDto {
   @ApiProperty({ enum: ['user', 'assistant'] })
   @IsIn(['user', 'assistant'])
   role!: 'user' | 'assistant';
@@ -103,7 +103,7 @@ export class RunAdHocAiAutomationDto extends IntersectionType(
   timeoutMs?: number;
 }
 
-export class AiPromptSuggestionContextEventDto {
+class AiPromptSuggestionContextEventDto {
   @ApiProperty({ example: 'ai.plan.proposed' })
   @IsString()
   @MaxLength(120)

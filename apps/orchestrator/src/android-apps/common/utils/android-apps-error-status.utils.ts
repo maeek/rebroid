@@ -118,7 +118,7 @@ export const errorStatusTitle = (app: AndroidApplication) => {
   return 'App failed';
 };
 
-export const deriveApplicationErrorPhase = (
+const deriveApplicationErrorPhase = (
   app: AndroidApplication,
   message: string,
 ): 'provisioning' | 'runtime' | 'unknown' => {

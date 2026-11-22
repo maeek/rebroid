@@ -9,7 +9,7 @@ import {
   type RuntimeImageSignatureSpoofing,
 } from '@rebroid/android-application-core/redroid-runtime';
 
-export class RuntimeImageMetadataDto {
+class RuntimeImageMetadataDto {
   @ApiProperty({ enum: runtimeImageKinds })
   runtimeKind!: RuntimeImageKind;
 
@@ -28,7 +28,7 @@ export class RuntimeImageMetadataDto {
   signatureSpoofing!: RuntimeImageSignatureSpoofing;
 }
 
-export class DockerPlatformContainerPortDto {
+class DockerPlatformContainerPortDto {
   @ApiProperty()
   privatePort!: number;
 
@@ -260,7 +260,7 @@ export class DockerPlatformStopResponseDto {
   stopped!: boolean;
 }
 
-export class DockerPrunedImageDto {
+class DockerPrunedImageDto {
   @ApiPropertyOptional()
   Deleted?: string;
 

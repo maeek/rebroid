@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { applicationViewerControlCommands } from '../../android-apps/contracts/application-viewer-control';
 
-export const timeoutSchema = z
+const timeoutSchema = z
   .number()
   .int()
   .min(100)
@@ -118,7 +118,7 @@ export const androidSettingSchema = z.object({
   timeoutMs: timeoutSchema,
 });
 
-export const remotePathSchema = z
+const remotePathSchema = z
   .string()
   .min(1)
   .max(500)

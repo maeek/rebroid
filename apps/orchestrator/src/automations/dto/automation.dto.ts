@@ -48,7 +48,7 @@ export class ValidateAutomationYamlDto {
   yaml!: string;
 }
 
-export class DraftAutomationYamlClarificationDto {
+class DraftAutomationYamlClarificationDto {
   @ApiProperty({ example: 'Which app package should this workflow launch?' })
   @IsString()
   @MinLength(1)

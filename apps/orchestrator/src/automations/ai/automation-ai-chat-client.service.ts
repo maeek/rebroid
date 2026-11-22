@@ -177,7 +177,7 @@ export class AutomationAiChatClientService {
   }
 }
 
-export interface AutomationAiChatResponse {
+interface AutomationAiChatResponse {
   choices: Array<{ message: ChatMessage }>;
   generation?: {
     reasoningPresent: boolean;

@@ -10,7 +10,7 @@ import { ApplicationProfileMode } from '../../contracts/application-profile-mode
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
 
-export class ApplicationCommandNetworkPolicyDto {
+class ApplicationCommandNetworkPolicyDto {
   @ApiProperty()
   enabled!: boolean;
 
@@ -27,7 +27,7 @@ export class ApplicationCommandNetworkPolicyDto {
   appliedAt!: string | null;
 }
 
-export class ApplicationCommandProfileDto {
+class ApplicationCommandProfileDto {
   @ApiProperty({ enum: ApplicationProfileMode })
   mode!: ApplicationProfileMode;
 
@@ -35,7 +35,7 @@ export class ApplicationCommandProfileDto {
   name!: string | null;
 }
 
-export class ApplicationCommandApkDto {
+class ApplicationCommandApkDto {
   @ApiProperty({ type: String, nullable: true })
   uploadedApkId!: string | null;
 

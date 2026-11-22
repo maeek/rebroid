@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class DockerMetricsLimitsDto {
+class DockerMetricsLimitsDto {
   @ApiProperty() maxConcurrentReads!: number;
   @ApiProperty() maxConcurrentLongOperations!: number;
   @ApiProperty() slowRequestWarningMs!: number;
@@ -8,7 +8,7 @@ export class DockerMetricsLimitsDto {
   @ApiProperty() remoteRequestTimeoutMs!: number;
 }
 
-export class DockerMetricsTotalsDto {
+class DockerMetricsTotalsDto {
   @ApiProperty() success!: number;
   @ApiProperty() errors!: number;
   @ApiProperty() timeouts!: number;
@@ -16,13 +16,13 @@ export class DockerMetricsTotalsDto {
   @ApiProperty() slow!: number;
 }
 
-export class DockerMetricsClassCountsDto {
+class DockerMetricsClassCountsDto {
   @ApiProperty() read!: number;
   @ApiProperty() mutation!: number;
   @ApiProperty() long!: number;
 }
 
-export class DockerMetricsOperationDto {
+class DockerMetricsOperationDto {
   @ApiProperty({ enum: ['read', 'mutation', 'long'] })
   class!: 'read' | 'mutation' | 'long';
   @ApiProperty() operation!: string;
@@ -36,7 +36,7 @@ export class DockerMetricsOperationDto {
   @ApiProperty() averageDurationMs!: number;
 }
 
-export class DockerMetricsEventDto {
+class DockerMetricsEventDto {
   @ApiProperty() timestamp!: string;
   @ApiProperty({ enum: ['read', 'mutation', 'long'] })
   class!: 'read' | 'mutation' | 'long';

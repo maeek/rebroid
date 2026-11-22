@@ -78,7 +78,7 @@ export class FeatureFlagManifestDto {
   features!: FeatureFlagStateDto[];
 }
 
-export class FeatureFlagChangeDto {
+class FeatureFlagChangeDto {
   @ApiProperty({ enum: featureFlagKeys, example: 'feature.ocr' })
   @IsString()
   @IsIn(featureFlagKeys)

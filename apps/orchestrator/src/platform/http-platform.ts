@@ -34,7 +34,7 @@ class HttpValidationPipe extends ValidationPipe {
   }
 }
 
-export const shouldDisableResponseCache = (url: string) => {
+const shouldDisableResponseCache = (url: string) => {
   const path = url.split('?')[0] ?? url;
   return (
     path === '/api/v1' ||

@@ -20,7 +20,7 @@ export interface OptimizedAiScreenshot extends AiScreenshot {
   renderedHeight: number | null;
 }
 
-export interface MarkedScreenshotCandidate {
+interface MarkedScreenshotCandidate {
   id: string;
   bounds?: { left: number; top: number; width: number; height: number };
 }
