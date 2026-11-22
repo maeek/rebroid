@@ -13,7 +13,7 @@ export interface AgentPlanStep {
 const structuredPlanLine = /^\s*-\s*\[(pending|completed)\]\s+([^:]+):\s+(.+?)(?:\s+\(evidence:\s*(.+)\))?\s*$/i
 const markdownPlanLine = /^\s*(?:[-*]|\d+[.)])\s+(?:\*\*)?([^:*]+)(?:\*\*)?:?\s*(.+)?$/
 
-export const latestPlanEvent = (events: AutomationRunEvent[]) =>
+const latestPlanEvent = (events: AutomationRunEvent[]) =>
   [...events].reverse().find(event => event.type === 'ai.plan.proposed' || event.type === 'ai.plan.updated') ?? null
 
 export const parseAgentPlan = (message: string, turnStatus: ChatTurnStatus): AgentPlanStep[] => {

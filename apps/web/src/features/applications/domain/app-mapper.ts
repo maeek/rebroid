@@ -6,7 +6,7 @@ import type {
   ApplicationPowerAcknowledgement
 } from '@/shared/contracts/application'
 
-export const mapApplicationDetailState = ({ status, errors, updatedAt }: AndroidApplicationDetailState) => ({
+const mapApplicationDetailState = ({ status, errors, updatedAt }: AndroidApplicationDetailState) => ({
   running: status.currentStatus === 'running',
   status: status.currentStatus,
   lifecycleStage: status.lifecycleStage,

@@ -1,6 +1,6 @@
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-export type AiAgentPromptPreset = {
+type AiAgentPromptPreset = {
   id: string
   label: string
   prompt: string

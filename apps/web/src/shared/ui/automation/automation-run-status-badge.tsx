@@ -4,7 +4,7 @@ import { StateTransition } from '@/components/ui/state-transition'
 import { cn } from '@/lib/utils'
 import type { AutomationRunStatus } from '@/shared/contracts/automation'
 
-export type AutomationRunDisplayStatus = AutomationRunStatus | 'canceling'
+type AutomationRunDisplayStatus = AutomationRunStatus | 'canceling'
 
 const statusPresentation: Record<
   AutomationRunDisplayStatus,

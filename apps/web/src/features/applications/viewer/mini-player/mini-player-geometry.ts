@@ -2,13 +2,13 @@ export type MiniPlayerSize = { width: number; height: number }
 export type MiniPlayerPoint = { x: number; y: number }
 export type MiniPlayerEdge = 'left' | 'right' | 'top' | 'bottom'
 export type MiniPlayerDock = { edge: MiniPlayerEdge; offset: number }
-export type MiniPlayerToolbarSide = 'left' | 'right'
+type MiniPlayerToolbarSide = 'left' | 'right'
 
-export const miniPlayerViewportInset = 24
+const miniPlayerViewportInset = 24
 const miniPlayerHeaderHeightRem = 1.75
 const miniPlayerHeaderGap = 6
 export const miniPlayerToolbarWidth = 36
-export const miniPlayerToolbarGap = 8
+const miniPlayerToolbarGap = 8
 export const miniPlayerToolbarSpace = miniPlayerToolbarWidth + miniPlayerToolbarGap
 export const isVerticalEdge = (edge: MiniPlayerEdge) => edge === 'left' || edge === 'right'
 

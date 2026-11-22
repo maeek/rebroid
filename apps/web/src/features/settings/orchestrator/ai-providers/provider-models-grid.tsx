@@ -26,7 +26,7 @@ import type {
 import type { ColumnDef } from '@tanstack/react-table'
 import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
-export type ProviderModelsGridProps = {
+type ProviderModelsGridProps = {
   initialProvider: AutomationAiProvider
   modelRows: ProviderModelRow[]
   onAddModel: (modelId: string, label?: string, roles?: AutomationAiProviderModelRole[]) => boolean | Promise<boolean>

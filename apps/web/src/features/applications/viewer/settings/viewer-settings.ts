@@ -1,10 +1,9 @@
 import { viewerTransport, type ViewerTransport } from '@rebroid/android-application-core/viewer-control'
 import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
 
-export type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
 export type ViewerPlayer = 'webcodecs'
 
-export type ViewerPlayerDefinition = {
+type ViewerPlayerDefinition = {
   value: ViewerPlayer
   label: string
   description: string

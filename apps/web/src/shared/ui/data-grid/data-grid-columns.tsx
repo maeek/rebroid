@@ -5,7 +5,7 @@ import { RowActions, RowActionButton } from '@/components/ui/row-actions'
 import type { DataGridSelectionState } from './data-grid'
 import type { CellContext, ColumnDef, Row } from '@tanstack/react-table'
 
-export const openContextMenuFromButton = (event: MouseEvent<HTMLButtonElement>) => {
+const openContextMenuFromButton = (event: MouseEvent<HTMLButtonElement>) => {
   event.preventDefault()
   event.stopPropagation()
   event.currentTarget.dispatchEvent(

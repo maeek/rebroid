@@ -8,7 +8,7 @@ import { requireOwnedRuntimeContext, ownedRuntimeControlMessage } from '../appli
 import { orchestratorAutomationsClient } from './client'
 import type { AutomationCommand, RunAutomationInput } from '@/shared/contracts/automation'
 
-export type CurrentAutomationUser = Pick<Awaited<ReturnType<typeof getCurrentUserContext>>, 'permissions'>
+type CurrentAutomationUser = Pick<Awaited<ReturnType<typeof getCurrentUserContext>>, 'permissions'>
 
 export const assertAutomationPermission = (user: CurrentAutomationUser, permission: PermissionId) => {
   if (!hasPermission(user.permissions, permission)) {

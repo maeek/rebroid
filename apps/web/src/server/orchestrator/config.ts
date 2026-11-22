@@ -33,7 +33,7 @@ export const getOrchestratorApiUrl = (path: string) => {
   return url.toString()
 }
 
-export const getOrchestratorBrowserBaseUrl = () => {
+const getOrchestratorBrowserBaseUrl = () => {
   const rawUrl = process.env.ORCHESTRATOR_PUBLIC_URL?.trim() || getOrchestratorBaseUrl()
   const url = new URL(rawUrl)
 

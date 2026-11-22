@@ -9,7 +9,7 @@ import { registerMonacoWorkers } from '@/lib/monaco/register-monaco-workers'
 import { cn } from '@/lib/utils'
 import type * as Monaco from 'monaco-editor'
 
-export const dockerfileEditorHeight = 'h-[clamp(22rem,50dvh,36rem)] min-h-[22rem]'
+const dockerfileEditorHeight = 'h-[clamp(22rem,50dvh,36rem)] min-h-[22rem]'
 
 export const DockerfileMonacoEditor = ({
   value,

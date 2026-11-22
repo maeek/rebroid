@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-export type SearchFieldProps = {
+type SearchFieldProps = {
   id?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean

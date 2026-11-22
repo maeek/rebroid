@@ -22,7 +22,7 @@ const ContainerRouteLoading = () => (
   <ContainerLoadingContent view={readContainerResourceView(useSearchParams().get('view'))} />
 )
 
-export const ContainerLoadingContent = ({ view = 'overview' }: { view?: ContainerResourceView }) => (
+const ContainerLoadingContent = ({ view = 'overview' }: { view?: ContainerResourceView }) => (
   <ContainerDetailLayout
     header={<ContainerResourceHeading />}
     view={view}

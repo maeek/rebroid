@@ -1,12 +1,12 @@
 import { viewerPlayerDefinitions } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ViewerPlayer } from '@/features/applications/viewer/settings/viewer-settings'
 
-export type ViewerPlayerCapability = {
+type ViewerPlayerCapability = {
   supported: boolean
   reason: string | null
 }
 
-export type ViewerPlayerCapabilities = Record<ViewerPlayer, ViewerPlayerCapability>
+type ViewerPlayerCapabilities = Record<ViewerPlayer, ViewerPlayerCapability>
 
 export const getViewerPlayerCapabilities = (): ViewerPlayerCapabilities => {
   const unavailable: ViewerPlayerCapability = {

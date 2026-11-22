@@ -17,7 +17,7 @@ export type DataGridFilterEntry = {
   onRemove: () => void
 }
 
-export type DataGridWorkspaceProps = {
+type DataGridWorkspaceProps = {
   search: string
   appliedSearch?: string
   searchPlaceholder: string

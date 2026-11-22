@@ -11,7 +11,7 @@ export const aiHealthLabel = (health: AutomationAiProviderHealth | null, isCheck
   return 'Error'
 }
 
-export const aiHealthBadgeVariant = (health: AutomationAiProviderHealth | null) => {
+const aiHealthBadgeVariant = (health: AutomationAiProviderHealth | null) => {
   if (health?.status === 'ok') return 'success'
   if (health?.status === 'disabled') return 'neutral'
   if (health) return 'danger'

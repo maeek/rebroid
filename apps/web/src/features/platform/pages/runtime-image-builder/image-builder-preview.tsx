@@ -19,7 +19,7 @@ const previewSources: [SupportedGappsAndroidVersion, string][] = [
   ['13', 'tau']
 ]
 
-export const builderPreviewPresets: GappsBuildPresetsResponse = {
+const builderPreviewPresets: GappsBuildPresetsResponse = {
   presets: previewSources.map(([androidVersion, sourceBranch]) => ({
     androidVersion,
     baseImage: `redroid/redroid:${androidVersion}.0.0-latest`,
@@ -39,10 +39,7 @@ export const builderPreviewPresets: GappsBuildPresetsResponse = {
     messages: ['Disk and memory requirements met.']
   }
 }
-export const builderPreviewJob = (
-  status: ContainerImageBuildJob['status'],
-  custom = false
-): ContainerImageBuildJob => ({
+const builderPreviewJob = (status: ContainerImageBuildJob['status'], custom = false): ContainerImageBuildJob => ({
   ...defaultBuilderValues,
   id: 'preview-build',
   buildKind: custom ? 'dockerfile_overlay' : 'redroid_gapps_patch',
@@ -60,7 +57,7 @@ export const builderPreviewJob = (
   createdAt: '2026-11-08T10:00:00Z',
   updatedAt: '2026-11-08T10:03:00Z'
 })
-export const builderPreviewFiles: ContainerImageBuildContextFile[] = [
+const builderPreviewFiles: ContainerImageBuildContextFile[] = [
   'apks/GmsCore.apk',
   'permissions/privapp-permissions-microg.xml'
 ].map((contextPath, index) => ({

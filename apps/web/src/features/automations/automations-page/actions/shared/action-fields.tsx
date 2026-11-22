@@ -10,7 +10,7 @@ interface FieldDetails {
   description?: string
 }
 
-export interface SelectOption {
+interface SelectOption {
   value: string
   label?: string
 }

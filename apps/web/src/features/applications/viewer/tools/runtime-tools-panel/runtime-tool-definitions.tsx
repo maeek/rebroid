@@ -6,7 +6,7 @@ import { resolveRuntimeFileAccess } from '@/shared/permissions/runtime-files'
 import type { FeatureFlagKey } from '@/shared/contracts/feature-flags'
 
 export type RuntimeToolId = 'files' | 'ai-agent' | 'workflows'
-export interface RuntimeToolDefinition {
+interface RuntimeToolDefinition {
   id: RuntimeToolId
   title: string
   description: string

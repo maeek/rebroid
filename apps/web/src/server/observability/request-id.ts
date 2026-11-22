@@ -9,16 +9,14 @@ export const normalizeRequestId = (value: string | null | undefined) => {
   return candidate && requestIdPattern.test(candidate) ? candidate : null
 }
 
-export const createRequestId = () => randomUUID()
-
 export const getRequestId = async (explicit?: string | null) => {
   const provided = normalizeRequestId(explicit)
   if (provided) return provided
 
   try {
     const incoming = normalizeRequestId((await headers()).get('x-request-id'))
-    return incoming ?? createRequestId()
+    return incoming ?? randomUUID()
   } catch {
-    return createRequestId()
+    return randomUUID()
   }
 }

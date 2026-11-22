@@ -22,7 +22,7 @@ const commandLabels: Record<string, string> = {
   'debug.log': 'Log message'
 }
 
-export const previewCommands: AutomationCommand[] = getAutomationActionDefinitions().map(action => ({
+const previewCommands: AutomationCommand[] = getAutomationActionDefinitions().map(action => ({
   uses: action.uses,
   label: commandLabels[action.uses] ?? action.label ?? action.uses,
   description: action.description ?? '',

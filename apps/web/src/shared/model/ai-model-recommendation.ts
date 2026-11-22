@@ -1,8 +1,8 @@
 import type { AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 
-export type AiModelRecommendationLevel = 'good' | 'warning' | 'neutral'
+type AiModelRecommendationLevel = 'good' | 'warning' | 'neutral'
 
-export interface AiModelRecommendation {
+interface AiModelRecommendation {
   level: AiModelRecommendationLevel
   title: string
   message: string

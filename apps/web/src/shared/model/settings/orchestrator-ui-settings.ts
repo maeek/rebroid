@@ -66,7 +66,7 @@ export const pickGeneralUiSettings = (settings: GeneralUiSettings): GeneralUiSet
   defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled
 })
 
-export type RuntimeUiSettings = Pick<
+type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
   | 'defaultContainerImage'
   | 'dockerImageRegistry'

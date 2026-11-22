@@ -17,9 +17,8 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { cn } from '@/lib/utils'
 import { StateIllustration } from './state-illustration'
 
-export type StateViewKind =
-  'loading' | 'empty' | 'no-results' | 'not-found' | 'unavailable' | 'error' | 'not-applicable'
-export type StateViewScope = 'page' | 'section' | 'grid' | 'immersive'
+type StateViewKind = 'loading' | 'empty' | 'no-results' | 'not-found' | 'unavailable' | 'error' | 'not-applicable'
+type StateViewScope = 'page' | 'section' | 'grid' | 'immersive'
 export type StateViewAction = {
   label: string
   href?: string

@@ -6,8 +6,8 @@ import { bandSurfaceClassName, editorSectionClassName, panelSurfaceClassName } f
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
-export type SectionSurface = 'plain' | 'band' | 'panel'
-export type SectionHeadingSpacing = 'none' | 'compact' | 'default'
+type SectionSurface = 'plain' | 'band' | 'panel'
+type SectionHeadingSpacing = 'none' | 'compact' | 'default'
 
 interface SectionProps {
   'aria-label'?: string

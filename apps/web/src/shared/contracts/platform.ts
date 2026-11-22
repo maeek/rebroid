@@ -28,7 +28,7 @@ export type PlatformNetworkDetails = Omit<
   relatedContainers: PlatformContainer[]
 }
 
-export type PlatformResourceOwnership = 'managed' | 'all'
+type PlatformResourceOwnership = 'managed' | 'all'
 export type PlatformUsageFilter = 'all' | 'in-use' | 'unused' | 'unknown'
 export type PlatformAttachmentFilter = 'all' | 'attached' | 'unattached'
 
@@ -108,7 +108,6 @@ export type ContainerImageRecipeInput = OrchestratorApiSchemas['CreateContainerI
 export type StartContainerImageBuildInput = OrchestratorApiSchemas['StartContainerImageBuildDto']
 
 export type GappsBuildPhase = ContainerImageBuildJob['phase']
-export type GappsBuildPreset = OrchestratorApiSchemas['GappsBuildPresetDto']
 export type GappsBuildPresetsResponse = OrchestratorApiSchemas['GappsBuildPresetsResponseDto']
 export type StartGappsBuildInput = OrchestratorApiSchemas['StartGappsBuildDto']
 export type SupportedGappsAndroidVersion = StartGappsBuildInput['androidVersion']

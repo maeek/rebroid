@@ -3,7 +3,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge'
 
 export type StatusBadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
 
-export type StatusBadgeProps = Omit<BadgeProps, 'variant'> & {
+type StatusBadgeProps = Omit<BadgeProps, 'variant'> & {
   tone?: StatusBadgeTone
   icon?: ReactNode
 }

@@ -31,7 +31,7 @@ export type DisplayViewerSurface = {
   }
 }
 
-export const getSurfaceDisplaySize = (surface: DisplaySurfaceRef, mainDisplaySize: DisplaySize): DisplaySize => {
+const getSurfaceDisplaySize = (surface: DisplaySurfaceRef, mainDisplaySize: DisplaySize): DisplaySize => {
   if (surface.kind === 'virtual') {
     return {
       width: surface.newDisplay?.width ?? 1280,

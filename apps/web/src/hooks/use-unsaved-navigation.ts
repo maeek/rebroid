@@ -6,7 +6,7 @@ import { useBackLayer } from './use-back-layer'
 
 type PendingNavigation = { href: string } | { back: true }
 
-export const shouldInterceptNavigationClick = (event: MouseEvent, currentHref: string) => {
+const shouldInterceptNavigationClick = (event: MouseEvent, currentHref: string) => {
   if (
     event.defaultPrevented ||
     event.button !== 0 ||

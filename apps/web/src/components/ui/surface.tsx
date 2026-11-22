@@ -65,7 +65,7 @@ export const surfaceVariants = cva('border text-foreground', {
   }
 })
 
-export type SurfaceLevel = NonNullable<VariantProps<typeof surfaceVariants>['level']>
+type SurfaceLevel = NonNullable<VariantProps<typeof surfaceVariants>['level']>
 export type SurfaceTone = NonNullable<VariantProps<typeof surfaceVariants>['tone']>
 
 export const Surface = React.forwardRef<

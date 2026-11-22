@@ -2,7 +2,7 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { getWebSettings } from '@/server/web-settings/store'
 import { passwordMinimumLengthLimits } from '@/shared/model/settings/password-minimum-length'
 
-export const getPasswordMinimumLength = async () => {
+const getPasswordMinimumLength = async () => {
   try {
     return (await getWebSettings()).passwordMinimumLength
   } catch {

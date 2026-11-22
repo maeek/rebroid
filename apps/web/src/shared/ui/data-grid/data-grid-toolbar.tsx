@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { SearchField } from '@/shared/ui/search-field'
 import styles from '@/shared/ui/page/page-toolbar.module.css'
 
-export type DataGridToolbarProps = {
+type DataGridToolbarProps = {
   search: string
   searchPlaceholder: string
   searchLabel?: string

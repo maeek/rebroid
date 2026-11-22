@@ -1,7 +1,7 @@
 import 'server-only'
 import { getDatabase } from './database'
 
-export interface StoredRecentApplication {
+interface StoredRecentApplication {
   id: string
   openedAt: number
 }

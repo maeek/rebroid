@@ -28,7 +28,7 @@ import { useCreateDialog } from './use-create-dialog'
 import type { CreateUserGroupInput, UserGroup } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
-export type CreateGroupDraft = {
+type CreateGroupDraft = {
   name: string
   description: string
   permissions: PermissionMap

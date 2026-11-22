@@ -45,7 +45,7 @@ type ViewerReadyState = {
   warningBanner: string | null
 }
 
-export type DisplayViewerPageState = ViewerSplashState | ViewerStartupState | ViewerReadyState
+type DisplayViewerPageState = ViewerSplashState | ViewerStartupState | ViewerReadyState
 
 const startupRetryDetail = `Retrying every ${Math.round(redroidViewerRefreshIntervalMs / 1000)} seconds.`
 

@@ -22,8 +22,6 @@ type ToastInput = {
   onRemove?: () => void
 }
 
-type ToasterToast = ToastPrimitives.Root.ToastObject<ToastData>
-
 const TOAST_LIMIT = 5
 
 const toastManager = ToastPrimitives.createToastManager<ToastData>()
@@ -80,4 +78,3 @@ function useToast() {
 }
 
 export { TOAST_LIMIT, toastManager, useToast, toast }
-export type { ToastData, ToastInput, ToasterToast, ToastVariant }

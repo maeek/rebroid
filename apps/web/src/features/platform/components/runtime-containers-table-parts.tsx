@@ -16,7 +16,7 @@ const stateTone = (state: string): StatusBadgeTone => {
   return 'neutral'
 }
 
-export const ContainerNameCell = ({ container, className }: { container: PlatformContainer; className?: string }) => {
+const ContainerNameCell = ({ container, className }: { container: PlatformContainer; className?: string }) => {
   const name = container.names[0] ?? container.shortId
 
   return (
@@ -56,7 +56,7 @@ export const ContainerStateBadge = ({ state }: { state: string }) => (
   </StatusBadge>
 )
 
-export const containerName = (container: PlatformContainer) => container.names[0] ?? container.shortId
+const containerName = (container: PlatformContainer) => container.names[0] ?? container.shortId
 
 export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
   {

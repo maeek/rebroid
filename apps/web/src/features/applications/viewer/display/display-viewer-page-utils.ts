@@ -8,7 +8,7 @@ import {
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/shared/contracts/application'
 
-export type ViewerErrorDetails = {
+type ViewerErrorDetails = {
   code: 'sidecar_unavailable' | 'adb_missing' | 'adb_unreachable' | 'unknown'
   message: string
   retryable: boolean

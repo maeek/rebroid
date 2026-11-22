@@ -21,7 +21,7 @@ import type { ApplicationRuntimeFile, ApplicationRuntimeFileDownload } from '@/s
 
 export const runtimeFilesQueryKey = (scope: string, path: string) => ['runtime-files', scope, path] as const
 
-export const runtimeFilesUrl = (appId: string, path: string) => {
+const runtimeFilesUrl = (appId: string, path: string) => {
   const query = new URLSearchParams({ path })
   return `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files?${query.toString()}`
 }

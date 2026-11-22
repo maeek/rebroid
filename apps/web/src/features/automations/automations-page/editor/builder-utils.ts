@@ -113,7 +113,7 @@ export const defaultForm = (
   steps: action ? [defaultStep(action, 1, 'spec.steps[0]')] : []
 })
 
-export const defaultConditionExpression = (): AutomationConditionExpression => ({
+const defaultConditionExpression = (): AutomationConditionExpression => ({
   groups: [
     {
       conditions: [

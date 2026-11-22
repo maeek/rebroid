@@ -1,7 +1,7 @@
 import type { StatusBadgeTone } from '@/components/ui/status-badge'
 import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
 
-export type EffectiveFeatureStatus = {
+type EffectiveFeatureStatus = {
   kind: 'unavailable' | 'sync-failed' | 'restart-required' | 'waiting' | 'off' | 'active' | 'applying'
   label:
     'Unavailable' | 'Sync failed' | 'Restart required' | 'Waiting for display service' | 'Off' | 'Active' | 'Applying'

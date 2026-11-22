@@ -52,7 +52,7 @@ export const buildReferenceOptions = (stepOptions: AutomationStepReferenceOption
   )
 ]
 
-export const outputForValueRef = (
+const outputForValueRef = (
   value: AutomationValueRef,
   stepOptions: AutomationStepReferenceOption[]
 ): AutomationCommandOutput | undefined => {
@@ -83,7 +83,7 @@ export const literalKind = (value: unknown): LiteralKind => {
   return 'string'
 }
 
-export const literalType = (value: unknown): AutomationValueType => {
+const literalType = (value: unknown): AutomationValueType => {
   if (Array.isArray(value)) return 'array'
   if (typeof value === 'string') return 'string'
   if (typeof value === 'number') return 'number'

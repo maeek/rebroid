@@ -2,7 +2,7 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-export type PlatformResourceScope = 'managed' | 'all'
+type PlatformResourceScope = 'managed' | 'all'
 
 export const PlatformResourceScopeFilter = ({
   value,
