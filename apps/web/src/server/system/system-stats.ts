@@ -11,7 +11,6 @@ interface SystemStatsSampler {
 
 declare global {
   // Keep one sampler across Next dev module reloads.
-
   var __rebroidSystemStatsSampler: SystemStatsSampler | undefined
 }
 
@@ -72,34 +71,34 @@ if (!sampler.interval) {
   sampler.interval.unref?.()
 }
 
-function formatBytes(bytes: number, decimals = 2) {
+const byteUnits = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+
+function formatBytes(bytes: number) {
   if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), byteUnits.length - 1)
+  return `${Number((bytes / 1024 ** index).toFixed(2))} ${byteUnits[index]}`
 }
 
 function formatUptime(seconds: number) {
-  const hrs = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
-  return `${hrs}h ${mins}m ${Math.ceil(secs)}s`
+  const elapsed = Math.floor(seconds)
+  return `${Math.floor(elapsed / 3600)}h ${Math.floor(elapsed / 60) % 60}m ${elapsed % 60}s`
 }
 
 export function getSystemStats(): SystemStats {
+  const cpus = os.cpus()
+  const totalMemoryBytes = os.totalmem()
+  const freeMemoryBytes = os.freemem()
   return {
     platform: os.platform(),
     architecture: os.arch(),
-    cpu: os.cpus().map(cpu => cpu.model)[0],
-    cpuCores: os.cpus().length,
+    cpu: cpus[0]?.model ?? 'Unavailable',
+    cpuCores: cpus.length,
     cpuUsage: `${os.loadavg()[0].toFixed(2)} (1 min avg)`,
-    totalMemory: formatBytes(os.totalmem()),
-    totalMemoryBytes: os.totalmem(),
-    freeMemory: formatBytes(os.freemem()),
-    freeMemoryBytes: os.freemem(),
-    memoryUsage: `${((1 - os.freemem() / os.totalmem()) * 100).toFixed(2)}%`,
+    totalMemory: formatBytes(totalMemoryBytes),
+    totalMemoryBytes,
+    freeMemory: formatBytes(freeMemoryBytes),
+    freeMemoryBytes,
+    memoryUsage: `${((1 - freeMemoryBytes / totalMemoryBytes) * 100).toFixed(2)}%`,
     uptime: formatUptime(os.uptime()),
     networkInterfaces: os.networkInterfaces(),
     homeDirectory: os.homedir(),
