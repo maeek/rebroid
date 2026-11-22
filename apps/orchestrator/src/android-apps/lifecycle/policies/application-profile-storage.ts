@@ -27,31 +27,31 @@ export class ApplicationProfileStorage {
   }) {
     const { mode, name } = selectApplicationProfile(this.app, request);
     const volumeName = this.volumeFor(name);
-    const admission = this.admission(mode, name, volumeName);
+    const admission =
+      mode === ApplicationProfileMode.Persistent
+        ? this.persistentAdmission(name, volumeName, this.activePersistentName)
+        : 'available';
     return { mode, name, volumeName, admission };
   }
 
   unrecordedCurrentProfile() {
-    const { profileMode, volumeName } = this.app;
-    if (profileMode !== ApplicationProfileMode.Persistent) return null;
-    const name = this.activeName.trim() || 'default';
-    const names = this.savedPersistentNames();
+    const activeName = this.activePersistentName;
+    if (!activeName) return null;
+    const name = activeName.trim() || 'default';
+    const { volumeName } = this.app;
     if (
-      names.includes(name) ||
       this.volumeFor(name) !== volumeName ||
-      names.some((other) => this.volumeFor(other) === volumeName)
+      this.persistentAdmission(name, volumeName) !== 'inspect'
     )
       return null;
-
-    return { mode: profileMode, name };
+    return { mode: ApplicationProfileMode.Persistent, name };
   }
 
   planRemoval(profileName: string) {
     const name = profileName.trim();
     if (!name) return 'missing';
-    const activePersistent =
-      this.app.profileMode === ApplicationProfileMode.Persistent;
-    if (activePersistent && this.activeName === name) return 'active';
+    const activeName = this.activePersistentName;
+    if (activeName === name) return 'active';
 
     const profiles = parseSavedProfiles(this.app.savedProfilesJson);
     const retained = profiles.filter(
@@ -62,8 +62,11 @@ export class ApplicationProfileStorage {
     if (retained.length === profiles.length) return 'missing';
 
     const volumeName = this.volumeFor(name);
-    const activeVolume = this.app.volumeName || this.volumeFor(this.activeName);
-    if (activePersistent && activeVolume === volumeName) return 'shared';
+    if (
+      activeName &&
+      (this.app.volumeName || this.volumeFor(activeName)) === volumeName
+    )
+      return 'shared';
     if (
       retained.some(
         (profile) =>
@@ -84,29 +87,26 @@ export class ApplicationProfileStorage {
     ]);
   }
 
-  private admission(
-    mode: ApplicationProfileMode,
+  private persistentAdmission(
     name: string,
     volumeName: string,
+    activeName?: string,
   ) {
-    if (mode !== ApplicationProfileMode.Persistent) return 'available';
-    const names = this.savedPersistentNames();
-    if (this.app.profileMode === ApplicationProfileMode.Persistent)
-      names.push(this.activeName);
-    // Existing saved spellings retain access even when they resolve to a shared volume.
-    if (names.includes(name)) return 'available';
-    if (names.some((other) => this.volumeFor(other) === volumeName))
-      return 'shared';
-    return 'inspect';
-  }
-
-  private savedPersistentNames() {
-    return parseSavedProfiles(this.app.savedProfilesJson)
+    if (name === activeName) return 'available';
+    const names = parseSavedProfiles(this.app.savedProfilesJson)
       .filter(({ mode }) => mode === ApplicationProfileMode.Persistent)
       .map(({ name }) => name);
+    // A saved spelling retains access even when it shares a volume with another name.
+    if (names.includes(name)) return 'available';
+    if (activeName) names.push(activeName);
+    return names.some((other) => this.volumeFor(other) === volumeName)
+      ? 'shared'
+      : 'inspect';
   }
 
-  private get activeName() {
-    return selectApplicationProfile(this.app).name;
+  private get activePersistentName() {
+    return this.app.profileMode === ApplicationProfileMode.Persistent
+      ? selectApplicationProfile(this.app).name
+      : undefined;
   }
 }
