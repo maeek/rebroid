@@ -57,9 +57,6 @@ const runInput = () => ({
   abortSignal: new AbortController().signal,
   targetOptions: {},
   admitTargetWork: <T>(operation: () => Promise<T>) => operation(),
-  admitTargetStart: async (start: () => Promise<unknown>) => {
-    await start();
-  },
 });
 
 const createExecution = ({
@@ -534,10 +531,10 @@ describe('AutomationRunExecutionService', () => {
           _steps: unknown,
           _state: unknown,
           _run: unknown,
-          options: { isRunCanceled: () => boolean },
+          options: { abortSignal: AbortSignal },
         ) => {
           if (scenario.abort) controller.abort();
-          expect(options.isRunCanceled()).toBe(scenario.abort);
+          expect(options.abortSignal.aborted).toBe(scenario.abort);
           return { failed: scenario.stepFailed };
         },
       );

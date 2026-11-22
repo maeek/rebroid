@@ -14,7 +14,6 @@ import {
 } from './automation-runner-target.service';
 import { AutomationAuthorizationError } from './automation-run-authorization.service';
 import type {
-  AdmitAutomationTargetStart,
   AdmitAutomationTargetWork,
   AutomationRunTargetOptions,
 } from './automation-runner-options';
@@ -24,7 +23,6 @@ interface AutomationRunExecutionInput {
   automationId: string;
   abortSignal: AbortSignal;
   targetOptions: AutomationRunTargetOptions;
-  admitTargetStart: AdmitAutomationTargetStart;
   admitTargetWork: AdmitAutomationTargetWork;
 }
 
@@ -75,7 +73,7 @@ export class AutomationRunExecutionService {
         definition: runnable.definition,
         options: input.targetOptions,
         abortSignal: input.abortSignal,
-        admitTargetStart: input.admitTargetStart,
+        admitTargetWork: input.admitTargetWork,
         onPreparationPhase: runnable.ephemeral
           ? undefined
           : async (phase, profile) => {
@@ -129,7 +127,6 @@ export class AutomationRunExecutionService {
           path: 'steps',
           abortSignal: input.abortSignal,
           admitTargetWork: input.admitTargetWork,
-          isRunCanceled: () => input.abortSignal.aborted,
         },
       );
       if (input.abortSignal.aborted) return;

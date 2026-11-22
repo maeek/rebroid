@@ -18,10 +18,9 @@ export interface AutomationExecutionState {
 }
 
 export interface AutomationStepExecutionOptions {
-  abortSignal?: AbortSignal;
+  abortSignal: AbortSignal;
   parentStepId?: string | null;
   path: string;
-  isRunCanceled: (runId: string) => boolean;
   admitTargetWork: AdmitAutomationTargetWork;
 }
 

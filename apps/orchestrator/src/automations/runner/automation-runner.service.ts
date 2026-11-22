@@ -271,9 +271,6 @@ export class AutomationRunnerService
         targetOptions,
         abortSignal,
         admitTargetWork,
-        admitTargetStart: async (start) => {
-          await admitTargetWork(start);
-        },
       })
       .catch((error: unknown) => {
         this.logger.error(

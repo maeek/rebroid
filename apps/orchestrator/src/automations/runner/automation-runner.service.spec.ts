@@ -304,71 +304,68 @@ describe('AutomationRunnerService', () => {
     expect(transition).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['admitTargetStart', 'admitTargetWork'] as const)(
-    'drains %s before cancellation and retries a failed cancellation write',
-    async (admit) => {
-      const automation = {
-        ...run,
-        definitionJson: JSON.stringify({ spec: { steps: [] } }),
-      } as never;
-      const queued = { ...run, status: AutomationRunStatus.Queued };
-      let reserved: typeof queued | undefined;
-      const startEntered = deferred();
-      const startResponse = deferred();
-      const abortReceived = deferred();
-      const transition = jest
-        .fn()
-        .mockRejectedValueOnce(new Error('SQLite write failed'))
-        .mockImplementation(() => {
-          reserved = undefined;
-          return { ...queued, status: AutomationRunStatus.Canceled };
-        });
-      const execute = jest.fn(
-        async (
-          input: Parameters<AutomationRunExecutionService['execute']>[0],
-        ) => {
-          input.abortSignal.addEventListener(
-            'abort',
-            () => abortReceived.resolve(),
-            { once: true },
-          );
-          await input[admit](() => {
-            startEntered.resolve();
-            return startResponse.promise;
-          });
-        },
-      );
-      const { service } = createService({
-        runs: { findMetadataByOwnerAndId: jest.fn(() => reserved) },
-        events: {
-          transitionRun: transition,
-          enqueueRun: jest.fn(() => {
-            if (reserved) throw activeTargetConflict;
-            reserved = queued;
-            return queued;
-          }),
-        },
-        execution: { execute },
+  it('drains admitted target work before cancellation and retries a failed cancellation write', async () => {
+    const automation = {
+      ...run,
+      definitionJson: JSON.stringify({ spec: { steps: [] } }),
+    } as never;
+    const queued = { ...run, status: AutomationRunStatus.Queued };
+    let reserved: typeof queued | undefined;
+    const startEntered = deferred();
+    const startResponse = deferred();
+    const abortReceived = deferred();
+    const transition = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('SQLite write failed'))
+      .mockImplementation(() => {
+        reserved = undefined;
+        return { ...queued, status: AutomationRunStatus.Canceled };
       });
-      const enqueue = () =>
-        service.enqueue(automation, AutomationRunTrigger.Manual, {
-          targetApplicationId: queued.targetApplicationId,
+    const execute = jest.fn(
+      async (
+        input: Parameters<AutomationRunExecutionService['execute']>[0],
+      ) => {
+        input.abortSignal.addEventListener(
+          'abort',
+          () => abortReceived.resolve(),
+          { once: true },
+        );
+        await input.admitTargetWork(() => {
+          startEntered.resolve();
+          return startResponse.promise;
         });
-      await enqueue();
-      await startEntered.promise;
-
-      const cancellation = service.cancel(queued.ownerUserId, queued.id);
-      await abortReceived.promise;
-
-      expect(transition).not.toHaveBeenCalled();
-      await expect(enqueue()).rejects.toThrow('already active');
-      startResponse.resolve();
-      await expect(cancellation).resolves.toMatchObject({
-        status: AutomationRunStatus.Canceled,
+      },
+    );
+    const { service } = createService({
+      runs: { findMetadataByOwnerAndId: jest.fn(() => reserved) },
+      events: {
+        transitionRun: transition,
+        enqueueRun: jest.fn(() => {
+          if (reserved) throw activeTargetConflict;
+          reserved = queued;
+          return queued;
+        }),
+      },
+      execution: { execute },
+    });
+    const enqueue = () =>
+      service.enqueue(automation, AutomationRunTrigger.Manual, {
+        targetApplicationId: queued.targetApplicationId,
       });
-      expect(transition).toHaveBeenCalledTimes(2);
-    },
-  );
+    await enqueue();
+    await startEntered.promise;
+
+    const cancellation = service.cancel(queued.ownerUserId, queued.id);
+    await abortReceived.promise;
+
+    expect(transition).not.toHaveBeenCalled();
+    await expect(enqueue()).rejects.toThrow('already active');
+    startResponse.resolve();
+    await expect(cancellation).resolves.toMatchObject({
+      status: AutomationRunStatus.Canceled,
+    });
+    expect(transition).toHaveBeenCalledTimes(2);
+  });
 
   it('recovers cancellation after the request fails without another Cancel request', async () => {
     const error = new Error('SQLite write failed');

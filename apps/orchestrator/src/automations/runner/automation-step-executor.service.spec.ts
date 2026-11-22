@@ -13,6 +13,7 @@ import { VisionAutomationCommandsService } from '../commands/vision-automation-c
 const withAutomationTarget: AndroidAppsAutomationPort['withAutomationTarget'] =
   (app, _signal, operation) => operation(app);
 const stepOptions = {
+  abortSignal: new AbortController().signal,
   path: 'steps',
   admitTargetWork: <T>(operation: () => Promise<T>) => operation(),
 };
@@ -118,7 +119,7 @@ describe('AutomationStepExecutorService', () => {
         ],
         state,
         createRun(),
-        { ...stepOptions, isRunCanceled: () => false },
+        stepOptions,
       );
       expect(result.failed).toBe(x === undefined);
       if (x === undefined) {
@@ -176,7 +177,7 @@ describe('AutomationStepExecutorService', () => {
       ],
       createState(),
       createRun(),
-      { ...stepOptions, isRunCanceled: () => false },
+      stepOptions,
     );
     await dispatch.promise;
     deadline.abort(new DOMException('Task deadline reached.', 'TimeoutError'));
@@ -200,7 +201,7 @@ describe('AutomationStepExecutorService', () => {
       createRun(),
       {
         ...stepOptions,
-        isRunCanceled: () => true,
+        abortSignal: AbortSignal.abort(),
       },
     );
 
@@ -221,7 +222,6 @@ describe('AutomationStepExecutorService', () => {
         {
           ...stepOptions,
           abortSignal: cancellation.signal,
-          isRunCanceled: () => false,
         },
       ),
     ).resolves.toEqual({ failed: false, stopped: true });
@@ -241,7 +241,7 @@ describe('AutomationStepExecutorService', () => {
         [{ id: 'tap', uses: 'android.tap', with: { x: 1, y: 2 } }],
         createState(),
         createRun(),
-        { ...stepOptions, isRunCanceled: () => false },
+        stepOptions,
       ),
     ).rejects.toThrow('Write failed.');
     expect(recordStepFailed).not.toHaveBeenCalled();
@@ -266,7 +266,7 @@ describe('AutomationStepExecutorService', () => {
         ],
         createState(),
         createRun(),
-        { ...stepOptions, isRunCanceled: () => false },
+        stepOptions,
       ),
     ).resolves.toEqual({ failed: false, stopped: true });
     expect(registryExecute).not.toHaveBeenCalled();
@@ -286,10 +286,7 @@ describe('AutomationStepExecutorService', () => {
       [{ id: 'tap', uses: 'android.tap', with: { x: 1, y: 2 } }],
       state,
       run,
-      {
-        ...stepOptions,
-        isRunCanceled: () => false,
-      },
+      stepOptions,
     );
 
     expect(result).toEqual({ failed: false, stopped: false });
@@ -334,7 +331,7 @@ describe('AutomationStepExecutorService', () => {
         ],
         state,
         createRun(),
-        { ...stepOptions, isRunCanceled: () => false },
+        stepOptions,
       ),
     ).resolves.toEqual({ failed: false, stopped: false });
     expect(registryExecute).toHaveBeenNthCalledWith(
@@ -355,10 +352,7 @@ describe('AutomationStepExecutorService', () => {
     const { service, registryExecute } = createService();
     const step = { id: 'default-ai', uses: 'ai.run', with: { prompt: 'Wait' } };
     await expect(
-      service.executeSteps([step], createState(), createRun(), {
-        ...stepOptions,
-        isRunCanceled: () => false,
-      }),
+      service.executeSteps([step], createState(), createRun(), stepOptions),
     ).resolves.toEqual({ failed: true, stopped: false });
     expect(registryExecute).not.toHaveBeenCalled();
   });
@@ -378,7 +372,7 @@ describe('AutomationStepExecutorService', () => {
       signal,
       visionSnapshot,
     };
-    let canceled = false;
+    const cancellation = new AbortController();
     const registryExecute = jest
       .fn()
       .mockImplementationOnce(
@@ -386,7 +380,7 @@ describe('AutomationStepExecutorService', () => {
           const { executeCommand } = context;
           if (!executeCommand) throw new Error('Command dispatch is missing.');
           const result = await executeCommand(request);
-          canceled = true;
+          cancellation.abort();
           await expect(executeCommand(request)).rejects.toThrow(
             'Automation run was canceled.',
           );
@@ -408,7 +402,7 @@ describe('AutomationStepExecutorService', () => {
         ],
         state,
         createRun('workflow-1'),
-        { ...stepOptions, isRunCanceled: () => canceled },
+        { ...stepOptions, abortSignal: cancellation.signal },
       ),
     ).resolves.toEqual({ failed: false, stopped: true });
     expect(registryExecute).toHaveBeenCalledTimes(2);
@@ -487,7 +481,7 @@ describe('AutomationStepExecutorService', () => {
         ],
         createState(),
         createRun(),
-        { ...stepOptions, isRunCanceled: () => false },
+        stepOptions,
       );
       await recognitionStarted.promise;
       try {

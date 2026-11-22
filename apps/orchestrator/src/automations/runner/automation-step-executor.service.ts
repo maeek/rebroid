@@ -32,8 +32,6 @@ import {
 } from './automation-runner-execution.types';
 
 const stoppedExecution = { failed: false, stopped: true } as const;
-const runCanceled = (runId: string, options: AutomationStepExecutionOptions) =>
-  options.abortSignal?.aborted || options.isRunCanceled(runId);
 
 const stepOccurrence = (
   stepId: string,
@@ -65,7 +63,7 @@ export class AutomationStepExecutorService {
     options: AutomationStepExecutionOptions,
   ): Promise<AutomationStepExecutionResult> {
     for (const [index, step] of steps.entries()) {
-      if (runCanceled(run.id, options)) {
+      if (options.abortSignal.aborted) {
         return stoppedExecution;
       }
       const result = await this.executeStep(state, run, step, {
@@ -106,7 +104,7 @@ export class AutomationStepExecutorService {
   ): Promise<AutomationStepExecutionResult> {
     const occurrence = stepOccurrence(step.id, step.uses, options);
     const started = await this.recorder.recordActionStarted(run, occurrence);
-    if (!started || runCanceled(run.id, options)) return stoppedExecution;
+    if (!started || options.abortSignal.aborted) return stoppedExecution;
     let outcome: { result: AutomationCommandResult } | { error: unknown };
     const { dispatch, withTarget, drain } = createStepCommandDispatch(
       this.applications,
@@ -136,7 +134,7 @@ export class AutomationStepExecutorService {
         visionSnapshot,
       }) => {
         signal?.throwIfAborted();
-        if (runCanceled(run.id, options)) {
+        if (options.abortSignal.aborted) {
           throw new ConflictException('Automation run was canceled.');
         }
         const execute = (app: AutomationExecutionState['app']) =>
@@ -192,9 +190,9 @@ export class AutomationStepExecutorService {
     }
 
     await drain();
-    if (runCanceled(run.id, options)) return stoppedExecution;
+    if (options.abortSignal.aborted) return stoppedExecution;
     await ocrExchanges?.flush();
-    if (runCanceled(run.id, options)) return stoppedExecution;
+    if (options.abortSignal.aborted) return stoppedExecution;
     if ('error' in outcome) {
       const { error } = outcome;
       const message = getErrorMessage(error);
@@ -301,7 +299,7 @@ export class AutomationStepExecutorService {
     if (!(await this.recorder.recordRepeatStarted(run, occurrence)))
       return stoppedExecution;
     while (iterations < totalIterations && iterations < step.maxIterations) {
-      if (runCanceled(run.id, options)) return stoppedExecution;
+      if (options.abortSignal.aborted) return stoppedExecution;
       if (
         step.while &&
         !this.conditions.evaluate(step.while, {
@@ -322,7 +320,7 @@ export class AutomationStepExecutorService {
       }
     }
 
-    if (runCanceled(run.id, options)) return stoppedExecution;
+    if (options.abortSignal.aborted) return stoppedExecution;
     const recorded = await this.recorder.recordControlCompleted(
       run,
       state,

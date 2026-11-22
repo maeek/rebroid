@@ -11,7 +11,7 @@ import {
 import { AutomationRunAuthorizationService } from './automation-run-authorization.service';
 import {
   AutomationRunStartPolicy,
-  type AdmitAutomationTargetStart,
+  type AdmitAutomationTargetWork,
   type AutomationRunTargetOptions,
 } from './automation-runner-options';
 
@@ -44,7 +44,7 @@ export class AutomationRunnerTargetService {
     definition,
     options,
     abortSignal,
-    admitTargetStart,
+    admitTargetWork,
     onPreparationPhase,
   }: {
     ownerUserId: string;
@@ -52,7 +52,7 @@ export class AutomationRunnerTargetService {
     definition: AutomationDefinition;
     options: AutomationRunTargetOptions;
     abortSignal: AbortSignal;
-    admitTargetStart: AdmitAutomationTargetStart;
+    admitTargetWork: AdmitAutomationTargetWork;
     onPreparationPhase?: (
       phase: AutomationTargetPreparationPhase,
       profile?: TargetProfile,
@@ -126,7 +126,7 @@ export class AutomationRunnerTargetService {
     }
 
     if (onPreparationPhase) await onPreparationPhase('starting-app', profile);
-    await admitTargetStart(() =>
+    await admitTargetWork(() =>
       this.apps.start(targetApplicationId, profileOverride, maxOpenApps),
     );
     abortSignal.throwIfAborted();
