@@ -22,18 +22,21 @@ const maxPendingSocketBytes = 1024 * 1024;
 @Injectable()
 export class AutomationRunEventStreamService {
   private readonly tokens = new Map<string, SubscribeToken>();
+  private nextExpiry = Infinity;
 
   constructor(private readonly events: AutomationRunEventBus) {}
 
   createSubscribeToken(ownerUserId: string, runId: string) {
-    this.purgeExpiredTokens();
+    const now = Date.now();
+    this.purgeExpiredTokens(now);
     if (this.tokens.size >= maxSubscribeTokens) {
       throw new ServiceUnavailableException(
         'Automation event stream token capacity is temporarily exhausted.',
       );
     }
     const token = randomUUID();
-    const expiresAt = Date.now() + subscribeTokenTtlMs;
+    const expiresAt = now + subscribeTokenTtlMs;
+    this.nextExpiry = Math.min(this.nextExpiry, expiresAt);
     this.tokens.set(token, {
       ownerUserId,
       runId,
@@ -124,10 +127,9 @@ export class AutomationRunEventStreamService {
   }
 
   private consumeToken(token: string) {
-    this.purgeExpiredTokens();
     const subscription = this.tokens.get(token);
     this.tokens.delete(token);
-    if (!subscription || subscription.expiresAt < Date.now()) {
+    if (!subscription || subscription.expiresAt <= Date.now()) {
       throw new UnauthorizedException(
         'Automation event stream token is invalid or expired.',
       );
@@ -140,10 +142,14 @@ export class AutomationRunEventStreamService {
     return subscription;
   }
 
-  private purgeExpiredTokens(now = Date.now()) {
+  private purgeExpiredTokens(now: number) {
+    if (now < this.nextExpiry) return;
+    this.nextExpiry = Infinity;
     for (const [token, subscription] of this.tokens) {
-      if (subscription.expiresAt < now) {
+      if (subscription.expiresAt <= now) {
         this.tokens.delete(token);
+      } else {
+        this.nextExpiry = Math.min(this.nextExpiry, subscription.expiresAt);
       }
     }
   }

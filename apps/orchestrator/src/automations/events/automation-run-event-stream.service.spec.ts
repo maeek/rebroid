@@ -54,9 +54,9 @@ describe('AutomationRunEventStreamService', () => {
     expect(() => consume(first.token)).toThrow(UnauthorizedException);
 
     const expired = service.createSubscribeToken('owner-1', 'run-1');
-    jest.advanceTimersByTime(60_001);
-    service.createSubscribeToken('owner-1', 'run-2');
+    jest.advanceTimersByTime(60_000);
     expect(() => consume(expired.token)).toThrow(UnauthorizedException);
+    service.createSubscribeToken('owner-1', 'run-2');
 
     for (let index = 1; index < 10_000; index += 1) {
       service.createSubscribeToken('owner-1', `run-${index}`);
@@ -64,6 +64,10 @@ describe('AutomationRunEventStreamService', () => {
     expect(() => service.createSubscribeToken('owner-1', 'overflow')).toThrow(
       ServiceUnavailableException,
     );
+    jest.advanceTimersByTime(60_000);
+    expect(
+      service.createSubscribeToken('owner-1', 'replacement').token,
+    ).toBeTruthy();
   });
 
   it('cleans up subscriptions and closes sockets when setup fails', async () => {
