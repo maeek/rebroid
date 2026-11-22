@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userService } from '@/server/auth/user'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { orchestratorSettingsClient } from '@/server/orchestrator/settings/client'
@@ -13,8 +13,8 @@ import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
 
 vi.mock('next/navigation', () => ({ unstable_rethrow: vi.fn() }))
 vi.mock('@/server/auth/user', () => ({ userService: { listUsers: vi.fn() } }))
-vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
-  listApplicationsAction: vi.fn()
+vi.mock('@/server/orchestrator/applications/application-list-query', () => ({
+  listVisibleApplications: vi.fn()
 }))
 vi.mock('@/server/orchestrator/get-server-ui-settings', () => ({ getRequiredServerOrchestratorUiSettings: vi.fn() }))
 vi.mock('@/server/orchestrator/settings/client', () => ({ orchestratorSettingsClient: { getFeatures: vi.fn() } }))
@@ -29,7 +29,7 @@ describe('Firewall page data', () => {
   it('returns saved connection settings and policies with owner usernames when the agent is offline', async () => {
     vi.mocked(orchestratorSettingsClient.getFeatures).mockResolvedValue({ revision: 1, features: [feature] })
     vi.mocked(getRequiredServerOrchestratorUiSettings).mockResolvedValue(defaultOrchestratorUiSettings)
-    vi.mocked(listApplicationsAction).mockResolvedValue([applicationPreview])
+    vi.mocked(listVisibleApplications).mockResolvedValue([applicationPreview])
     vi.mocked(userService.listUsers).mockResolvedValue([
       { id: 'preview-owner', username: 'operator', name: 'Platform Operator' } as PublicUser
     ])
@@ -50,7 +50,7 @@ describe('Firewall page data', () => {
 
     const data = await loadFirewallPageData(health)
 
-    expect(listApplicationsAction).not.toHaveBeenCalled()
+    expect(listVisibleApplications).not.toHaveBeenCalled()
     expect(userService.listUsers).not.toHaveBeenCalled()
     expect(data.initialApplications).toBeUndefined()
     expect(data.initialSettings).toEqual(defaultOrchestratorUiSettings.services.firewall)
@@ -59,7 +59,7 @@ describe('Firewall page data', () => {
   it('keeps connection settings available when loading the policy inventory fails', async () => {
     vi.mocked(orchestratorSettingsClient.getFeatures).mockResolvedValue({ revision: 1, features: [feature] })
     vi.mocked(getRequiredServerOrchestratorUiSettings).mockResolvedValue(defaultOrchestratorUiSettings)
-    vi.mocked(listApplicationsAction).mockRejectedValue(new OrchestratorRequestError('offline', 503, 'policies-ref'))
+    vi.mocked(listVisibleApplications).mockRejectedValue(new OrchestratorRequestError('offline', 503, 'policies-ref'))
     vi.mocked(userService.listUsers).mockResolvedValue([])
 
     await expect(loadFirewallPageData(health)).resolves.toMatchObject({

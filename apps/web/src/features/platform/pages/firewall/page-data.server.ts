@@ -1,5 +1,5 @@
 import { userService } from '@/server/auth/user'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { loadServiceContainers } from '@/server/orchestrator/platform/service-containers'
@@ -14,7 +14,7 @@ const loadFirewallPolicies = async (): Promise<FirewallPolicyApplication[] | und
   )
   if (!enabled) return undefined
 
-  const [applications, users] = await Promise.all([listApplicationsAction(), userService.listUsers()])
+  const [applications, users] = await Promise.all([listVisibleApplications(), userService.listUsers()])
   const usernames = new Map(users.map(user => [user.id, user.username]))
 
   return applications.map(application => ({

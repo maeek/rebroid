@@ -1,6 +1,6 @@
 import { unstable_rethrow } from 'next/navigation'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { listPlatformImagesAction } from '@/server/orchestrator/platform/image-actions'
 import { getOrchestratorSettingsAction } from '@/server/orchestrator/settings/actions'
@@ -31,8 +31,8 @@ const servicesPreviewHealth: OrchestratorHealth = {
 }
 
 vi.mock('next/navigation', () => ({ unstable_rethrow: vi.fn() }))
-vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
-  listApplicationsAction: vi.fn()
+vi.mock('@/server/orchestrator/applications/application-list-query', () => ({
+  listVisibleApplications: vi.fn()
 }))
 vi.mock('@/server/orchestrator/diagnostics/actions', () => ({ getOrchestratorHealthSummaryAction: vi.fn() }))
 vi.mock('@/server/orchestrator/platform/image-actions', () => ({ listPlatformImagesAction: vi.fn() }))
@@ -44,7 +44,7 @@ beforeEach(() => {
   vi.mocked(getWebSettings).mockResolvedValue(defaultWebSettingsResponse)
   vi.mocked(getOrchestratorSettingsAction).mockResolvedValue(defaultRuntimeSettingsResponse)
   vi.mocked(listPlatformImagesAction).mockResolvedValue([])
-  vi.mocked(listApplicationsAction).mockResolvedValue([])
+  vi.mocked(listVisibleApplications).mockResolvedValue([])
 })
 
 describe('runtime defaults availability', () => {
@@ -78,7 +78,7 @@ describe('runtime defaults availability', () => {
   })
 
   it('keeps the defaults available when the runtime inventory cannot be read', async () => {
-    vi.mocked(listApplicationsAction).mockRejectedValueOnce(new Error('inventory unavailable'))
+    vi.mocked(listVisibleApplications).mockRejectedValueOnce(new Error('inventory unavailable'))
     const data = await getPlatformRuntimePageData()
     expect(data?.initialSettings.maxApkUploadSizeMb).toBe(defaultRuntimeSettingsResponse.maxApkUploadSizeMb)
     expect(data?.appliedRenderingSettings).toBeNull()

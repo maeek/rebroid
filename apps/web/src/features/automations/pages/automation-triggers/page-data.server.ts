@@ -1,5 +1,5 @@
 import { runSafeAction } from '@/server/actions/safe-action'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { requireAutomationUser } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { validatedSearchParam } from '@/shared/model/search-params'
@@ -19,7 +19,7 @@ export const loadAutomationTriggersPageData = (searchParams: WorkflowGridSearchP
         enabled: validatedSearchParam(searchParams.enabled, enabledValues)
       }
       const [applications, automations, triggersPage] = await Promise.all([
-        listApplicationsAction(),
+        listVisibleApplications(),
         orchestratorAutomationsClient.listOptions(user.ownerUserId),
         orchestratorAutomationsClient.listTriggersGrid(user.ownerUserId, gridQuery)
       ])

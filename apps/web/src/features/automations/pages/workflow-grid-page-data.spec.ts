@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
@@ -7,8 +7,8 @@ import { applicationPreview } from '@/shared/testing/application-preview'
 import { loadAutomationTriggersPageData } from './automation-triggers/page-data.server'
 import { loadAutomationsListPageData } from './automations-list/page-data.server'
 
-vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
-  listApplicationsAction: vi.fn()
+vi.mock('@/server/orchestrator/applications/application-list-query', () => ({
+  listVisibleApplications: vi.fn()
 }))
 vi.mock('@/server/orchestrator/applications/application-gallery-query', () => ({ listApplicationNames: vi.fn() }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
@@ -29,7 +29,7 @@ it.each([loadAutomationsListPageData, loadAutomationTriggersPageData])(
     >)
     await expect(load({})).resolves.toMatchObject({ ok: false, error: { code: 'forbidden' } })
     expect(listApplicationNames).not.toHaveBeenCalled()
-    expect(listApplicationsAction).not.toHaveBeenCalled()
+    expect(listVisibleApplications).not.toHaveBeenCalled()
     expect(orchestratorAutomationsClient.listOptions).not.toHaveBeenCalled()
     expect(orchestratorAutomationsClient.listTriggersGrid).not.toHaveBeenCalled()
     expect(orchestratorAutomationsClient.listGrid).not.toHaveBeenCalled()
@@ -44,7 +44,7 @@ it.each([loadAutomationsListPageData, loadAutomationTriggersPageData])(
       permissions: { 'automations:manage': true }
     } as Awaited<ReturnType<typeof getCurrentUserContext>>)
     vi.mocked(listApplicationNames).mockRejectedValue(new Error('internal address'))
-    vi.mocked(listApplicationsAction).mockRejectedValue(new Error('internal address'))
+    vi.mocked(listVisibleApplications).mockRejectedValue(new Error('internal address'))
     const result = await load({})
     expect(result).toMatchObject({ ok: false, error: { requestId: result.requestId, code: 'internal' } })
     expect(result.requestId).toBeTruthy()
@@ -58,7 +58,7 @@ it('sends visible names to the grid and profile options only for owned targets',
     permissions: { 'automations:manage': true }
   } as Awaited<ReturnType<typeof getCurrentUserContext>>)
   const other = { ...applicationPreview, id: 'other', name: 'Other app', ownerUserId: 'another-user' }
-  vi.mocked(listApplicationsAction).mockResolvedValue([applicationPreview, other])
+  vi.mocked(listVisibleApplications).mockResolvedValue([applicationPreview, other])
   const result = await loadAutomationTriggersPageData({})
   expect(result.ok).toBe(true)
   if (!result.ok) throw new Error(result.error.message)

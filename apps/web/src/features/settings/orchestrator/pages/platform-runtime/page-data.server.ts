@@ -1,5 +1,5 @@
 import { unstable_rethrow } from 'next/navigation'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { listPlatformImagesAction } from '@/server/orchestrator/platform/image-actions'
 import { getOrchestratorSettingsAction } from '@/server/orchestrator/settings/actions'
@@ -8,7 +8,7 @@ import { normalizeOrchestratorUiSettings } from '@/shared/model/settings/orchest
 
 const loadAppliedRenderingSettings = async () => {
   try {
-    const applications = await listApplicationsAction()
+    const applications = await listVisibleApplications()
     return applications.flatMap(({ runtime }) =>
       runtime.kind === 'redroid' && runtime.containerId ? [runtime.appliedRendering ?? null] : []
     )
