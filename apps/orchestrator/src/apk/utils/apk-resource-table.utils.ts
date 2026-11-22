@@ -6,6 +6,7 @@ import {
   resTableType,
   resXmlResourceMapType,
   resXmlStartElementType,
+  typedValueString,
 } from '../types/apk.types';
 
 interface BinaryResourceChunk {
@@ -22,11 +23,12 @@ interface BinaryXmlAttribute {
   data: number;
 }
 
-export interface NamedBinaryXmlAttribute extends BinaryXmlAttribute {
+export interface NamedBinaryXmlAttribute {
   name?: string;
-  rawValue?: string;
+  value?: string;
   resourceId?: number;
-  strings: string[];
+  dataType: number;
+  data: number;
 }
 
 interface SimpleResourceEntry {
@@ -106,18 +108,23 @@ export const readBinaryXmlElementAttributes = (
     const name = strings[nameIndex];
     if (!elementNames.includes(name) || elements.has(name)) continue;
 
-    const attributes = [...readBinaryXmlAttributes(buffer, chunk)].map(
-      (attribute) => ({
-        ...attribute,
-        name: strings[attribute.nameIndex],
-        rawValue:
-          attribute.rawValueIndex === noEntry
-            ? undefined
-            : strings[attribute.rawValueIndex],
-        resourceId: resourceMap[attribute.nameIndex],
-        strings,
-      }),
-    );
+    const attributes: NamedBinaryXmlAttribute[] = [];
+    for (const {
+      nameIndex,
+      rawValueIndex,
+      dataType,
+      data,
+    } of readBinaryXmlAttributes(buffer, chunk)) {
+      const typedString =
+        dataType === typedValueString ? strings[data] : undefined;
+      attributes.push({
+        name: strings[nameIndex],
+        value: strings[rawValueIndex] || typedString,
+        resourceId: resourceMap[nameIndex],
+        dataType,
+        data,
+      });
+    }
     elements.set(name, attributes);
     if (elements.size === elementNames.length) break;
   }

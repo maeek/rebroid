@@ -125,6 +125,31 @@ describe('ApkManifestReaderService', () => {
     });
   });
 
+  it('resolves compiled icon paths from typed strings and prefers an explicit raw value', () => {
+    const manifest = binaryManifest(
+      stringPool([
+        'application',
+        'icon',
+        'roundIcon',
+        'res/mipmap/main.png',
+        'res/drawable/round.png',
+      ]),
+      startElement(0, [
+        {
+          nameIndex: 1,
+          rawValueIndex: noEntry,
+          dataType: typedValueString,
+          data: 3,
+        },
+        { nameIndex: 2, rawValueIndex: 4, dataType: typedValueString, data: 3 },
+      ]),
+    );
+    expect(reader.readMetadata(manifest).declaredIcons).toEqual({
+      iconPath: 'res/mipmap/main.png',
+      roundIconPath: 'res/drawable/round.png',
+    });
+  });
+
   it('retains the first application element while searching for the package', () => {
     const pool = stringPool([
       'application',

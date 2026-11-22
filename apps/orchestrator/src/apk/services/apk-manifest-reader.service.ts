@@ -43,11 +43,11 @@ export class ApkManifestReaderService {
       roundIconPath?: string;
     } = {};
     for (const attribute of elements.get('application') ?? []) {
-      const { name, resourceId, dataType, data, rawValue } = attribute;
+      const { name, resourceId, dataType, data, value } = attribute;
       if (name === 'label' || resourceId === androidLabelAttr) {
         if (dataType === typedValueReference) label.resourceId = data;
         else if (dataType === typedValueString) {
-          label.value = rawValue || attribute.strings[data];
+          label.value = value;
         }
       }
 
@@ -57,9 +57,9 @@ export class ApkManifestReaderService {
       if (dataType === typedValueReference) {
         if (isIcon) declaredIcons.iconResourceId = data;
         if (isRoundIcon) declaredIcons.roundIconResourceId = data;
-      } else if (dataType === typedValueString && rawValue) {
-        if (isIcon) declaredIcons.iconPath = rawValue;
-        if (isRoundIcon) declaredIcons.roundIconPath = rawValue;
+      } else if (dataType === typedValueString && value) {
+        if (isIcon) declaredIcons.iconPath = value;
+        if (isRoundIcon) declaredIcons.roundIconPath = value;
       }
     }
 
@@ -72,11 +72,5 @@ export class ApkManifestReaderService {
 }
 
 function packageNameFromAttributes(attributes: NamedBinaryXmlAttribute[]) {
-  const attribute = attributes.find(({ name }) => name === 'package');
-  if (!attribute) return null;
-  const typedValue =
-    attribute.dataType === typedValueString
-      ? attribute.strings[attribute.data]
-      : undefined;
-  return attribute.rawValue || typedValue || null;
+  return attributes.find(({ name }) => name === 'package')?.value || null;
 }
