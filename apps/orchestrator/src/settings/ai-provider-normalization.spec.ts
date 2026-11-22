@@ -65,19 +65,8 @@ describe('AI provider normalization', () => {
   });
 
   it('parses OpenAI-compatible remote model discovery', () => {
-    const provider = normalizeAiProvider({
-      id: 'local',
-      label: 'Local',
-      kind: 'ollama',
-      protocol: 'openai-chat-completions',
-      serverFlavor: 'auto',
-      baseUrl: 'http://localhost:11434',
-      enabled: true,
-      models: [],
-    });
-
     expect(
-      parseProviderRemoteModels(provider, {
+      parseProviderRemoteModels({
         data: [
           {
             id: 'Gemma-4-E4B-it-GGUF',

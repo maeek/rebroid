@@ -92,7 +92,6 @@ export class AiProviderHealthService {
         provider,
         'models',
         role ?? 'provider',
-        readProviderJson,
       );
       if (!response.ok) {
         return this.healthResult(
@@ -102,12 +101,13 @@ export class AiProviderHealthService {
           `Provider returned HTTP ${response.status}.`,
         );
       }
-      const remoteModelIds = new Set(
-        parseProviderRemoteModels(provider, response.body).map(
-          (item) => item.id,
-        ),
-      );
-      if (model && remoteModelIds.size > 0 && !remoteModelIds.has(model.id)) {
+      const canProbeUnlistedModel =
+        Boolean(role) && response.models.length === 0;
+      if (
+        model &&
+        !canProbeUnlistedModel &&
+        !response.models.some((remote) => remote.id === model.id)
+      ) {
         return this.healthResult(
           provider.id,
           model.id,
@@ -260,16 +260,7 @@ export class AiProviderHealthService {
         provider,
         'health',
         'provider',
-        async (response) => {
-          if (response.ok && requiredModels.length > 0) {
-            return parseProviderRemoteModels(
-              provider,
-              await readProviderJson(response, { strict: true }),
-            );
-          }
-          await response.body?.cancel();
-          return [];
-        },
+        requiredModels.length > 0,
       );
       if (!response.ok) {
         return this.healthResult(
@@ -279,7 +270,7 @@ export class AiProviderHealthService {
           `Provider returned HTTP ${response.status}.`,
         );
       }
-      const available = new Set(response.body.map((model) => model.id));
+      const available = new Set(response.models.map((model) => model.id));
       const missing = requiredModels.find((model) => !available.has(model.id));
       if (missing) {
         return this.healthResult(
@@ -308,17 +299,12 @@ export class AiProviderHealthService {
   async listRemoteModels(
     provider: AutomationAiProvider,
   ): Promise<AutomationAiProviderRemoteModelDto[]> {
-    const response = await this.requestModels(
-      provider,
-      'models',
-      'provider',
-      (response) => readProviderJson(response, { strict: true }),
-    );
+    const response = await this.requestModels(provider, 'models', 'provider');
     if (!response.ok) {
       throw new Error(`Provider returned HTTP ${response.status}.`);
     }
 
-    return parseProviderRemoteModels(provider, response.body);
+    return response.models;
   }
 
   private providerModelListErrorMessage(error: unknown) {
@@ -377,11 +363,11 @@ export class AiProviderHealthService {
     }
   }
 
-  private requestModels<T>(
+  private requestModels(
     provider: AutomationAiProvider,
     operation: 'health' | 'models',
     role: 'provider' | AutomationAiProviderModelRole,
-    consume: (response: Response) => Promise<T>,
+    readCatalog = true,
   ) {
     return this.measureRequest(operation, role, () =>
       withProviderResponse(
@@ -393,7 +379,12 @@ export class AiProviderHealthService {
             await response.body?.cancel();
             return { ok: false as const, status: response.status };
           }
-          return { ok: true as const, body: await consume(response) };
+          if (!readCatalog) {
+            await response.body?.cancel();
+            return { ok: true as const, models: [] };
+          }
+          const body = await readProviderJson(response, { strict: true });
+          return { ok: true as const, models: parseProviderRemoteModels(body) };
         },
       ),
     );
