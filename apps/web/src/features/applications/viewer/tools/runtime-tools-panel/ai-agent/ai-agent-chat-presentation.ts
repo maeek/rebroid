@@ -1,3 +1,4 @@
+import { finalAiRunEvent } from '@/shared/model/ad-hoc-ai-run-events'
 import type { ChatTurn, ChatTurnStatus } from './ai-agent-chat-utils'
 import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
@@ -16,7 +17,7 @@ const markdownPlanLine = /^\s*(?:[-*]|\d+[.)])\s+(?:\*\*)?([^:*]+)(?:\*\*)?:?\s*
 const latestPlanEvent = (events: AutomationRunEvent[]) =>
   [...events].reverse().find(event => event.type === 'ai.plan.proposed' || event.type === 'ai.plan.updated') ?? null
 
-export const parseAgentPlan = (message: string, turnStatus: ChatTurnStatus): AgentPlanStep[] => {
+export const parseAgentPlan = (message: string, status: ChatTurnStatus | 'blocked' | 'completed'): AgentPlanStep[] => {
   const steps = message.split(/\r?\n/).flatMap((line, index) => {
     const structured = line.match(structuredPlanLine)
     if (structured) {
@@ -38,10 +39,10 @@ export const parseAgentPlan = (message: string, turnStatus: ChatTurnStatus): Age
     return [{ id: `step-${index + 1}`, label, evidence: null, status: 'pending' as const }]
   })
 
-  if (turnStatus === 'success') {
+  if (status === 'completed') {
     return steps.map(step => ({ ...step, status: 'completed' }))
   }
-  if (turnStatus === 'running' || turnStatus === 'starting' || turnStatus === 'canceling') {
+  if (status === 'running' || status === 'starting' || status === 'canceling') {
     const firstPending = steps.findIndex(step => step.status === 'pending')
     if (firstPending >= 0) {
       return steps.map((step, index) => (index === firstPending ? { ...step, status: 'active' } : step))
@@ -52,7 +53,12 @@ export const parseAgentPlan = (message: string, turnStatus: ChatTurnStatus): Age
 
 export const planForTurn = (turn: ChatTurn) => {
   const event = latestPlanEvent(turn.events)
-  return event ? { event, steps: parseAgentPlan(event.message, turn.status) } : null
+  if (!event) return null
+  const result = finalAiRunEvent(turn.events)
+  let status: ChatTurnStatus | 'blocked' | 'completed' = turn.status
+  if (result?.data.status === 'blocked' || result?.data.completed === false) status = 'blocked'
+  else if (result?.data.completed === true) status = 'completed'
+  return { event, steps: parseAgentPlan(event.message, status) }
 }
 
 export const nonPlanEvents = (events: AutomationRunEvent[]) =>

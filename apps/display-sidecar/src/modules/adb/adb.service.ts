@@ -15,9 +15,9 @@ import {
   type AdbChildProcess,
   type AdbCommandResult,
 } from "./adb-command-runner";
+import { inputAndroidText } from "./adb-focused-text-input";
 import {
   clampDuration,
-  inputTextCommand,
   keyboardCommand,
   quoteAdbShellArgument,
   touchCommand,
@@ -372,8 +372,8 @@ export class AdbService {
     );
   }
 
-  async inputText(udid: string, text: string) {
-    return this.shell(udid, inputTextCommand(text), 10_000);
+  async inputText(udid: string, text: string, signal?: AbortSignal) {
+    return inputAndroidText(this.runner, udid, text, signal);
   }
 
   async keyEvent(udid: string, key: string) {
@@ -424,7 +424,12 @@ export class AdbService {
   }
 
   async shellCommand(udid: string, command: string, timeoutMs = 15_000) {
-    return this.shellResult(udid, ["sh", "-c", command], timeoutMs);
+    // adb joins arguments before Android's shell parses them.
+    return this.shellResult(
+      udid,
+      ["sh", "-c", quoteAdbShellArgument(command)],
+      timeoutMs,
+    );
   }
 
   async dumpUi(udid: string, signal?: AbortSignal) {

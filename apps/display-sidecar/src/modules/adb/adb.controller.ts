@@ -183,8 +183,14 @@ export class AdbController {
   @Post("input-text")
   @ApiBody({ type: AdbInputTextDto })
   @ApiOkResponse({ type: Object })
-  async inputText(@Param("udid") udid: string, @Body() body: AdbInputTextDto) {
-    await this.adb.inputText(udid, body.text ?? "");
+  async inputText(
+    @Param("udid") udid: string,
+    @Body() body: AdbInputTextDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    await whileClientConnected(reply, (signal) =>
+      this.adb.inputText(udid, body.text ?? "", signal),
+    );
     return { executed: true };
   }
 

@@ -29,6 +29,19 @@ RUN --mount=type=cache,target=/go/pkg/mod \
   --mount=type=cache,target=/root/.cache/go-build \
   CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/rebroid-webrtc-bridge .
 
+FROM docker.io/library/eclipse-temurin:21-jdk-jammy AS android-input
+
+ENV ANDROID_HOME=/opt/android-sdk
+ADD --checksum=sha256:0988cacad01b38a18a47bac14a0695f246bc76c1b06c0eeb8eb0dc825ab0c8e0 https://dl.google.com/android/repository/platform-35_r02.zip /tmp/platform.zip
+ADD --checksum=sha256:bd3a4966912eb8b30ed0d00b0cda6b6543b949d5ffe00bea54c04c81e1561d88 https://dl.google.com/android/repository/build-tools_r35_linux.zip /tmp/build-tools.zip
+WORKDIR /opt/android-sdk/platforms
+RUN jar xf /tmp/platform.zip android-35/android.jar android-35/uiautomator.jar android-35/optional/android.test.base.jar
+WORKDIR /opt/android-sdk/build-tools
+RUN jar xf /tmp/build-tools.zip android-15/lib/d8.jar && mv android-15 35.0.0
+WORKDIR /src/android-input
+COPY apps/display-sidecar/android-input/FocusedTextInput.java apps/display-sidecar/android-input/build.sh ./
+RUN sh build.sh
+
 FROM node:24-bookworm-slim AS scrcpy-server
 
 ARG SCRCPY_VERSION=5.0.1
@@ -72,6 +85,7 @@ WORKDIR /opt/rebroid-display-sidecar
 COPY --from=builder /workspace/apps/display-sidecar/dist ./dist
 COPY --from=builder /out/node_modules ./node_modules
 COPY --from=builder /out/package.json ./package.json
+COPY --from=android-input /src/dist/android-input/focused-text-input.jar ./dist/android-input/focused-text-input.jar
 # Only the Android server is used. The desktop client and its VA-API decoder
 # are not part of this relay; the viewer's browser decodes the video.
 COPY --from=scrcpy-server /tmp/scrcpy/scrcpy-server ./scrcpy-server

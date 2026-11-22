@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { approvalRequestFromEvent, generationSummary, parseAgentPlan } from './ai-agent-chat-presentation'
+import { approvalRequestFromEvent, generationSummary, parseAgentPlan, planForTurn } from './ai-agent-chat-presentation'
 import type { AutomationRunEvent, AutomationRunEventType } from '@/shared/contracts/automation'
 
 const event = (
@@ -37,10 +37,16 @@ describe('AI agent chat presentation', () => {
     ])
   })
 
-  it('marks every task complete with a successful turn', () => {
-    expect(parseAgentPlan('- **Open:** Settings\n- **Verify:** Dark mode', 'success').map(step => step.status)).toEqual(
-      ['completed', 'completed']
-    )
+  it('uses the agent outcome when the automation finishes', () => {
+    const plan = event('ai.plan.updated', '- [completed] open: Open search\n- [pending] reserve: Reserve parking')
+    const turn = { id: 'turn', prompt: 'Reserve parking', status: 'success' as const, run: null }
+    const steps = (events: AutomationRunEvent[]) => planForTurn({ ...turn, events })?.steps.map(step => step.status)
+    const blocked = event('ai.message.completed', 'Blocked', { status: 'blocked', completed: false })
+    const completed = event('ai.message.completed', 'Reserved', { status: 'completed', completed: true })
+    const ended = event('run.completed', 'Automation completed.')
+    expect(steps([plan, blocked, ended])).toEqual(['completed', 'pending'])
+    expect(steps([plan, ended])).toEqual(['completed', 'pending'])
+    expect(steps([plan, completed, ended])).toEqual(['completed', 'completed'])
   })
 
   it('summarizes reasoning metadata without exposing hidden chain of thought', () => {

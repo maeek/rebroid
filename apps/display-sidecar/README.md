@@ -59,3 +59,21 @@ pnpm --filter @rebroid/display-sidecar build
 Run `go test ./...` from `apps/display-sidecar/webrtc-bridge` for bridge changes.
 Scrcpy startup/cleanup changes require the [manual Redroid matrix](../../docs/display-streaming.md#manual-verification).
 A transport disconnect must never tear down the shared ADB/scrcpy source.
+
+### Android text entry
+
+The automation text command uses Android key events first. When Android cannot map
+the text to key events, the sidecar pushes a temporary UI Automator helper to the
+device. It inserts text at the selection in the focused editable field and checks
+the value Android reports. The helper requires an unmasked field and a known
+selection when it contains text. It leaves the clipboard and IME alone.
+
+To run the device regression, focus a test text field containing only
+`rebroid-input-test`, set `REBROID_INPUT_TEST_SERIAL` to its ADB serial, and run
+the sidecar test suite. It checks exact Unicode insertion and cursor placement.
+
+Docker compiles `android-input/FocusedTextInput.java` in a dedicated build stage
+and copies the DEX jar into the runtime image. For local device testing, set
+`ANDROID_HOME` to an SDK with Platform 35 and Build Tools 35.0.0. With JDK 21
+on the path, run `sh apps/display-sidecar/android-input/build.sh` from the
+repository root. Its output goes under the ignored `dist/android-input/` directory.

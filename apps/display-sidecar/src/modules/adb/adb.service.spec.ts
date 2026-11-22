@@ -1,9 +1,96 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 import { Logger } from "@nestjs/common";
 import type { SidecarConfigService } from "../shared/sidecar-config.service";
 import { AdbCommandRunner } from "./adb-command-runner";
 import { AdbService } from "./adb.service";
+
+test("package discovery preserves every argument through adb's remote shell", async (t) => {
+  const runner = new AdbCommandRunner({} as SidecarConfigService);
+  t.mock.method(runner, "text", async (args: string[]) => {
+    assert.deepEqual(args.slice(0, 3), ["-s", "device", "shell"]);
+    return {
+      stdout: execFileSync("/bin/sh", ["-c", args.slice(3).join(" ")], {
+        encoding: "utf8",
+      }),
+      stderr: "",
+      exitCode: 0,
+    };
+  });
+  const adb = new AdbService(runner);
+  for (const command of [
+    "pm list packages -3",
+    "cmd package list packages -3",
+  ]) {
+    const name = command.split(" ")[0];
+    const script = `${name}() { printf '%s\\n' "$@"; }; ${command}`;
+    assert.deepEqual(
+      (await adb.shellCommand("device", script)).stdout.trim().split("\n"),
+      command.split(" ").slice(1),
+    );
+  }
+});
+
+const unmappedTextError = new Error(
+  "adb command failed with exit code 255: java.lang.NullPointerException: Attempt to get length of null array\n" +
+    "at com.android.server.input.InputShellCommand.sendText(InputShellCommand.java:393)",
+);
+
+test("recovers unmappable text once and requires the focused-field acknowledgement", async (t) => {
+  const text = "Biedronka Połczyńska Warsaw";
+  for (const accepted of [true, false]) {
+    const runner = new AdbCommandRunner({} as SidecarConfigService);
+    const calls: string[][] = [];
+    t.mock.method(runner, "text", async (args: string[]) => {
+      calls.push(args);
+      if (args[3] === "input") throw unmappedTextError;
+      return {
+        stdout: accepted ? "REBROID_TEXT_INSERTED\n" : "FAILURES!!!\n",
+        stderr: "",
+        exitCode: 0,
+      };
+    });
+    const result = new AdbService(runner).inputText("device", text);
+    if (accepted) await result;
+    else await assert.rejects(result, /could not confirm text entry/);
+    assert.equal(calls.length, 5);
+    const jar = calls[1][4];
+    assert.match(jar, /^\/data\/local\/tmp\/rebroid-input-[\da-f-]+\.jar$/);
+    assert.deepEqual(calls[2].slice(3), ["chmod", "444", jar]);
+    assert.deepEqual(calls[3].slice(3, -1), [
+      "uiautomator",
+      "runtest",
+      jar,
+      "/system/framework/android.test.base.jar",
+      "-c",
+      "io.rebroid.input.FocusedTextInput#testInsert",
+      "-e",
+      "text",
+    ]);
+    assert.equal(
+      Buffer.from(calls[3].at(-1)!, "base64").toString("utf8"),
+      text,
+    );
+    assert.deepEqual(calls[4], ["-s", "device", "shell", "rm", "-f", jar]);
+  }
+});
+
+test("an accepted or ambiguous input dispatch is never replayed", async (t) => {
+  const runner = new AdbCommandRunner({} as SidecarConfigService);
+  const call = t.mock.method(runner, "text", async () => ({
+    stdout: "",
+    stderr: "",
+    exitCode: 0,
+  }));
+  const adb = new AdbService(runner);
+  await adb.inputText("device", "Warsaw");
+  call.mock.mockImplementationOnce(async () => {
+    throw new Error("ADB timed out");
+  });
+  await assert.rejects(adb.inputText("device", "Połczyńska"), /timed out/);
+  assert.equal(call.mock.callCount(), 2);
+});
 
 test("viewer reuses a healthy ADB transport and records only the state check", async (t) => {
   const runner = new AdbCommandRunner({} as SidecarConfigService);

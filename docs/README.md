@@ -26,6 +26,7 @@ Start with the [project README](../README.md) to install Rebroid and open your f
 Service-specific setup and verification are in the [web](../apps/web/README.md),
 [orchestrator](../apps/orchestrator/README.md), [display sidecar](../apps/display-sidecar/README.md),
 [OCR sidecar](../apps/ocr-sidecar/README.md), and [AI automation](../apps/orchestrator/src/automations/ai/README.md) guides.
+The [Android text entry guide](../apps/display-sidecar/README.md#android-text-entry) covers the Unicode fallback and device regression test.
 
 
 Report vulnerabilities through the [security policy](../SECURITY.md).
