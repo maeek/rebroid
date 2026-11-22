@@ -3,13 +3,14 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
 import { runRouteHandler } from '@/server/http/route-handler'
+import { parseRouteInput } from '@/server/http/route-input'
 import { orchestratorAppRuntimeClient } from '@/server/orchestrator/applications/runtime-client'
 import { assertCanTransferApplicationFiles } from '@/server/orchestrator/applications/runtime-file-access'
+import { readRuntimeFilePath } from '@/server/orchestrator/applications/runtime-file-path'
 import { prepareStreamingMultipartUpload } from '@/server/upload-proxy/streaming-upload'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
-const pathSchema = z.string().trim().min(1).max(4096).startsWith('/data')
 const overwriteSchema = z.enum(['true', 'false']).default('false')
 
 export const runtime = 'nodejs'
@@ -17,8 +18,9 @@ export const runtime = 'nodejs'
 export const POST = (request: NextRequest, context: RouteContext) =>
   runRouteHandler(async () => {
     const { id } = await context.params
-    const path = pathSchema.parse(request.nextUrl.searchParams.get('path') ?? '/data')
-    const overwrite = overwriteSchema.parse(request.nextUrl.searchParams.get('overwrite') ?? 'false') === 'true'
+    const path = readRuntimeFilePath(request, 'directory')
+    const overwrite =
+      parseRouteInput(overwriteSchema, request.nextUrl.searchParams.get('overwrite') ?? 'false') === 'true'
     const { app, user } = await assertCanTransferApplicationFiles(id)
     const upload = prepareStreamingMultipartUpload(request, {
       maxBytes: runtimeFileUploadLimit.bytes,

@@ -1,16 +1,14 @@
-import { z } from 'zod'
 import { runRouteHandler } from '@/server/http/route-handler'
 import { orchestratorAppRuntimeClient } from '@/server/orchestrator/applications/runtime-client'
 import { assertCanTransferApplicationFiles } from '@/server/orchestrator/applications/runtime-file-access'
+import { readRuntimeFilePath } from '@/server/orchestrator/applications/runtime-file-path'
 
 type RouteContext = { params: Promise<{ id: string }> }
-
-const pathSchema = z.string().trim().min(1).max(4096).startsWith('/data/')
 
 export const GET = async (request: Request, context: RouteContext) => {
   try {
     const { id } = await context.params
-    const path = pathSchema.parse(new URL(request.url).searchParams.get('path'))
+    const path = readRuntimeFilePath(request, 'file')
     await assertCanTransferApplicationFiles(id)
     const preview = await orchestratorAppRuntimeClient.previewRuntimeFile(id, path, request.signal)
     return new Response(preview.body, {
