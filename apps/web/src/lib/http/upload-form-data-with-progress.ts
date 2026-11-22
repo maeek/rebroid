@@ -40,6 +40,11 @@ export const uploadFormDataWithProgress = <Response>({
   url
 }: UploadFormDataWithProgressOptions) =>
   new Promise<Response>((resolve, reject) => {
+    const canceled = () => reject(new DOMException('Upload canceled.', 'AbortError'))
+    if (signal?.aborted) {
+      canceled()
+      return
+    }
     const request = new XMLHttpRequest()
     const abort = () => request.abort()
     request.open('POST', url)
@@ -66,7 +71,7 @@ export const uploadFormDataWithProgress = <Response>({
       )
     }
     request.onerror = () => reject(new Error(failureMessage))
-    request.onabort = () => reject(new DOMException('Upload canceled.', 'AbortError'))
+    request.onabort = canceled
     request.ontimeout = () => reject(new Error(timeoutMessage ?? `${failureMessage.replace(/\.$/, '')} timed out.`))
     signal?.addEventListener('abort', abort, { once: true })
     request.onloadend = () => signal?.removeEventListener('abort', abort)
