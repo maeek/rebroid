@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/use-toast'
 import { getBff } from '@/lib/http/bff'
@@ -19,45 +19,26 @@ import {
 } from './downloads-tools-section-model'
 import type { ApplicationRuntimeFile, ApplicationRuntimeFileDownload } from '@/shared/contracts/application'
 
-export const runtimeFilesQueryKey = (appId: string, path: string) => ['runtime-files', appId, path] as const
+export const runtimeFilesQueryKey = (scope: string, path: string) => ['runtime-files', scope, path] as const
 
 export const runtimeFilesUrl = (appId: string, path: string) => {
   const query = new URLSearchParams({ path })
   return `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files?${query.toString()}`
 }
 
-type PendingDownload = { appId: string; name: string }
-
-const downloadKey = (appId: string, path: string) => JSON.stringify([appId, path])
-
-export const useRuntimeFileBrowser = ({
-  appId,
-  canTransferFiles,
-  runtimeAvailable
-}: {
-  appId: string
-  canTransferFiles: boolean
-  runtimeAvailable: boolean
-}) => {
+export const useRuntimeFileBrowser = (appId: string, scope: string) => {
   const queryClient = useQueryClient()
   const [currentPath, setCurrentPath] = useState(runtimeDownloadsPath)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFile, setSelectedFile] = useState<ApplicationRuntimeFile | null>(null)
   const [sort, setSort] = useState<RuntimeFileSort>('name')
   const [sortDirection, setSortDirection] = useState<RuntimeFileSortDirection>('asc')
-  const inFlightDownloads = useRef(new Map<string, PendingDownload>())
-  const [pendingDownloads, setPendingDownloads] = useState(() => new Map<string, PendingDownload>())
-
-  useEffect(() => {
-    setCurrentPath(runtimeDownloadsPath)
-    setSearchQuery('')
-    setSelectedFile(null)
-  }, [appId])
+  const inFlightDownloads = useRef(new Map<string, string>())
+  const [pendingDownloads, setPendingDownloads] = useState(() => new Map<string, string>())
 
   const filesQuery = useQuery<ApplicationRuntimeFile[], Error>({
-    queryKey: runtimeFilesQueryKey(appId, currentPath),
+    queryKey: runtimeFilesQueryKey(scope, currentPath),
     queryFn: ({ signal }) => getBff(runtimeFilesUrl(appId, currentPath), signal),
-    enabled: runtimeAvailable && canTransferFiles,
     gcTime: 5 * 60 * 1000,
     staleTime: 10_000,
     retry: 1
@@ -83,20 +64,20 @@ export const useRuntimeFileBrowser = ({
   const prefetchPath = useCallback(
     (path: string) =>
       queryClient.prefetchQuery({
-        queryKey: runtimeFilesQueryKey(appId, path),
+        queryKey: runtimeFilesQueryKey(scope, path),
         queryFn: ({ signal }) => getBff<ApplicationRuntimeFile[]>(runtimeFilesUrl(appId, path), signal),
         staleTime: 10_000
       }),
-    [appId, queryClient]
+    [appId, scope, queryClient]
   )
 
   const updateParentCache = useCallback(
     (path: string, update: (files: ApplicationRuntimeFile[]) => ApplicationRuntimeFile[]) => {
-      queryClient.setQueryData<ApplicationRuntimeFile[]>(runtimeFilesQueryKey(appId, path), current =>
+      queryClient.setQueryData<ApplicationRuntimeFile[]>(runtimeFilesQueryKey(scope, path), current =>
         update(current ?? [])
       )
     },
-    [appId, queryClient]
+    [scope, queryClient]
   )
 
   const createDirectory = useCallback(
@@ -127,7 +108,7 @@ export const useRuntimeFileBrowser = ({
         )
         setSelectedFile(current => (current?.path === entry.path ? renamed : current))
         if (entry.type === 'directory') {
-          void queryClient.invalidateQueries({ queryKey: ['runtime-files', appId] })
+          void queryClient.invalidateQueries({ queryKey: ['runtime-files', scope] })
         }
         toast({ title: 'Item renamed', description: `${entry.name} is now ${renamed.name}.` })
         return renamed
@@ -136,7 +117,7 @@ export const useRuntimeFileBrowser = ({
         return null
       }
     },
-    [appId, currentPath, queryClient, updateParentCache]
+    [appId, scope, currentPath, queryClient, updateParentCache]
   )
 
   const deleteFile = useCallback(
@@ -146,7 +127,7 @@ export const useRuntimeFileBrowser = ({
         updateParentCache(currentPath, current => current.filter(candidate => candidate.path !== entry.path))
         setSelectedFile(current => (current?.path === entry.path ? null : current))
         if (entry.type === 'directory') {
-          void queryClient.invalidateQueries({ queryKey: ['runtime-files', appId] })
+          void queryClient.invalidateQueries({ queryKey: ['runtime-files', scope] })
         }
         toast({
           title: 'Item deleted',
@@ -159,16 +140,16 @@ export const useRuntimeFileBrowser = ({
         return false
       }
     },
-    [appId, currentPath, queryClient, updateParentCache]
+    [appId, scope, currentPath, queryClient, updateParentCache]
   )
 
   const downloadFile = useCallback(
     async (entry: ApplicationRuntimeFile) => {
-      if (entry.type !== 'file' || !canTransferFiles || !runtimeAvailable) return
-      const key = downloadKey(appId, entry.path)
+      if (entry.type !== 'file') return
+      const key = entry.path
       const inFlight = inFlightDownloads.current
       if (inFlight.has(key)) return
-      inFlight.set(key, { appId, name: entry.name })
+      inFlight.set(key, entry.name)
       setPendingDownloads(new Map(inFlight))
       try {
         const query = new URLSearchParams({ path: entry.path })
@@ -183,12 +164,9 @@ export const useRuntimeFileBrowser = ({
         setPendingDownloads(new Map(inFlight))
       }
     },
-    [appId, canTransferFiles, runtimeAvailable]
+    [appId]
   )
-  const isDownloading = useCallback(
-    (path: string) => pendingDownloads.has(downloadKey(appId, path)),
-    [appId, pendingDownloads]
-  )
+  const isDownloading = useCallback((path: string) => pendingDownloads.has(path), [pendingDownloads])
 
   return {
     createDirectory,
@@ -199,7 +177,7 @@ export const useRuntimeFileBrowser = ({
     files,
     hasLoadedFiles: filesQuery.data !== undefined,
     isDownloading,
-    downloadingNames: [...pendingDownloads.values()].filter(entry => entry.appId === appId).map(entry => entry.name),
+    downloadingNames: [...pendingDownloads.values()],
     isLoading: filesQuery.isLoading,
     isRefreshing: filesQuery.isFetching && filesQuery.data !== undefined,
     navigateTo,
@@ -213,7 +191,6 @@ export const useRuntimeFileBrowser = ({
     setSort,
     setSortDirection,
     sort,
-    sortDirection,
-    updateParentCache
+    sortDirection
   }
 }

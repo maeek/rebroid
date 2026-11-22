@@ -11,8 +11,10 @@ import { actionOk } from '@/shared/actions/action-result'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { DownloadsToolsSection } from './downloads-tools-section'
+import { uploadDownloadFileWithProgress } from './upload-download-file'
 import type { ApplicationRuntimeFile, ApplicationRuntimeFileDownload } from '@/shared/contracts/application'
 
+vi.mock('./upload-download-file', () => ({ uploadDownloadFileWithProgress: vi.fn() }))
 vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/runtime/file-actions', () => ({
   createApplicationRuntimeDirectoryAction: vi.fn(),
@@ -118,4 +120,52 @@ describe('file action focus', () => {
       expect(within(screen.getByRole('navigation', { name: 'Current folder' })).getByText('Downloads')).toHaveFocus()
     )
   })
+})
+
+it('drops queued uploads and aborts active transfers on a device change', async () => {
+  const app = { ...mapAndroidApplicationToAppDefinition(applicationPreview), status: 'running' as const }
+  vi.mocked(getBff).mockResolvedValue([])
+  const pending = Promise.withResolvers<never>()
+  const upload = vi.mocked(uploadDownloadFileWithProgress).mockReturnValue(pending.promise)
+  const client = new QueryClient()
+  const section = (id: string) => (
+    <QueryClientProvider client={client}>
+      <DownloadsToolsSection
+        app={{ ...app, id }}
+        permissions={fullPermissions}
+      />
+    </QueryClientProvider>
+  )
+  const view = render(section('first-device'))
+  fireEvent.drop(screen.getByRole('button', { name: 'Upload files' }), {
+    dataTransfer: { types: ['Files'], files: ['a', 'b', 'c'].map(name => new File([''], name)) }
+  })
+  await waitFor(() => expect(upload).toHaveBeenCalledTimes(2))
+  view.rerender(section('second-device'))
+  try {
+    expect(upload.mock.calls.every(([request]) => request.signal?.aborted)).toBe(true)
+  } finally {
+    pending.reject(new DOMException('Canceled', 'AbortError'))
+  }
+  expect(upload.mock.calls.map(([request]) => request.appId)).toEqual(['first-device', 'first-device'])
+})
+
+it('loads the new profile listing even while the old listing is fresh', async () => {
+  const app = { ...mapAndroidApplicationToAppDefinition(applicationPreview), status: 'running' as const }
+  const list = vi.mocked(getBff)
+  list.mockResolvedValueOnce([file('old-profile.txt')]).mockResolvedValueOnce([file('new-profile.txt')])
+  const client = new QueryClient()
+  const section = (profileName: string) => (
+    <QueryClientProvider client={client}>
+      <DownloadsToolsSection
+        app={{ ...app, profileName }}
+        permissions={fullPermissions}
+      />
+    </QueryClientProvider>
+  )
+  const view = render(section('work'))
+  expect(await screen.findByRole('button', { name: 'old-profile.txt' })).toBeVisible()
+  view.rerender(section('personal'))
+  expect(screen.queryByRole('button', { name: 'old-profile.txt' })).toBeNull()
+  expect(await screen.findByRole('button', { name: 'new-profile.txt' })).toBeVisible()
 })

@@ -18,11 +18,32 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
-type FileActionFocus = { appId: string; folder: string; path?: string }
+type FileActionFocus = { folder: string; path?: string }
 
 export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition; permissions: PermissionMap }) => {
-  const runtimeAvailable = app.status === 'running'
   const { canTransferFiles, canManageFiles } = resolveRuntimeFileAccess(permissions)
+  if (!canTransferFiles) return null
+  if (app.status !== 'running')
+    return (
+      <StateView
+        scope='grid'
+        kind='unavailable'
+        title='Runtime files are unavailable'
+        description='Start the application to browse its runtime data volume.'
+      />
+    )
+  const scope = JSON.stringify([app.id, app.containerId, app.lastStartedAt, app.profileMode, app.profileName])
+  return (
+    <RuntimeFiles
+      key={scope}
+      appId={app.id}
+      scope={scope}
+      canManageFiles={canManageFiles}
+    />
+  )
+}
+
+const RuntimeFiles = ({ appId, scope, canManageFiles }: { appId: string; scope: string; canManageFiles: boolean }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const fileTriggerRef = useRef<HTMLButtonElement>(null)
   const currentFolderRef = useRef<HTMLSpanElement>(null)
@@ -33,8 +54,8 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
   const [createOpen, setCreateOpen] = useState(false)
   const [renameEntry, setRenameEntry] = useState<ApplicationRuntimeFile | null>(null)
   const [deleteEntry, setDeleteEntry] = useState<ApplicationRuntimeFile | null>(null)
-  const browser = useRuntimeFileBrowser({ appId: app.id, canTransferFiles, runtimeAvailable })
-  const uploads = useRuntimeFileUploads(app.id)
+  const browser = useRuntimeFileBrowser(appId, scope)
+  const uploads = useRuntimeFileUploads(appId, scope)
 
   const { currentPath, downloadingNames, navigateTo, prefetchPath, setSelectedFile } = browser
   const downloadStatus =
@@ -83,7 +104,7 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
   const restoreAfterDialog = () => {
     const action = completedFileAction.current
     completedFileAction.current = null
-    if (!action || action.appId !== app.id || action.folder !== currentPath || !runtimeAvailable) return
+    if (!action || action.folder !== currentPath) return
     setFileActionFocus(action)
   }
 
@@ -91,7 +112,6 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
     const renamed = await browser.renameFile(entry, name)
     if (!renamed) return false
     completedFileAction.current = {
-      appId: app.id,
       folder: currentPath,
       path: renamed.path
     }
@@ -103,14 +123,11 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
     const neighbor = index >= 0 ? (browser.files[index + 1] ?? browser.files[index - 1]) : undefined
     if (!(await browser.deleteFile(entry))) return false
     completedFileAction.current = {
-      appId: app.id,
       folder: currentPath,
       path: neighbor?.path
     }
     return true
   }
-
-  if (!canTransferFiles) return null
 
   const openRename = (entry: ApplicationRuntimeFile) => {
     setDetailsOpen(false)
@@ -130,94 +147,83 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
 
   return (
     <>
-      {!runtimeAvailable ? (
-        <StateView
-          scope='grid'
-          kind='unavailable'
-          title='Runtime files are unavailable'
-          description='Start the application to browse its runtime data volume.'
+      <FileDropZone
+        className='grid gap-4'
+        onFiles={addFiles}
+        description={`Destination: ${browser.currentPath}`}
+      >
+        <Input
+          ref={fileInputRef}
+          type='file'
+          multiple
+          className='hidden'
+          onChange={event => {
+            if (event.target.files) addFiles(event.target.files)
+          }}
         />
-      ) : (
-        <FileDropZone
-          className='grid gap-4'
-          onFiles={addFiles}
-          description={`Destination: ${browser.currentPath}`}
+        <RuntimeFileToolbar
+          canManageFiles={canManageFiles}
+          currentPath={browser.currentPath}
+          currentFolderRef={currentFolderRef}
+          onCreateFolder={() => setCreateOpen(true)}
+          onPathChange={navigateToFolder}
+          onUpload={() => fileInputRef.current?.click()}
+        />
+        <span
+          className='sr-only'
+          role='status'
         >
-          <Input
-            ref={fileInputRef}
-            type='file'
-            multiple
-            className='hidden'
-            onChange={event => {
-              if (event.target.files) addFiles(event.target.files)
-            }}
-          />
-          <RuntimeFileToolbar
-            canManageFiles={canManageFiles}
-            currentPath={browser.currentPath}
-            currentFolderRef={currentFolderRef}
-            onCreateFolder={() => setCreateOpen(true)}
-            onPathChange={navigateToFolder}
-            onUpload={() => fileInputRef.current?.click()}
-          />
-          <span
-            className='sr-only'
-            role='status'
-          >
-            {browser.hasLoadedFiles
-              ? `${browser.files.length} entries in ${browser.currentPath}${browser.isRefreshing ? ', refreshing' : ''}.`
-              : browser.error
-                ? ''
-                : `Loading ${browser.currentPath}.`}
-          </span>
-          <span
-            role='status'
-            aria-atomic='true'
-            className='sr-only'
-          >
-            {downloadStatus}
-          </span>
-          <RuntimeFileList
-            key={browser.currentPath}
-            onUpload={() => fileInputRef.current?.click()}
-            canManageFiles={canManageFiles}
-            error={browser.error}
-            files={browser.files}
-            isDownloading={browser.isDownloading}
-            focusRequest={
-              fileActionFocus?.appId === app.id && fileActionFocus.folder === currentPath ? fileActionFocus : null
-            }
-            onFocusRestored={restoreFileFocus}
-            loading={!browser.hasLoadedFiles && !browser.error}
-            refreshing={browser.isRefreshing}
-            searchQuery={browser.searchQuery}
-            sort={browser.sort}
-            sortDirection={browser.sortDirection}
-            onDelete={openDelete}
-            onDownload={entry => void browser.downloadFile(entry)}
-            onOpen={openEntry}
-            onPrefetch={prefetchFolder}
-            onRefresh={() => void browser.refresh()}
-            onRename={openRename}
-            onSearchChange={browser.setSearchQuery}
-            onSort={(sort, direction) => {
-              browser.setSort(sort)
-              browser.setSortDirection(direction)
-            }}
-          />
+          {browser.hasLoadedFiles
+            ? `${browser.files.length} entries in ${browser.currentPath}${browser.isRefreshing ? ', refreshing' : ''}.`
+            : browser.error
+              ? ''
+              : `Loading ${browser.currentPath}.`}
+        </span>
+        <span
+          role='status'
+          aria-atomic='true'
+          className='sr-only'
+        >
+          {downloadStatus}
+        </span>
+        <RuntimeFileList
+          key={browser.currentPath}
+          onUpload={() => fileInputRef.current?.click()}
+          canManageFiles={canManageFiles}
+          error={browser.error}
+          files={browser.files}
+          isDownloading={browser.isDownloading}
+          focusRequest={fileActionFocus?.folder === currentPath ? fileActionFocus : null}
+          onFocusRestored={restoreFileFocus}
+          loading={!browser.hasLoadedFiles && !browser.error}
+          refreshing={browser.isRefreshing}
+          searchQuery={browser.searchQuery}
+          sort={browser.sort}
+          sortDirection={browser.sortDirection}
+          onDelete={openDelete}
+          onDownload={entry => void browser.downloadFile(entry)}
+          onOpen={openEntry}
+          onPrefetch={prefetchFolder}
+          onRefresh={() => void browser.refresh()}
+          onRename={openRename}
+          onSearchChange={browser.setSearchQuery}
+          onSort={(sort, direction) => {
+            browser.setSort(sort)
+            browser.setSortDirection(direction)
+          }}
+        />
 
-          <RuntimeFileUploadQueue
-            activeCount={uploads.activeCount}
-            items={uploads.items}
-            onCancel={uploads.cancel}
-            onDismiss={uploads.dismiss}
-            onRetry={uploads.retry}
-          />
-        </FileDropZone>
-      )}
+        <RuntimeFileUploadQueue
+          activeCount={uploads.activeCount}
+          items={uploads.items}
+          onCancel={uploads.cancel}
+          onDismiss={uploads.dismiss}
+          onRetry={uploads.retry}
+        />
+      </FileDropZone>
 
       <Sheet
-        open={runtimeAvailable && detailsOpen && browser.selectedFile !== null}
+        open={detailsOpen && browser.selectedFile !== null}
         onOpenChange={setDetailsOpen}
       >
         <SheetContent
@@ -230,7 +236,7 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
           </SheetHeader>
           {browser.selectedFile ? (
             <RuntimeFileInspector
-              appId={app.id}
+              appId={appId}
               canManageFiles={canManageFiles}
               entry={browser.selectedFile}
               downloading={browser.isDownloading(browser.selectedFile.path)}

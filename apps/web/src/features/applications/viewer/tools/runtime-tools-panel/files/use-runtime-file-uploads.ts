@@ -21,10 +21,9 @@ export interface RuntimeFileUploadItem {
 
 const maximumConcurrentUploads = 2
 
-export const useRuntimeFileUploads = (appId: string) => {
+export const useRuntimeFileUploads = (appId: string, scope: string) => {
   const queryClient = useQueryClient()
   const [items, setItems] = useState<RuntimeFileUploadItem[]>([])
-  const activeIdsRef = useRef(new Set<string>())
   const controllersRef = useRef(new Map<string, AbortController>())
 
   const updateItem = useCallback((id: string, update: Partial<RuntimeFileUploadItem>) => {
@@ -33,8 +32,7 @@ export const useRuntimeFileUploads = (appId: string) => {
 
   const runUpload = useCallback(
     (item: RuntimeFileUploadItem) => {
-      if (activeIdsRef.current.has(item.id)) return
-      activeIdsRef.current.add(item.id)
+      if (controllersRef.current.has(item.id)) return
       const controller = new AbortController()
       controllersRef.current.set(item.id, controller)
       updateItem(item.id, { error: undefined, progress: 0, status: 'uploading' })
@@ -47,7 +45,7 @@ export const useRuntimeFileUploads = (appId: string) => {
         onProgress: progress => updateItem(item.id, { progress })
       })
         .then(uploaded => {
-          queryClient.setQueryData<ApplicationRuntimeFile[]>(runtimeFilesQueryKey(appId, item.path), current => {
+          queryClient.setQueryData<ApplicationRuntimeFile[]>(runtimeFilesQueryKey(scope, item.path), current => {
             const remaining = (current ?? []).filter(entry => entry.path !== uploaded.path)
             return [...remaining, uploaded]
           })
@@ -68,19 +66,18 @@ export const useRuntimeFileUploads = (appId: string) => {
           })
         })
         .finally(() => {
-          activeIdsRef.current.delete(item.id)
           controllersRef.current.delete(item.id)
           setItems(current => [...current])
         })
     },
-    [appId, queryClient, updateItem]
+    [appId, scope, queryClient, updateItem]
   )
 
   useEffect(() => {
-    const available = maximumConcurrentUploads - activeIdsRef.current.size
+    const available = maximumConcurrentUploads - controllersRef.current.size
     if (available <= 0) return
     items
-      .filter(item => item.status === 'queued' && !activeIdsRef.current.has(item.id))
+      .filter(item => item.status === 'queued' && !controllersRef.current.has(item.id))
       .slice(0, available)
       .forEach(runUpload)
   }, [items, runUpload])

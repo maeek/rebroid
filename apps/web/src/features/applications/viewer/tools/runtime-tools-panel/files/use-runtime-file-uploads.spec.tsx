@@ -52,7 +52,7 @@ describe('useRuntimeFileUploads', () => {
     mocks.upload.mockImplementationOnce(() => first.promise)
     mocks.upload.mockImplementationOnce(() => second.promise)
     mocks.upload.mockImplementationOnce(() => third.promise)
-    const { result } = renderHook(() => useRuntimeFileUploads('app-1'), { wrapper })
+    const { result } = renderHook(() => useRuntimeFileUploads('app-1', 'runtime-1'), { wrapper })
 
     act(() => {
       result.current.addFiles(
@@ -80,7 +80,7 @@ describe('useRuntimeFileUploads', () => {
     mocks.upload.mockImplementationOnce(() => pending.promise)
     mocks.upload.mockRejectedValueOnce(new UploadRequestError('File already exists.', 409))
     mocks.upload.mockResolvedValueOnce(uploadedFile('existing.txt'))
-    const { result } = renderHook(() => useRuntimeFileUploads('app-1'), { wrapper })
+    const { result } = renderHook(() => useRuntimeFileUploads('app-1', 'runtime-1'), { wrapper })
 
     act(() => result.current.addFiles([new File(['x'], 'cancel.txt')], '/data'))
     await waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(1))

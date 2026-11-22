@@ -52,10 +52,7 @@ describe('useRuntimeFileBrowser', () => {
       rootSignal = signal
       return rootRequest.promise
     })
-    const { result } = renderHook(
-      () => useRuntimeFileBrowser({ appId: 'app-1', canTransferFiles: true, runtimeAvailable: true }),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useRuntimeFileBrowser('app-1', 'runtime-1'), { wrapper })
     await waitFor(() => expect(mocks.getBff).toHaveBeenCalledTimes(1))
     expect(result.current.currentPath).toBe(runtimeDownloadsPath)
     expect(mocks.getBff.mock.calls[0][0]).toContain(encodeURIComponent(runtimeDownloadsPath))
@@ -86,10 +83,7 @@ describe('useRuntimeFileBrowser', () => {
       }
       return [folder('Documents', '/data/Documents')]
     })
-    const { result } = renderHook(
-      () => useRuntimeFileBrowser({ appId: 'app-1', canTransferFiles: true, runtimeAvailable: true }),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useRuntimeFileBrowser('app-1', 'runtime-1'), { wrapper })
     await waitFor(() => expect(result.current.files.map(entry => entry.name)).toEqual(['Documents']))
 
     act(() => result.current.navigateTo('/data/Documents'))
@@ -98,7 +92,7 @@ describe('useRuntimeFileBrowser', () => {
     expect(result.current.files.map(entry => entry.name)).toEqual(['Documents'])
 
     await act(async () => result.current.prefetchPath('/data/Pictures'))
-    expect(queryClient.getQueryData(['runtime-files', 'app-1', '/data/Pictures'])).toEqual([
+    expect(queryClient.getQueryData(['runtime-files', 'runtime-1', '/data/Pictures'])).toEqual([
       folder('Screenshots', '/data/Pictures/Screenshots')
     ])
   })
