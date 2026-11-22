@@ -43,25 +43,26 @@ export class ContainerImageBuildJobService {
     private readonly jobs: Repository<ContainerImageBuildJob>,
   ) {}
 
+  private byCreationTime(order: 'ASC' | 'DESC') {
+    return this.jobs
+      .createQueryBuilder('job')
+      .orderBy('job.createdAt', order)
+      .addOrderBy('job.rowid', order);
+  }
+
   listJobs() {
-    return this.jobs.find({ order: { createdAt: 'DESC' }, take: 50 });
+    return this.byCreationTime('DESC').take(50).getMany();
   }
 
   findLatestJob(buildKind: ContainerImageBuildKind) {
-    return this.jobs
-      .createQueryBuilder('job')
-      .where({ buildKind })
-      .orderBy('job.createdAt', 'DESC')
-      .addOrderBy('job.rowid', 'DESC')
-      .take(1)
-      .getOne();
+    return this.byCreationTime('DESC').where({ buildKind }).take(1).getOne();
   }
 
   findNextQueuedGappsJob() {
-    return this.jobs.findOne({
-      where: { status: 'queued', buildKind: 'redroid_gapps_patch' },
-      order: { createdAt: 'ASC' },
-    });
+    return this.byCreationTime('ASC')
+      .where({ status: 'queued', buildKind: 'redroid_gapps_patch' })
+      .take(1)
+      .getOne();
   }
 
   hasUnfinishedGappsJob(id: string) {
@@ -81,7 +82,7 @@ export class ContainerImageBuildJobService {
         `ROW_NUMBER() OVER (
           PARTITION BY job.targetImage
           ORDER BY COALESCE(job.finishedAt, job.updatedAt) DESC,
-            job.createdAt DESC, job.id DESC
+            job.createdAt DESC, job.rowid DESC
         )`,
         'resultRank',
       )

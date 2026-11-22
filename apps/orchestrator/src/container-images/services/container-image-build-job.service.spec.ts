@@ -109,18 +109,45 @@ describe('ContainerImageBuildJobService', () => {
     }
   });
 
-  it('selects the oldest queued GApps patch job', async () => {
-    const repository = {
-      findOne: jest.fn().mockResolvedValue(null),
-    } as unknown as Repository<ContainerImageBuildJob>;
-    const service = new ContainerImageBuildJobService(repository);
+  it('uses insertion order to break ties for inventory, queue dispatch and history retention', async () => {
+    const database = await openDatabase();
+    try {
+      const service = new ContainerImageBuildJobService(
+        database.getRepository(ContainerImageBuildJob),
+      );
+      await insertJob(database, 'z-first', 'succeeded');
+      await insertJob(database, 'a-last', 'succeeded');
+      await insertJob(
+        database,
+        'z-queued-first',
+        'queued',
+        'redroid_gapps_patch',
+      );
+      await insertJob(
+        database,
+        'a-queued-last',
+        'queued',
+        'redroid_gapps_patch',
+      );
 
-    await service.findNextQueuedGappsJob();
-
-    expect(repository.findOne).toHaveBeenCalledWith({
-      where: { status: 'queued', buildKind: 'redroid_gapps_patch' },
-      order: { createdAt: 'ASC' },
-    });
+      expect((await service.listJobs()).map((job) => job.id)).toEqual([
+        'a-queued-last',
+        'z-queued-first',
+        'a-last',
+        'z-first',
+      ]);
+      await expect(service.findNextQueuedGappsJob()).resolves.toMatchObject({
+        id: 'z-queued-first',
+      });
+      await expect(
+        service.pruneHistory(new Date('2026-10-01T00:00:00Z'), []),
+      ).resolves.toBe(1);
+      await expect(
+        service.findLatestJob('dockerfile_overlay'),
+      ).resolves.toMatchObject({ id: 'a-last' });
+    } finally {
+      await database.destroy();
+    }
   });
 
   it('finds the latest build of a kind outside the recent builds window', async () => {
