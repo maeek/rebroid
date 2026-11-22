@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { previewApp } from '@/features/applications/detail/app-resource-preview-data'
+import { toast } from '@/hooks/use-toast'
 import { getApplicationLogsAction } from '@/server/orchestrator/applications/actions/runtime/log-actions'
 import { useApplicationLogs } from './use-application-logs'
 import type { ApplicationLog } from '@/shared/contracts/application'
@@ -121,6 +122,9 @@ describe('automatic diagnostic logs', () => {
     act(() => result.current.setIsLive(true))
     await advance()
     expect(result.current.isLive).toBe(false)
+    expect(toast).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ title: 'Could not load logs', variant: 'danger' })
+    )
     expect(getApplicationLogsAction).toHaveBeenCalledTimes(2)
     await advance(9000)
     expect(getApplicationLogsAction).toHaveBeenCalledTimes(2)

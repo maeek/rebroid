@@ -35,7 +35,10 @@ export const useApplicationLogs = ({ app, enabled = true, loadWhenEnabled = fals
       enabled: Boolean(app) && enabled && !sourceUnavailable,
       intervalMs: enabled && isLive ? 3000 : null,
       revalidateOnMount: false,
-      onError: () => setIsLive(false)
+      onError: error => {
+        setIsLive(false)
+        toast({ title: 'Could not load logs', description: getToastErrorDescription(error), variant: 'danger' })
+      }
     }
   )
   let log = refreshedLog
@@ -65,16 +68,7 @@ export const useApplicationLogs = ({ app, enabled = true, loadWhenEnabled = fals
     }
 
     setAttemptedKey(requestKey)
-    try {
-      await refreshLogs()
-    } catch (error) {
-      setIsLive(false)
-      toast({
-        title: 'Could not load logs',
-        description: getToastErrorDescription(error),
-        variant: 'danger'
-      })
-    }
+    await refreshLogs()
   }, [appId, refreshLogs, requestKey, source, sourceUnavailable, unavailableMessage])
 
   useEffect(() => {
