@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, LessThan, Like, Not, Repository } from 'typeorm';
 import { adHocAiAutomationIdPrefix } from '../contracts/automation-run-kind';
 import type { WorkflowHistoryMaintenancePort } from '../contracts/workflow-history-maintenance.port';
-import { AutomationPersistenceQueue } from './automation-persistence-queue';
+import { SerialQueue } from '../../common/serial-queue';
 import { Automation } from '../entities/automation.entity';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import {
@@ -20,7 +20,7 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
   constructor(
     @InjectRepository(AutomationRun)
     private readonly runs: Repository<AutomationRun>,
-    private readonly queue: AutomationPersistenceQueue = new AutomationPersistenceQueue(),
+    private readonly queue: SerialQueue = new SerialQueue(),
   ) {}
 
   findById(id: string) {

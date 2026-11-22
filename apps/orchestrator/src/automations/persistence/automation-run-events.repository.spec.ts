@@ -8,7 +8,7 @@ import {
 } from '../entities/automation-run.entity';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import type { AutomationStepResult } from '../runner/automation-runner.types';
-import { AutomationPersistenceQueue } from './automation-persistence-queue';
+import { SerialQueue } from '../../common/serial-queue';
 import { AutomationRunsRepository } from './automation-runs.repository';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import {
@@ -80,7 +80,7 @@ const createRunPersistence = async (status = AutomationRunStatus.Running) => {
     migrations: [InitializeSqliteSchema1800000005000],
     migrationsRun: true,
   }).initialize();
-  const queue = new AutomationPersistenceQueue();
+  const queue = new SerialQueue();
   const runs = new AutomationRunsRepository(
     db.getRepository(AutomationRun),
     queue,

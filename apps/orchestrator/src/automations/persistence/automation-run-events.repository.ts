@@ -16,7 +16,7 @@ import {
   AutomationRun,
   AutomationRunStatus,
 } from '../entities/automation-run.entity';
-import { AutomationPersistenceQueue } from './automation-persistence-queue';
+import { SerialQueue } from '../../common/serial-queue';
 import { MetricsService } from '../../metrics/metrics.service';
 import type { AutomationStepResult } from '../runner/automation-runner.types';
 
@@ -109,7 +109,7 @@ export class AutomationRunEventsRepository {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly metrics: MetricsService,
-    private readonly queue: AutomationPersistenceQueue = new AutomationPersistenceQueue(),
+    private readonly queue: SerialQueue = new SerialQueue(),
   ) {}
 
   enqueueRun(

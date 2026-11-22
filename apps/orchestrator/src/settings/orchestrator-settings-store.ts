@@ -4,6 +4,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { isDrmRenderDevice } from '@rebroid/android-application-core/redroid-runtime';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
+import { SerialQueue } from '../common/serial-queue';
 import { numberInRange } from '../common/number-range';
 import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
 import { normalizeDockerOperationLimits } from './docker-operation-limits-settings';
@@ -37,7 +38,7 @@ export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
 
 @Injectable()
 export class OrchestratorSettingsStore {
-  private writeQueue: Promise<void> = Promise.resolve();
+  private readonly writes = new SerialQueue();
   private readonly subscribers = new Set<
     (settings: StoredOrchestratorSettings) => void
   >();
@@ -65,7 +66,7 @@ export class OrchestratorSettingsStore {
       current: StoredOrchestratorSettings,
     ) => StoredOrchestratorSettings | Promise<StoredOrchestratorSettings>,
   ) {
-    return this.enqueueWrite(async () => {
+    return this.writes.run(async () => {
       const current = await this.getStoredSettings();
       const updated = this.normalizeSettings(await update(current));
       await this.persistSettings(updated);
@@ -88,15 +89,6 @@ export class OrchestratorSettingsStore {
     });
     await rename(temporaryPath, path);
     for (const subscriber of this.subscribers) subscriber(settings);
-  }
-
-  private enqueueWrite<T>(operation: () => Promise<T>) {
-    const pending = this.writeQueue.then(operation, operation);
-    this.writeQueue = pending.then(
-      () => undefined,
-      () => undefined,
-    );
-    return pending;
   }
 
   defaults(): StoredOrchestratorSettings {

@@ -8,7 +8,7 @@ import { AutomationRunEventsRepository } from './automation-run-events.repositor
 import { AutomationRunsRepository } from './automation-runs.repository';
 import { AutomationTriggersRepository } from './automation-triggers.repository';
 import { AutomationsRepository } from './automations.repository';
-import { AutomationPersistenceQueue } from './automation-persistence-queue';
+import { SerialQueue } from '../../common/serial-queue';
 import { MetricsModule } from '../../metrics/metrics.module';
 import { WORKFLOW_HISTORY_MAINTENANCE } from '../contracts/workflow-history-maintenance.port';
 
@@ -23,7 +23,7 @@ import { WORKFLOW_HISTORY_MAINTENANCE } from '../contracts/workflow-history-main
     MetricsModule,
   ],
   providers: [
-    AutomationPersistenceQueue,
+    SerialQueue,
     AutomationsRepository,
     AutomationRunEventsRepository,
     AutomationRunsRepository,
