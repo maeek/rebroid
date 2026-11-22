@@ -133,19 +133,7 @@ export class ContainerImageGappsBuilderService
     this.drainRequested = true;
     if (this.draining) return;
     this.draining = true;
-    queueMicrotask(() => {
-      void this.drain()
-        .catch((error) => {
-          this.logger.error(
-            `GApps build queue failed: ${getErrorMessage(error)}`,
-          );
-          this.retryDrain();
-        })
-        .finally(() => {
-          this.draining = false;
-          if (this.drainRequested) this.scheduleDrain();
-        });
-    });
+    queueMicrotask(() => void this.drain());
   }
 
   private retryDrain() {
@@ -157,17 +145,26 @@ export class ContainerImageGappsBuilderService
   }
 
   private async drain() {
-    while (!this.stopping) {
-      this.drainRequested = false;
-      const job = await this.jobs.findNextQueuedGappsJob();
-      if (!job && !this.lifecycle.hasActiveGappsBuild()) return;
-      if (!(await this.lifecycle.confirmGappsSlotAvailable())) {
-        this.retryDrain();
-        return;
+    try {
+      while (this.drainRequested && !this.stopping) {
+        this.drainRequested = false;
+        const job = await this.jobs.findNextQueuedGappsJob();
+        if (this.stopping) return;
+        if (!job && !this.lifecycle.hasActiveGappsBuild()) continue;
+        if (!(await this.lifecycle.confirmGappsSlotAvailable())) {
+          this.retryDrain();
+          return;
+        }
+        if (job && !this.stopping) {
+          await this.runBuild(job);
+          this.drainRequested = true;
+        }
       }
-      if (this.stopping) return;
-      if (job) await this.runBuild(job);
-      else if (!this.drainRequested) return;
+    } catch (error) {
+      this.logger.error(`GApps build queue failed: ${getErrorMessage(error)}`);
+      this.retryDrain();
+    } finally {
+      this.draining = false;
     }
   }
 

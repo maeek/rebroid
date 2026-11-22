@@ -35,11 +35,19 @@ export class ContainerImageBuildLifecycleService {
     return this.active.has(id);
   }
 
+  private get activeGappsBuild() {
+    for (const active of this.active.values()) {
+      if (active.job.buildKind === 'redroid_gapps_patch') return active;
+    }
+    return undefined;
+  }
+
   hasActiveGappsBuild(androidVersion?: string) {
-    return [...this.active.values()].some(
-      ({ job }) =>
-        job.buildKind === 'redroid_gapps_patch' &&
-        (androidVersion === undefined || job.androidVersion === androidVersion),
+    const active = this.activeGappsBuild;
+    return (
+      !!active &&
+      (androidVersion === undefined ||
+        active.job.androidVersion === androidVersion)
     );
   }
 
@@ -99,10 +107,8 @@ export class ContainerImageBuildLifecycleService {
   }
 
   async confirmGappsSlotAvailable(): Promise<boolean> {
-    const gapps = [...this.active.values()].filter(
-      ({ job }) => job.buildKind === 'redroid_gapps_patch',
-    );
-    if (gapps.some(({ settled }) => !settled)) return false;
+    const active = this.activeGappsBuild;
+    if (active && !active.settled) return false;
 
     try {
       if (await this.worker.hasUnstoppedWorkers()) {
@@ -112,7 +118,7 @@ export class ContainerImageBuildLifecycleService {
       return this.blockGapps(getErrorMessage(error));
     }
 
-    for (const { job } of gapps) this.active.delete(job.id);
+    if (active) this.active.delete(active.job.id);
     this.gappsBlocked = false;
     return true;
   }

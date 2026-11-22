@@ -19,6 +19,47 @@ const deferred = <T>() => {
 };
 
 describe('ContainerImageGappsBuilderService', () => {
+  it('rechecks the queue when admission completes during an empty lookup', async () => {
+    const build = createQueuedBuild('14');
+    const lookup = deferred<null>();
+    build.jobs.findNextQueuedGappsJob.mockImplementationOnce(
+      () => lookup.promise,
+    );
+    await build.service.onModuleInit();
+    await nextTurn();
+    try {
+      const queued = await build.service.startBuild({
+        androidVersion: '14',
+        targetImage: 'local/test:14',
+      });
+      expect(build.jobs.findNextQueuedGappsJob).toHaveBeenCalledTimes(1);
+      lookup.resolve(null);
+      await nextTurn();
+      expect(await build.jobs.getJob(queued.id)).toMatchObject({
+        status: 'succeeded',
+      });
+      expect(build.lifecycle.activeBuildIds()).toEqual([]);
+    } finally {
+      lookup.resolve(null);
+      build.service.onModuleDestroy();
+    }
+  });
+
+  it('stops an in-flight queue lookup without inspecting the worker or claiming a job', async () => {
+    const build = createQueuedBuild('14');
+    const lookup = deferred<ContainerImageBuildJob>();
+    build.jobs.findNextQueuedGappsJob.mockImplementationOnce(
+      () => lookup.promise,
+    );
+    await build.service.onModuleInit();
+    await nextTurn();
+    build.service.onModuleDestroy();
+    lookup.resolve(await build.jobs.getJob('job-id'));
+    await nextTurn();
+    expect(build.workerInventory.hasUnstoppedWorkers).not.toHaveBeenCalled();
+    expect(build.jobs.markRunning).not.toHaveBeenCalled();
+  });
+
   it('publishes a newly built package against the checksum recorded before validation', async () => {
     const build = createQueuedBuild('14');
     build.cache.findVerified.mockResolvedValue(null);
@@ -320,6 +361,7 @@ const createQueuedBuild = (
   const rowFor = (id: string) => rows.get(id)!;
   const jobs = {
     failInterruptedJobs: jest.fn(),
+    createQueuedJob: jest.fn(async () => addJob('new-job')),
     findNextQueuedGappsJob: jest.fn(async () => {
       const next = [...rows.values()].find(({ status }) => status === 'queued');
       return next ? { ...next } : null;
@@ -417,6 +459,7 @@ const createQueuedBuild = (
   const service = new ContainerImageGappsBuilderService(
     jobService,
     {
+      list: async () => ({ resources: { canBuild: true } }),
       getPreset: (androidVersion: string) => ({
         androidVersion,
         sourceBranch: 'fixture',
@@ -429,7 +472,7 @@ const createQueuedBuild = (
     archive as never,
     images as never,
     metadata as never,
-    {} as never,
+    { assertEnabled: jest.fn() } as never,
     lifecycle,
   );
 
