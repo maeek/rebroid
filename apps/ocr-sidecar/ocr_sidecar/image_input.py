@@ -4,6 +4,7 @@ import asyncio
 import base64
 import binascii
 import io
+import re
 from threading import BoundedSemaphore
 
 from PIL import Image
@@ -14,6 +15,7 @@ from starlette.requests import Request
 from .config import Settings
 
 _IMAGE_FORMATS = {"image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WEBP"}
+_BASE64_PARAMETER = re.compile(r";base64(?=[;,])", re.ASCII | re.IGNORECASE)
 _JSON_OVERHEAD_BYTES = 4096
 
 
@@ -96,24 +98,27 @@ async def _read_body(request: Request, max_encoded_bytes: int) -> bytearray:
 def decode_image(payload: OcrRequest, config: Settings) -> Image.Image:
     encoded = payload.imageBase64
     declared_type = payload.mediaType
+    start = 0
     if payload.dataUrl is not None:
         if encoded is not None:
             raise ImagePayloadError("Provide one image payload.")
-        if "," not in payload.dataUrl or not payload.dataUrl.startswith("data:"):
+        encoded = payload.dataUrl
+        comma = encoded.find(",")
+        if comma < 0 or not encoded.startswith("data:"):
             raise ImagePayloadError("Invalid data URL.")
-        metadata, encoded = payload.dataUrl[5:].split(",", 1)
-        declared_type, *parameters = metadata.lower().split(";")
-        if "base64" not in parameters:
+        start = comma + 1
+        if not _BASE64_PARAMETER.search(encoded, 5, start):
             raise ImagePayloadError("Image data URL must use base64 encoding.")
-    if not encoded:
+        declared_type = encoded[5:encoded.index(";", 5, comma)].lower()
+    if not encoded or start == len(encoded):
         raise ImagePayloadError("Missing image payload.")
     image_format = _IMAGE_FORMATS.get(declared_type or "")
     if image_format is None:
         raise ImagePayloadError("Unsupported image media type.")
-    if len(encoded) > config.max_encoded_bytes:
+    if len(encoded) - start > config.max_encoded_bytes:
         raise ImageLimitExceeded("Encoded image payload is too large.")
     try:
-        raw = base64.b64decode(encoded, validate=True)
+        raw = base64.b64decode(encoded[start:], validate=True)
     except (binascii.Error, ValueError) as exc:
         raise ImagePayloadError("Invalid base64 image.") from exc
     if len(raw) > config.max_decoded_bytes:

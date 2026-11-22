@@ -56,3 +56,14 @@ def test_decode_rejects_media_type_malformed_data_and_pixel_limit():
         decode_image(OcrRequest(dataUrl="data:text/plain;base64,SGVsbG8="), config)
     with pytest.raises(ImagePayloadError, match="pixel limit"):
         decode_image(OcrRequest(dataUrl=image_data_url()), config)
+
+
+def test_data_url_checks_the_encoded_length_and_accepts_a_complete_base64_parameter():
+    encoded = image_data_url(8, 8).split(",", 1)[1]
+    config = Settings("en", 0.4, 1600, len(encoded), 1000, 100, 1)
+    data_url = "data:IMAGE/PNG;charset=utf-8;BASE64;extra," + encoded
+    assert decode_image(OcrRequest(dataUrl=data_url), config).size == (8, 8)
+    with pytest.raises(ImagePayloadError, match="payload is too large"):
+        decode_image(OcrRequest(dataUrl=data_url + "A"), config)
+    with pytest.raises(ImagePayloadError, match="must use base64"):
+        decode_image(OcrRequest(dataUrl=data_url.replace(";BASE64;", ";BASE64x;")), config)
