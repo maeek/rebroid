@@ -2,12 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DockerEngineService } from '../../docker-engine.service';
 import { DockerSidecarService } from '../../sidecar/services/docker-sidecar.service';
 import { ServiceHealth } from '../../docker.types';
-import {
-  isRootlessContainerEngine,
-  readFirstBoolean,
-  readFirstString,
-  readStringArray,
-} from '../utils/docker-health.utils';
+import { assessRuntimeSuitability } from '../utils/runtime-suitability';
 import type { DockerHealthPort } from '../../contracts/docker-health.port';
 
 @Injectable()
@@ -39,82 +34,7 @@ export class DockerHealthService implements DockerHealthPort {
 
   async runtimeSuitabilityHealth(): Promise<ServiceHealth> {
     try {
-      const info = await this.engine.info();
-      const securityOptions = readStringArray(info, ['SecurityOptions']);
-      const graphRoot = readFirstString(info, [
-        ['DockerRootDir'],
-        ['Store', 'GraphRoot'],
-        ['store', 'graphRoot'],
-      ]);
-      const cgroupVersion = readFirstString(info, [
-        ['CgroupVersion'],
-        ['Host', 'CgroupVersion'],
-        ['host', 'cgroupVersion'],
-      ]);
-      const cgroupManager = readFirstString(info, [
-        ['CgroupDriver'],
-        ['Host', 'CgroupManager'],
-        ['host', 'cgroupManager'],
-      ]);
-      const memoryLimit = readFirstBoolean(info, [
-        ['MemoryLimit'],
-        ['Host', 'MemoryLimit'],
-        ['host', 'memoryLimit'],
-      ]);
-      const operatingSystem = readFirstString(info, [['OperatingSystem']]);
-      const osType = readFirstString(info, [['OSType']]);
-      const architecture = readFirstString(info, [['Architecture']]);
-      const kernelVersion = readFirstString(info, [['KernelVersion']]);
-      const rootless = isRootlessContainerEngine(info);
-      const details = {
-        rootless,
-        operatingSystem,
-        osType,
-        architecture,
-        kernelVersion,
-        graphRoot,
-        cgroupVersion,
-        cgroupManager,
-        memoryLimit,
-        securityOptions: securityOptions.join(', ') || null,
-      };
-
-      if (rootless) {
-        return {
-          ok: false,
-          status: 'unhealthy',
-          message:
-            'Container engine is rootless. Redroid needs a rootful privileged Docker-compatible engine.',
-          details,
-        };
-      }
-
-      if (memoryLimit === false) {
-        return {
-          ok: false,
-          status: 'unhealthy',
-          message:
-            'Container engine reports that memory limits are unavailable. Disable app memory limits or fix host cgroups before starting redroid.',
-          details,
-        };
-      }
-
-      if (operatingSystem?.toLowerCase().includes('docker desktop')) {
-        return {
-          ok: false,
-          status: 'unhealthy',
-          message:
-            'Docker Desktop runs containers inside a VM. Redroid usually needs a native Linux host with binder devices exposed to a rootful privileged engine.',
-          details,
-        };
-      }
-
-      return {
-        ok: true,
-        status: 'healthy',
-        message: 'Container runtime is suitable for privileged app containers.',
-        details,
-      };
+      return assessRuntimeSuitability(await this.engine.info());
     } catch (error) {
       return {
         ok: false,
