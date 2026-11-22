@@ -21,6 +21,7 @@ const assertMultipartUpload = (request: MultipartUploadRequest) => {
 
 interface SingleFileUploadOptions<Result> {
   request: MultipartUploadRequest;
+  signal?: AbortSignal;
   fieldName: string;
   maxBytes: number;
   missingError: () => Error;
@@ -35,6 +36,7 @@ interface SingleFileUploadOptions<Result> {
 
 export const consumeSingleFileUpload = <Result>({
   request,
+  signal,
   fieldName,
   maxBytes,
   missingError,
@@ -42,6 +44,7 @@ export const consumeSingleFileUpload = <Result>({
   canceledError,
   consume,
 }: SingleFileUploadOptions<Result>) => {
+  signal?.throwIfAborted();
   assertMultipartUpload(request);
   const parser = Busboy({
     headers: request.headers,
@@ -49,8 +52,11 @@ export const consumeSingleFileUpload = <Result>({
     limits: { files: 1, fileSize: maxBytes + 1 },
   });
 
+  let upload: Promise<Result> | null = null;
+  const inputCanceled = () => {
+    parser.destroy(canceledError());
+  };
   return new Promise<Result>((resolve, reject) => {
-    let upload: Promise<Result> | null = null;
     const stop = (error: Error) => {
       reject(error);
       request.unpipe(parser);
@@ -75,7 +81,8 @@ export const consumeSingleFileUpload = <Result>({
       upload.catch(stop);
     });
     parser.on('error', stop);
-    request.on('aborted', () => stop(canceledError()));
+    request.on('aborted', inputCanceled);
+    signal?.addEventListener('abort', inputCanceled, { once: true });
     request.on('error', stop);
     parser.on('finish', () => {
       if (!upload) {
@@ -85,5 +92,10 @@ export const consumeSingleFileUpload = <Result>({
       upload.then(resolve, reject);
     });
     request.pipe(parser);
+  }).finally(async () => {
+    signal?.removeEventListener('abort', inputCanceled);
+    request.off('aborted', inputCanceled);
+    // A rejected request may still own an in-flight write and its staged file.
+    await upload?.catch(() => undefined);
   });
 };

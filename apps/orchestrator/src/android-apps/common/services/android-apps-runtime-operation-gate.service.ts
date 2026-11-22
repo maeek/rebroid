@@ -58,37 +58,51 @@ export class AndroidAppsRuntimeOperationGate {
   ): Promise<T> {
     signal?.throwIfAborted();
     const id = expected.id;
+    return this.withApplicationOperation(
+      id,
+      async () => {
+        signal?.throwIfAborted();
+        const current = await this.queries.getStored(id);
+        signal?.throwIfAborted();
+        if (
+          this.interrupting.has(id) ||
+          !current.containerId ||
+          current.status !== AndroidApplicationStatus.Running ||
+          workflowRuntimeKey(expected) !== workflowRuntimeKey(current)
+        ) {
+          throw this.runtimeChanged();
+        }
+        const observed = await this.observeContainer(current, signal);
+        signal?.throwIfAborted();
+        if (this.interrupting.has(id) || !observed) {
+          throw this.runtimeChanged();
+        }
+        if (!observed.running) {
+          throw new AndroidRuntimeNotRunningError(
+            this.runtimeChanged().message,
+          );
+        }
+        const { containerStartedAt, managedAdbHost } = observed;
+        if (!containerStartedAt) {
+          throw this.runtimeChanged();
+        }
+        return operation({ ...current, containerStartedAt }, managedAdbHost);
+      },
+      cancel,
+    );
+  }
+
+  async withApplicationOperation<T>(
+    id: string,
+    operation: () => Promise<T>,
+    cancel?: () => void,
+  ): Promise<T> {
     if (this.interrupting.has(id)) {
       throw new ConflictException('An Android runtime change is in progress.');
     }
 
     const active = this.operations.get(id) ?? new Set<Promise<unknown>>();
-    const pending = Promise.resolve().then(async () => {
-      signal?.throwIfAborted();
-      const current = await this.queries.getStored(id);
-      signal?.throwIfAborted();
-      if (
-        this.interrupting.has(id) ||
-        !current.containerId ||
-        current.status !== AndroidApplicationStatus.Running ||
-        workflowRuntimeKey(expected) !== workflowRuntimeKey(current)
-      ) {
-        throw this.runtimeChanged();
-      }
-      const observed = await this.observeContainer(current, signal);
-      signal?.throwIfAborted();
-      if (this.interrupting.has(id) || !observed) {
-        throw this.runtimeChanged();
-      }
-      if (!observed.running) {
-        throw new AndroidRuntimeNotRunningError(this.runtimeChanged().message);
-      }
-      const { containerStartedAt, managedAdbHost } = observed;
-      if (!containerStartedAt) {
-        throw this.runtimeChanged();
-      }
-      return operation({ ...current, containerStartedAt }, managedAdbHost);
-    });
+    const pending = Promise.resolve().then(operation);
     active.add(pending);
     this.operations.set(id, active);
     const cancellations = this.cancellations.get(id) ?? new Set();

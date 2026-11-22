@@ -20,9 +20,11 @@ export class RuntimeUploadStreamService {
       stream: Readable,
       originalName: string,
     ) => Promise<ApplicationRuntimeFileUploadDto>,
+    signal?: AbortSignal,
   ) {
     return consumeSingleFileUpload({
       request,
+      signal,
       fieldName: 'file',
       maxBytes: this.maxUploadBytes,
       missingError: () => new ConflictException('A file upload is required.'),

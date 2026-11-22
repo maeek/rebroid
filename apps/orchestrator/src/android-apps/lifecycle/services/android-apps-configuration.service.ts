@@ -1,3 +1,4 @@
+import { assertMutableApplication } from '../../common/utils/mutable-application';
 import {
   BadRequestException,
   ConflictException,
@@ -292,7 +293,7 @@ export class AndroidAppsConfigurationService {
 
   async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
     const current = await this.reconciler.reconcileById(id);
-    this.assertMutable(current);
+    assertMutableApplication(current);
     const app = await this.apks.withReference(
       dto.uploadedApkId,
       async (uploadedApk) => {
@@ -337,19 +338,8 @@ export class AndroidAppsConfigurationService {
 
   private async getAppForProfileChange(id: string) {
     const app = await this.reconciler.reconcileById(id);
-    this.assertMutable(app);
+    assertMutableApplication(app);
     await this.transitions.assertNoRecreation(id);
     return app;
-  }
-
-  private assertMutable(app: AndroidApplication) {
-    if (app.status === AndroidApplicationStatus.Removing) {
-      throw new ConflictException(
-        'Cannot update an application being removed.',
-      );
-    }
-    if (app.status === AndroidApplicationStatus.Removed) {
-      throw new ConflictException('Removed applications cannot be updated.');
-    }
   }
 }
