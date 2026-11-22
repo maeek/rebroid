@@ -4,12 +4,7 @@ import { Repository } from 'typeorm';
 import { CreateContainerImageRecipeDto } from '../dto/container-image-build.dto';
 import { ContainerImageBuildRecipe } from '../entities/container-image-build-recipe.entity';
 
-const cleanNullable = (value: string | null | undefined) => {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-};
-
-const idsJson = (ids: string[] | undefined) => JSON.stringify(ids ?? []);
+import { buildRuntimeMetadata } from '../utils/container-image-build-metadata';
 
 @Injectable()
 export class ContainerImageRecipeService {
@@ -28,13 +23,9 @@ export class ContainerImageRecipeService {
         name: dto.name.trim(),
         targetImage: dto.targetImage.trim(),
         baseImage: dto.baseImage.trim(),
-        runtimeKind: dto.runtimeKind ?? 'redroid',
-        androidVersion: cleanNullable(dto.androidVersion),
-        architecture: cleanNullable(dto.architecture),
-        gmsMode: dto.gmsMode ?? 'microg',
-        signatureSpoofing: dto.signatureSpoofing ?? 'external_required',
+        ...buildRuntimeMetadata(dto),
         dockerfile: dto.dockerfile,
-        contextFileIdsJson: idsJson(dto.contextFileIds),
+        contextFileIdsJson: JSON.stringify(dto.contextFileIds ?? []),
       }),
     );
   }

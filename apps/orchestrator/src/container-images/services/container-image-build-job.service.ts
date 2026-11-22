@@ -4,10 +4,7 @@ import { In, Repository } from 'typeorm';
 import { getErrorMessage } from '../../common/error-message';
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import type { ContainerImageBuildStatus } from '../entities/container-image-build-status';
-import type {
-  ContainerImageBuildKind,
-  ContainerImageGappsBuildPhase,
-} from '../entities/container-image-gapps-build';
+import type { ContainerImageBuildKind } from '../entities/container-image-gapps-build';
 
 type QueuedImageBuildJobInput = Pick<
   ContainerImageBuildJob,
@@ -23,7 +20,6 @@ type QueuedImageBuildJobInput = Pick<
   contextFileIds: string[];
   recipeId: string | null;
   buildKind?: ContainerImageBuildKind;
-  phase?: ContainerImageGappsBuildPhase;
 };
 
 const unfinishedStatuses: ContainerImageBuildStatus[] = ['queued', 'running'];
@@ -128,32 +124,12 @@ export class ContainerImageBuildJobService {
     return terminalStatuses.includes(status);
   }
 
-  createQueuedJob(input: QueuedImageBuildJobInput) {
+  createQueuedJob({ contextFileIds, ...definition }: QueuedImageBuildJobInput) {
     return this.jobs.save(
       this.jobs.create({
-        recipeId: input.recipeId,
-        targetImage: input.targetImage,
-        baseImage: input.baseImage,
-        status: 'queued',
-        buildKind: input.buildKind ?? 'dockerfile_overlay',
-        phase: input.phase ?? 'queued',
-        runtimeKind: input.runtimeKind,
-        androidVersion: input.androidVersion,
-        architecture: input.architecture,
-        gmsMode: input.gmsMode,
-        signatureSpoofing: input.signatureSpoofing,
-        resolvedBaseDigest: null,
-        mindTheGappsRevision: null,
-        packageSha256: null,
-        cacheState: 'not_applicable',
-        validationResults: {},
-        dockerfile: input.dockerfile,
-        contextFileIdsJson: JSON.stringify(input.contextFileIds),
+        ...definition,
+        contextFileIdsJson: JSON.stringify(contextFileIds),
         logTail: 'Build queued.',
-        imageId: null,
-        error: null,
-        startedAt: null,
-        finishedAt: null,
       }),
     );
   }

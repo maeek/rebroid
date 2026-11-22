@@ -22,10 +22,7 @@ import {
 import { validateContainerImageBuildReference } from '../utils/container-image-reference';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
-const cleanNullable = (value: string | null | undefined) => {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-};
+import { buildRuntimeMetadata } from '../utils/container-image-build-metadata';
 
 @Injectable()
 export class ContainerImageBuilderService {
@@ -65,30 +62,17 @@ export class ContainerImageBuilderService {
       dto.baseImage,
       'Base image',
     );
-    const runtimeKind = dto.runtimeKind ?? 'redroid';
-    const metadata = {
-      runtimeKind,
-      androidVersion: cleanNullable(dto.androidVersion),
-      architecture: cleanNullable(dto.architecture),
-      gmsMode: dto.gmsMode ?? (runtimeKind === 'redroid' ? 'microg' : 'none'),
-      signatureSpoofing:
-        dto.signatureSpoofing ??
-        (runtimeKind === 'redroid' ? 'external_required' : 'not_applicable'),
-    };
+    const metadata = buildRuntimeMetadata(dto);
     const dockerfile = dockerfileWithRequiredLabels(
       dto.dockerfile,
       requiredRuntimeImageLabels(metadata),
     );
     const contextFileIds = dto.contextFileIds ?? [];
     const job = await this.jobs.createQueuedJob({
-      recipeId: cleanNullable(dto.recipeId),
+      recipeId: dto.recipeId?.trim() || null,
       targetImage,
       baseImage,
-      runtimeKind: metadata.runtimeKind,
-      androidVersion: metadata.androidVersion,
-      architecture: metadata.architecture,
-      gmsMode: metadata.gmsMode,
-      signatureSpoofing: metadata.signatureSpoofing,
+      ...metadata,
       dockerfile,
       contextFileIds,
     });

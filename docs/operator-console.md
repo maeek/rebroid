@@ -243,7 +243,9 @@ deleted. Active runs and ad hoc AI conversations are outside its scope.
 
 ## Image build maintenance
 
-Each image builder shows the latest job for its build kind.
+Each image builder shows the latest job for its build kind. Saved Dockerfile recipes and direct builds
+use the same metadata defaults. Redroid defaults to microG and external signature spoofing.
+Generic images default to no Google Mobile Services and mark signature spoofing as inapplicable.
 On restart, the orchestrator marks interrupted Dockerfile builds and running GApps builds as failed.
 Queued GApps builds remain eligible to run.
 **Cancel** returns after the job status is recorded. The build may still be releasing its

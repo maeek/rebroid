@@ -115,7 +115,6 @@ export class ContainerImageGappsBuilderService
       dockerfile,
       contextFileIds: [],
       buildKind: 'redroid_gapps_patch',
-      phase: 'queued',
     });
     this.scheduleDrain();
     return job;

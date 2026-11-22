@@ -4,6 +4,8 @@ import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-dat
 import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import { ContainerImageBuildRecipe } from '../entities/container-image-build-recipe.entity';
+import { ContainerImageBuilderService } from './container-image-builder.service';
+import { ContainerImageRecipeService } from './container-image-recipe.service';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
 
 const openDatabase = () =>
@@ -55,6 +57,68 @@ describe('ContainerImageBuildJobService', () => {
           validationResults: {},
         },
       );
+    } finally {
+      await database.destroy();
+    }
+  });
+
+  it('uses the same runtime defaults for a saved recipe and its queued build', async () => {
+    const database = await openDatabase();
+    try {
+      const recipes = new ContainerImageRecipeService(
+        database.getRepository(ContainerImageBuildRecipe),
+      );
+      const jobs = new ContainerImageBuildJobService(
+        database.getRepository(ContainerImageBuildJob),
+      );
+      const builder = new ContainerImageBuilderService(
+        jobs,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        { assertEnabled: jest.fn() } as never,
+        { run: jest.fn().mockResolvedValue(undefined) } as never,
+      );
+      const definition = {
+        name: 'Test',
+        targetImage: 'test:target',
+        baseImage: 'test:base',
+        dockerfile: 'FROM test:base',
+        architecture: ' amd64 ',
+        androidVersion: '  ',
+      };
+      for (const runtimeKind of ['redroid', 'generic'] as const) {
+        const expected = {
+          runtimeKind,
+          architecture: 'amd64',
+          androidVersion: null,
+          gmsMode: runtimeKind === 'redroid' ? 'microg' : 'none',
+          signatureSpoofing:
+            runtimeKind === 'redroid' ? 'external_required' : 'not_applicable',
+        };
+        const recipe = await recipes.create({ ...definition, runtimeKind });
+        const job = await builder.startBuild({
+          ...definition,
+          runtimeKind,
+          recipeId: recipe.id,
+        });
+        expect(recipe).toMatchObject(expected);
+        expect(job).toMatchObject({
+          ...expected,
+          recipeId: recipe.id,
+          status: 'queued',
+          phase: 'queued',
+          buildKind: 'dockerfile_overlay',
+          imageId: null,
+          error: null,
+          packageSha256: null,
+          cacheState: 'not_applicable',
+          validationResults: {},
+          logTail: 'Build queued.',
+        });
+        expect(await jobs.getJob(job.id)).toEqual(job);
+      }
     } finally {
       await database.destroy();
     }
