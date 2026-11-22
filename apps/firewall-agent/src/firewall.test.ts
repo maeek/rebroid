@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validatePolicy } from "@rebroid/firewall-policy-core/policy";
+import {
+  validatePolicy,
+  type FirewallPolicy,
+} from "@rebroid/firewall-policy-core/policy";
 import { IptablesAdapter, type FirewallCommandRunner } from "./firewall";
 import {
   mkdtempSync,
@@ -12,6 +15,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { FirewallPolicyCommands } from "./policy-commands";
 import { FirewallPolicyStore } from "./policy-store";
 
 test("a failed iptables restore leaves the previously committed rules alone", () => {
@@ -214,4 +218,38 @@ test("a rejected policy commit keeps durable state and other staging files intac
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("retrying a bulk operation preserves the caller's original policy inventory", (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-retry-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const store = new FirewallPolicyStore(join(directory, "state.json"));
+  let reject = false;
+  const { commands } = FirewallPolicyCommands.restore(store, () => ({
+    name: "fake",
+    reconcile() {
+      if (reject) throw new Error("adapter unavailable");
+    },
+  }));
+  assert.ok(commands);
+  const policy: FirewallPolicy = {
+    applicationId: "app-1",
+    containerId: "container-1",
+    containerIp: "10.0.0.2",
+    generation: 1,
+    enabled: true,
+    allowCidrs: [],
+  };
+  const desired = new Map([[policy.applicationId, policy]]);
+  reject = true;
+  assert.throws(() => commands.reconcile(desired, 10), /adapter unavailable/);
+  assert.strictEqual(desired.get(policy.applicationId), policy);
+  assert.equal(store.snapshot().policies.size, 0);
+  reject = false;
+  assert.equal(commands.reconcile(desired, 20), "applied");
+  assert.strictEqual(desired.get(policy.applicationId), policy);
+  assert.equal(
+    store.snapshot().policies.get(policy.applicationId)?.generation,
+    20,
+  );
 });

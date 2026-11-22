@@ -49,12 +49,13 @@ export class FirewallPolicyCommands {
     }
   }
 
-  reconcile(desired: Map<string, FirewallPolicy>, startedAt: number) {
+  reconcile(desired: ReadonlyMap<string, FirewallPolicy>, startedAt: number) {
     const state = this.currentState();
     if (state.lastReconciledAt !== null && startedAt < state.lastReconciledAt) {
       return "stale";
     }
 
+    const policies = new Map<string, FirewallPolicy>();
     for (const [id, policy] of desired) {
       const existing = state.policies.get(id);
       const newerRevisionForSameRuntime =
@@ -67,19 +68,23 @@ export class FirewallPolicyCommands {
           existing &&
           existing.generation >= startedAt)
       ) {
-        if (existing) desired.set(id, existing);
-        else desired.delete(id);
-      } else if (startedAt !== policy.generation) {
-        desired.set(id, { ...policy, generation: startedAt });
+        if (existing) policies.set(id, existing);
+        continue;
       }
+      policies.set(
+        id,
+        policy.generation === startedAt
+          ? policy
+          : { ...policy, generation: startedAt },
+      );
     }
     for (const [id, policy] of state.policies) {
       if (
         policy.startup ||
         state.policies.get(`startup-${id}`)?.startup ||
-        (!desired.has(id) && policy.generation >= startedAt)
+        (!policies.has(id) && policy.generation >= startedAt)
       ) {
-        desired.set(id, policy);
+        policies.set(id, policy);
       }
     }
     state.lastReconciledAt = startedAt;
@@ -88,8 +93,8 @@ export class FirewallPolicyCommands {
       if (removedAt < startedAt) state.removals.delete(id);
     }
 
-    state.policies = desired;
-    for (const { applicationId, revision } of desired.values()) {
+    state.policies = policies;
+    for (const { applicationId, revision } of policies.values()) {
       if (revision !== undefined) {
         state.revisions.set(
           applicationId,
