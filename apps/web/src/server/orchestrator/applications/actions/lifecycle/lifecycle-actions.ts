@@ -10,8 +10,7 @@ import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
-import { getEnforcedResourceQuota } from '../../resource-quota'
-import { enforceResourceQuotas, enforceSessionQuota } from '../../safety'
+import { enforceRuntimeQuotas } from '../../resource-quota'
 import {
   assertCanUseOwnedApplicationRuntime,
   getAccessibleApplication,
@@ -41,9 +40,7 @@ export const requestApplicationStartAction = async (id: string, input?: SwitchAp
           status: 403
         })
       }
-      const quotas = await getEnforcedResourceQuota(user.quotas)
-      enforceResourceQuotas(currentApp.runtime.resources, quotas)
-      enforceSessionQuota({ inactivityTimeoutSeconds: currentApp.runtime.inactivityTimeoutSeconds }, quotas)
+      await enforceRuntimeQuotas(currentApp.runtime, user.quotas)
       const command = await orchestratorAppLifecycleClient.startApplication(id, input, user.quotas.maxOpenApps)
       recordApplicationAudit(
         user.ownerUserId,
@@ -102,9 +99,7 @@ export const recreateApplicationAction = async (id: string) =>
           status: 403
         })
       }
-      const quotas = await getEnforcedResourceQuota(user.quotas)
-      enforceResourceQuotas(app.runtime.resources, quotas)
-      enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, quotas)
+      await enforceRuntimeQuotas(app.runtime, user.quotas)
       const command = await orchestratorAppLifecycleClient.recreateApplication(id, user.quotas.maxOpenApps)
       recordApplicationAudit(user.ownerUserId, 'application.recreate', { id, name: command.name })
       revalidateApplicationList()

@@ -9,8 +9,7 @@ import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
-import { getEnforcedResourceQuota } from '../../resource-quota'
-import { enforceResourceQuotas, enforceSessionQuota } from '../../safety'
+import { enforceRuntimeQuotas } from '../../resource-quota'
 import { getAccessibleApplication } from '../common/action-helpers'
 
 export const requestApplicationCloneAction = async (id: string) =>
@@ -27,9 +26,7 @@ export const requestApplicationCloneAction = async (id: string) =>
         })
       }
 
-      const quotas = await getEnforcedResourceQuota(user.quotas)
-      enforceResourceQuotas(source.runtime.resources, quotas)
-      enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, quotas)
+      await enforceRuntimeQuotas(source.runtime, user.quotas)
       const command = await orchestratorAppCatalogClient.cloneApplication(
         id,
         {
