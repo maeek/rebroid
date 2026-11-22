@@ -1,5 +1,12 @@
 import { ConfigService } from '@nestjs/config';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  rm,
+  utimes,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applicationLogMaxBytes } from '../utils/application-log-tail';
@@ -39,5 +46,27 @@ describe('bounded application lifecycle log tails', () => {
     );
     await writeFile(join(directory, 'empty.log'), '');
     await expect(logs.read('empty', 1)).resolves.toBe('');
+  });
+
+  it('cleans up expired regular logs alongside similarly named directories', async () => {
+    const old = new Date(0);
+    const expired = join(directory, 'expired.log');
+    const subdirectory = join(directory, 'archive.log');
+    await writeFile(expired, 'expired');
+    await mkdir(subdirectory);
+    await utimes(expired, old, old);
+    await utimes(subdirectory, old, old);
+    await logs.append('active', 'Updated', {
+      status: 'running',
+      detail: undefined,
+    });
+    await expect(logs.cleanup(30)).resolves.toEqual({ removedFiles: 1 });
+    expect((await readdir(directory)).sort()).toEqual([
+      'active.log',
+      'archive.log',
+    ]);
+    await expect(logs.read('active')).resolves.toContain(
+      'Updated {"status":"running"}',
+    );
   });
 });

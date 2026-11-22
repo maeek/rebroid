@@ -1,7 +1,7 @@
 import { constants } from 'node:fs';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { appendFile, mkdir, readdir, open, rm, stat } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, open, rm, lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getErrorMessage } from '../../../common/error-message';
 import type { AndroidAppsRuntimeLogMaintenancePort } from '../../contracts/android-apps-runtime-log-maintenance.port';
@@ -27,8 +27,8 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
   private readonly logger = new Logger(AndroidAppsLogService.name);
   private readonly logDir: string;
 
-  constructor(private readonly config: ConfigService) {
-    this.logDir = this.config.getOrThrow<string>('app.runtimeLogsDir');
+  constructor(config: ConfigService) {
+    this.logDir = config.getOrThrow<string>('app.runtimeLogsDir');
   }
 
   /** Writes one event line to the app log file. */
@@ -70,37 +70,32 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
   async read(applicationId: string, tail = 300) {
     try {
       const lineLimit = normalizeApplicationLogTail(tail);
-      const file = await open(
+      await using file = await open(
         this.logPath(applicationId),
         constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
       );
-      try {
-        const stats = await file.stat();
-        if (!stats.isFile()) return 'Application event log is unavailable.';
-        const notice = '[Older log output omitted by the byte limit.]';
-        const clipped = stats.size > applicationLogMaxBytes;
-        const start = clipped
-          ? stats.size - applicationLogMaxBytes + Buffer.byteLength(notice)
-          : 0;
-        const buffer = Buffer.alloc(stats.size - start);
-        const { bytesRead } = await file.read(buffer, 0, buffer.length, start);
-        const firstBreak = clipped
-          ? buffer.subarray(0, bytesRead).indexOf(0x0a)
-          : -1;
-        const firstLine =
-          clipped && firstBreak < 0 ? bytesRead : firstBreak + 1;
-        const lines = buffer
-          .toString('utf-8', firstLine, bytesRead)
-          .split('\n')
-          .filter(Boolean);
-        const output = lines.slice(-lineLimit).join('\n');
-        if (clipped && lines.length < lineLimit) {
-          return output ? `${notice}\n${output}` : notice;
-        }
-        return output;
-      } finally {
-        await file.close();
+      const stats = await file.stat();
+      if (!stats.isFile()) return 'Application event log is unavailable.';
+      const notice = '[Older log output omitted by the byte limit.]';
+      const clipped = stats.size > applicationLogMaxBytes;
+      const start = clipped
+        ? stats.size - applicationLogMaxBytes + Buffer.byteLength(notice)
+        : 0;
+      const buffer = Buffer.alloc(stats.size - start);
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, start);
+      const firstBreak = clipped
+        ? buffer.subarray(0, bytesRead).indexOf(0x0a)
+        : -1;
+      const firstLine = clipped && firstBreak < 0 ? bytesRead : firstBreak + 1;
+      const lines = buffer
+        .toString('utf-8', firstLine, bytesRead)
+        .split('\n')
+        .filter(Boolean);
+      const output = lines.slice(-lineLimit).join('\n');
+      if (clipped && lines.length < lineLimit) {
+        return output ? `${notice}\n${output}` : notice;
       }
+      return output;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return 'No orchestrator events have been recorded for this application yet.';
@@ -127,8 +122,8 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
       }
 
       const path = join(this.logDir, name);
-      const stats = await stat(path).catch(() => null);
-      if (!stats || stats.mtimeMs > cutoff) {
+      const stats = await lstat(path).catch(() => null);
+      if (!stats?.isFile() || stats.mtimeMs > cutoff) {
         continue;
       }
 
@@ -149,12 +144,7 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
 
   /** Turns one log event into a text line. */
   private formatLine(message: string, context?: unknown) {
-    const payload =
-      context === undefined
-        ? ''
-        : ` ${JSON.stringify(context, (_key, value) =>
-            value === undefined ? undefined : value,
-          )}`;
+    const payload = context === undefined ? '' : ` ${JSON.stringify(context)}`;
 
     return `${new Date().toISOString()} ${message}${payload}`;
   }
