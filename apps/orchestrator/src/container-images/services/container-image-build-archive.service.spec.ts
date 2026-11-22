@@ -1,4 +1,5 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import fs from 'node:fs';
+import { chmod, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
@@ -21,22 +22,6 @@ const contextFile = (
   sha256: 'sha256',
   createdAt: new Date(),
 });
-
-const readTarEntries = async (pack: Readable) =>
-  new Promise<string[]>((resolve, reject) => {
-    const extract = tar.extract();
-    const entries: string[] = [];
-
-    extract.on('entry', (header, stream, next) => {
-      entries.push(header.name);
-      stream.on('end', next);
-      stream.resume();
-    });
-    extract.on('finish', () => resolve(entries));
-    extract.on('error', reject);
-    pack.on('error', reject);
-    pack.pipe(extract);
-  });
 
 const readTarHeaders = async (pack: Readable) =>
   new Promise<tar.Header[]>((resolve, reject) => {
@@ -65,7 +50,7 @@ describe('ContainerImageBuildArchiveService', () => {
         contextFile(apkPath, 'apks/GmsCore.apk'),
       ]);
 
-      await expect(readTarEntries(pack)).resolves.toEqual([
+      expect((await readTarHeaders(pack)).map(({ name }) => name)).toEqual([
         'Dockerfile',
         'apks/GmsCore.apk',
       ]);
@@ -95,24 +80,70 @@ describe('ContainerImageBuildArchiveService', () => {
     }
   });
 
-  it('preserves explicit modes for generated context files', async () => {
+  it('closes the file being streamed when a build abandons the archive', async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), 'rebroid-abandoned-context-'),
+    );
+    const read = fs.createReadStream;
+    let source: fs.ReadStream | undefined;
+    const opened = new Promise<fs.ReadStream>((resolve) => {
+      jest.spyOn(fs, 'createReadStream').mockImplementation((...args) => {
+        source = read(...args);
+        source.once('open', () => resolve(source!));
+        return source;
+      });
+    });
+    try {
+      const path = join(directory, 'payload.bin');
+      await writeFile(path, Buffer.alloc(256 * 1024));
+      const archive = await createService().createTar('FROM scratch', [
+        contextFile(path, 'payload'),
+      ]);
+      archive.on('error', () => undefined);
+      const active = await opened;
+      const closed = new Promise<boolean>((resolve) =>
+        active.once('close', () => resolve(true)),
+      );
+      archive.destroy();
+      expect(
+        await Promise.race([closed, delay(2000, false, { ref: false })]),
+      ).toBe(true);
+    } finally {
+      source?.destroy();
+      jest.restoreAllMocks();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves source modes, symlinks and order in directory and filesystem contexts', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'rebroid-build-context-'));
     try {
-      const pack = createService().createDirectoryTar(
-        'FROM scratch',
-        directory,
-        {
-          entrypoint: {
-            content: Buffer.from('#!/bin/sh\n'),
-            mode: 0o755,
-          },
-        },
-      );
-
-      const headers = await readTarHeaders(pack);
-      expect(headers.find((header) => header.name === 'entrypoint')?.mode).toBe(
-        0o755,
-      );
+      const path = join(directory, 'entrypoint');
+      await writeFile(path, '#!/bin/sh\n');
+      await chmod(path, 0o755);
+      await symlink('entrypoint', join(directory, 'alias'));
+      const service = createService();
+      const tree = [
+        expect.objectContaining({
+          name: 'alias',
+          type: 'symlink',
+          linkname: 'entrypoint',
+        }),
+        expect.objectContaining({
+          name: 'entrypoint',
+          type: 'file',
+          mode: 0o755,
+        }),
+      ];
+      await expect(
+        readTarHeaders(service.createDirectoryTar('FROM scratch', directory)),
+      ).resolves.toEqual([
+        expect.objectContaining({ name: 'Dockerfile', mode: 0o644 }),
+        ...tree,
+      ]);
+      await expect(
+        readTarHeaders(service.createFilesystemTar(directory)),
+      ).resolves.toEqual(tree);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
