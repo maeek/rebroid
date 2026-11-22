@@ -234,8 +234,8 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
         disablePolicy: definition.disablePolicy,
         lifecycle: definition.lifecycle,
         removalCondition: definition.removalCondition,
-        dependencies: [...definition.dependencies],
-        conflicts: [...definition.conflicts],
+        dependencies: Object.freeze([...definition.dependencies]),
+        conflicts: Object.freeze([...definition.conflicts]),
       });
     }
     return Object.freeze({

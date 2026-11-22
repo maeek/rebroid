@@ -98,6 +98,11 @@ describe('FeatureFlagsService', () => {
     });
     service.markSynchronization('feature.display-webrtc', 0, 'applied');
     expect(service.isEnabled('feature.display-webrtc')).toBe(true);
+    for (const state of service.getManifest().features) {
+      expect(Object.isFrozen(state)).toBe(true);
+      expect(Object.isFrozen(state.dependencies)).toBe(true);
+      expect(Object.isFrozen(state.conflicts)).toBe(true);
+    }
     expect(
       service
         .getManifest()

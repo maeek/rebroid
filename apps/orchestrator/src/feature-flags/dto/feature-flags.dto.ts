@@ -64,10 +64,10 @@ export class FeatureFlagStateDto {
   removalCondition!: string | null;
 
   @ApiProperty({ enum: featureFlagKeys, isArray: true })
-  dependencies!: FeatureFlagKey[];
+  dependencies!: readonly FeatureFlagKey[];
 
   @ApiProperty({ enum: featureFlagKeys, isArray: true })
-  conflicts!: FeatureFlagKey[];
+  conflicts!: readonly FeatureFlagKey[];
 }
 
 export class FeatureFlagManifestDto {
