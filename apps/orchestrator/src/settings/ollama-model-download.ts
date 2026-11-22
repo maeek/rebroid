@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { readProviderJson } from '../common/ai-provider-http';
+import {
+  providerRequestHeaders,
+  readProviderJson,
+} from '../common/ai-provider-http';
 import { readProviderStreamFrames } from '../common/ai-provider-stream';
 
 type DownloadProgress = {
@@ -12,11 +15,12 @@ type DownloadProgress = {
 export async function downloadOllamaModel(
   endpoint: string,
   modelId: string,
+  apiKey: string | null,
   onProgress: (progress: DownloadProgress) => void,
 ) {
   const response = await fetch(`${endpoint}/api/pull`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: providerRequestHeaders({ apiKey }, { json: true }),
     signal: AbortSignal.timeout(30 * 60 * 1000),
     body: JSON.stringify({ name: modelId, stream: true }),
   });

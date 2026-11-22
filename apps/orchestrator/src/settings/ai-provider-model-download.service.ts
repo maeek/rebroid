@@ -75,7 +75,7 @@ export class AiProviderModelDownloadService {
     const download = { endpoint, job };
     this.active.set(job.id, download);
     const acknowledgement = { ...job };
-    void this.runDownload(download);
+    void this.runDownload(download, provider.apiKey ?? null);
     return acknowledgement;
   }
 
@@ -96,7 +96,12 @@ export class AiProviderModelDownloadService {
     return { ...job };
   }
 
-  private async runDownload({ job, endpoint }: ActiveDownload) {
+  private async runDownload(
+    { job, endpoint }: ActiveDownload,
+    apiKey: string | null,
+  ) {
+    const publicMessage = (message: string) =>
+      apiKey ? message.replaceAll(apiKey, '[redacted]') : message;
     this.updateDownload(job, {
       status: 'running',
       message: 'Starting Ollama model download.',
@@ -105,9 +110,10 @@ export class AiProviderModelDownloadService {
       await downloadOllamaModel(
         endpoint,
         job.modelId,
+        apiKey,
         ({ message, total, completed, percent }) => {
           this.updateDownload(job, {
-            message,
+            message: publicMessage(message),
             ...(total === undefined ? {} : { total }),
             ...(completed === undefined ? {} : { completed }),
             ...(percent === undefined ? {} : { percent }),
@@ -131,7 +137,7 @@ export class AiProviderModelDownloadService {
     } catch (error) {
       this.updateDownload(job, {
         status: 'failed',
-        message: aiProviderErrorMessage(error),
+        message: publicMessage(aiProviderErrorMessage(error)),
         finishedAt: new Date().toISOString(),
       });
     } finally {

@@ -6,12 +6,12 @@ import { AiProviderModelDownloadService } from './ai-provider-model-download.ser
 import { normalizeAiProvider } from './ai-provider-normalization';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 
-const setup = (response: Response) => {
+const setup = (response: Response, apiKey: string | null = null) => {
   global.fetch = jest.fn().mockResolvedValue(response);
   const store = {
     getStoredSettings: jest.fn(async () => ({
       aiProviders: [
-        { id: 'local', kind: 'ollama', baseUrl: 'http://ollama.test' },
+        { id: 'local', kind: 'ollama', baseUrl: 'http://ollama.test', apiKey },
       ],
     })),
     updateSettings: jest.fn().mockResolvedValue(undefined),
@@ -63,6 +63,41 @@ describe('AiProviderModelDownloadService', () => {
     });
     expect(service.listActive('local')).toEqual([]);
     expect(store.updateSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('authenticates downloads and removes echoed credentials from polling responses', async () => {
+    let stream!: ReadableStreamDefaultController<Uint8Array>;
+    const { service } = setup(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            stream = controller;
+          },
+        }),
+      ),
+      'fixture-key',
+    );
+    const job = await service.download('local', 'test-model');
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://ollama.test/api/pull',
+      expect.objectContaining({
+        headers: {
+          authorization: 'Bearer fixture-key',
+          'content-type': 'application/json',
+        },
+      }),
+    );
+    const encoder = new TextEncoder();
+    stream.enqueue(encoder.encode('{"status":"hello fixture-key"}\n'));
+    await setImmediate();
+    expect(service.listActive('local')[0].message).toBe('hello [redacted]');
+    stream.enqueue(encoder.encode('{"error":"rejected fixture-key"}\n'));
+    stream.close();
+    await setImmediate();
+    expect(service.get('local', job.id)).toMatchObject({
+      status: 'failed',
+      message: 'Ollama model download failed: rejected [redacted]',
+    });
   });
 
   it('preserves the existing default model roles on a repeated download', async () => {
