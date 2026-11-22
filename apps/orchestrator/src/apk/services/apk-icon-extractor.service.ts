@@ -11,7 +11,7 @@ import {
   ApkArchiveService,
   type ApkArchiveReader,
 } from './apk-archive.service';
-import { ApkIconSelectorService } from './apk-icon-selector.service';
+import { selectBestIconDataUrl } from '../utils/apk-icon-selection';
 import { ApkManifestReaderService } from './apk-manifest-reader.service';
 import { readApkResourceMetadata } from '../utils/apk-resource-metadata';
 
@@ -22,7 +22,6 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
 
   constructor(
     private readonly archive: ApkArchiveService,
-    private readonly iconSelector: ApkIconSelectorService,
     private readonly manifestReader: ApkManifestReaderService,
   ) {}
 
@@ -126,9 +125,8 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
     }
 
     if (!extractedIconDataUrl) {
-      extractedIconDataUrl = await this.iconSelector.selectBestIconDataUrl(
-        entries,
-        (candidate) => archive.readEntry(candidate.entry.name, maxIconBytes),
+      extractedIconDataUrl = await selectBestIconDataUrl(entries, (name) =>
+        archive.readEntry(name, maxIconBytes),
       );
     }
 

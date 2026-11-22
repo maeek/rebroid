@@ -15,7 +15,6 @@ import { ApkArchiveService } from './services/apk-archive.service';
 import { ApkCatalogService } from './services/apk-catalog.service';
 import { ApkIconExtractorService } from './services/apk-icon-extractor.service';
 import { ApkGooglePlayServicesAnalyzerService } from './services/apk-google-play-services-analyzer.service';
-import { ApkIconSelectorService } from './services/apk-icon-selector.service';
 import { ApkManifestReaderService } from './services/apk-manifest-reader.service';
 import { ApkStorageService } from './services/apk-storage.service';
 
@@ -35,7 +34,6 @@ import { ApkStorageService } from './services/apk-storage.service';
     ApkCatalogService,
     ApkIconExtractorService,
     ApkGooglePlayServicesAnalyzerService,
-    ApkIconSelectorService,
     ApkManifestReaderService,
     ApkStorageService,
     {
