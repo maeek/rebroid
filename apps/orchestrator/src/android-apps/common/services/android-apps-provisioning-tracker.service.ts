@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { waitForOperation } from '../../../common/wait-for-operation';
 
 @Injectable()
 export class AndroidAppsProvisioningTrackerService {
-  private readonly imageWaits = new Map<string, AbortController>();
   private readonly cancelledProvisioning = new Set<string>();
   private readonly runtimeWork = new Map<string, Set<AbortController>>();
 
@@ -18,7 +18,6 @@ export class AndroidAppsProvisioningTrackerService {
     for (const controller of this.runtimeWork.get(applicationId) ?? []) {
       controller.abort(reason);
     }
-    this.imageWaits.get(applicationId)?.abort(reason);
   }
 
   /** Withdraw queued work on cancellation, but let its owner drain admitted work. */
@@ -42,27 +41,13 @@ export class AndroidAppsProvisioningTrackerService {
     }
   }
 
-  async waitForImage(
+  waitForImage(
     applicationId: string,
     pull: (signal: AbortSignal) => Promise<void>,
   ) {
-    this.ensureActive(applicationId);
-    const controller = new AbortController();
-    this.imageWaits.set(applicationId, controller);
-    const { signal } = controller;
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const onAbort = () => reject(signal.reason);
-        signal.addEventListener('abort', onAbort, { once: true });
-        void pull(signal)
-          .then(resolve, reject)
-          .finally(() => {
-            signal.removeEventListener('abort', onAbort);
-          });
-      });
-    } finally {
-      this.imageWaits.delete(applicationId);
-    }
+    return this.withCancellation(applicationId, (signal) =>
+      waitForOperation(pull(signal), signal),
+    );
   }
 
   isCancelled(applicationId: string) {

@@ -1,6 +1,42 @@
 import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
 
 describe('Provisioning cancellation scopes', () => {
+  it('keeps every pending image waiter cancellable after an older pull completes', async () => {
+    const tracker = new AndroidAppsProvisioningTrackerService();
+    let complete!: () => void;
+    const first = tracker.waitForImage(
+      'app',
+      () =>
+        new Promise<void>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const signals: AbortSignal[] = [];
+    const wait = (signal: AbortSignal) => {
+      signals.push(signal);
+      return new Promise<void>(() => {});
+    };
+    const pending = Promise.allSettled([
+      tracker.waitForImage('app', wait),
+      tracker.waitForImage('app', wait),
+    ]);
+    const other = tracker.waitForImage('other', wait);
+    complete();
+    await first;
+    tracker.cancel('app');
+    expect(signals.map((signal) => signal.aborted)).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect(await pending).toEqual([
+      { status: 'rejected', reason: signals[0].reason },
+      { status: 'rejected', reason: signals[1].reason },
+    ]);
+    tracker.cancel('other');
+    await expect(other).rejects.toThrow('cancelled for other');
+  });
+
   it('cancels parallel branches but retains admitted work until it drains', async () => {
     const tracker = new AndroidAppsProvisioningTrackerService();
     let release!: () => void;
