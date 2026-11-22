@@ -1,6 +1,6 @@
 'use server'
 
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { orchestratorAppRuntimeClient } from '../../runtime-client'
@@ -15,14 +15,6 @@ export const captureApplicationScreenshotAction = async (id: string) => {
     })
   }
   const result = await orchestratorAppRuntimeClient.captureScreenshot(id)
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.screenshot.capture',
-    resourceType: 'application',
-    resourceId: id,
-    resourceLabel: app.name
-  })
+  recordApplicationAudit(user.ownerUserId, 'application.screenshot.capture', { id, name: app.name })
   return result
 }

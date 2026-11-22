@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { after } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cloneStoredAppIcon, removeStoredAppIcon } from '@/server/app-icons/store'
+import { recordAuditEvent } from '@/server/audit/events'
 import { runDueWebMaintenance } from '@/server/maintenance/web-maintenance'
 import { resetDatabaseForTests } from '@/server/persistence/database'
 import { listRecentApplications, rememberRecentApplication } from '@/server/persistence/recent-applications-repository'
@@ -96,6 +97,16 @@ describe('application lifecycle acknowledgements', () => {
     })
     await expect(deleteApplicationProfileAction(id, 'Work')).resolves.toMatchObject({ ok: true })
     expect(orchestratorAppLifecycleClient.deleteSavedProfile).toHaveBeenCalledExactlyOnceWith(id, 'Work')
+    expect(recordAuditEvent).toHaveBeenCalledExactlyOnceWith({
+      actorUserId: 'owner',
+      actorLabel: 'owner',
+      category: 'application',
+      action: 'application.profile.delete',
+      resourceType: 'application',
+      resourceId: id,
+      resourceLabel: 'App',
+      details: { profileName: 'Work' }
+    })
     expect(orchestratorAppCatalogClient.getApplication).toHaveBeenCalledTimes(1)
     expect(getCurrentUserContext).toHaveBeenCalledTimes(1)
   })

@@ -2,7 +2,7 @@
 
 import { runSafeAction } from '@/server/actions/safe-action'
 import { cloneStoredAppIcon } from '@/server/app-icons/store'
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { logger } from '@/server/observability/logger'
 import { isApplicationId } from '@/shared/model/application-id'
@@ -39,16 +39,7 @@ export const requestApplicationCloneAction = async (id: string) =>
         user
       )
       if (!isApplicationId(command.id)) throw new Error('The orchestrator returned an invalid application ID.')
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.clone',
-        resourceType: 'application',
-        resourceId: command.id,
-        resourceLabel: command.name,
-        details: { sourceApplicationId: id }
-      })
+      recordApplicationAudit(user.ownerUserId, 'application.clone', command, { sourceApplicationId: id })
       try {
         await cloneStoredAppIcon(id, command.id)
       } catch {

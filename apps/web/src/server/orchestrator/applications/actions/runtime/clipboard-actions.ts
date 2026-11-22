@@ -1,6 +1,6 @@
 'use server'
 
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { orchestratorAppRuntimeClient } from '../../runtime-client'
@@ -20,15 +20,11 @@ export const setApplicationClipboardAction = async (id: string, text: string) =>
     throw new PublicActionError('You do not have permission to sync clipboard.', { code: 'forbidden', status: 403 })
   }
   const result = await orchestratorAppRuntimeClient.setClipboard(id, text)
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.clipboard.write',
-    resourceType: 'application',
-    resourceId: id,
-    resourceLabel: app.name,
-    details: { length: text.length }
-  })
+  recordApplicationAudit(
+    user.ownerUserId,
+    'application.clipboard.write',
+    { id, name: app.name },
+    { length: text.length }
+  )
   return result
 }

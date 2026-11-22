@@ -1,7 +1,7 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
@@ -44,16 +44,7 @@ export const sendApplicationViewerControlAction = async (id: string, command: Ap
     })
   }
   const result = await orchestratorAppViewerClient.sendViewerControl(id, command)
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.viewer.control',
-    resourceType: 'application',
-    resourceId: id,
-    resourceLabel: app.name,
-    details: { command }
-  })
+  recordApplicationAudit(user.ownerUserId, 'application.viewer.control', { id, name: app.name }, { command })
   return result
 }
 

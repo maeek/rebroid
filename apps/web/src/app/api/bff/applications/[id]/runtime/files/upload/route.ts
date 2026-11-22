@@ -1,7 +1,7 @@
 import { runtimeFileUploadLimit } from '@rebroid/android-application-core/redroid-runtime'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { runRouteHandler } from '@/server/http/route-handler'
 import { parseRouteInput } from '@/server/http/route-input'
 import { orchestratorAppRuntimeClient } from '@/server/orchestrator/applications/runtime-client'
@@ -35,15 +35,11 @@ export const POST = (request: NextRequest, context: RouteContext) =>
       overwrite,
       request.signal
     )
-    recordAuditEvent({
-      actorUserId: user.ownerUserId,
-      actorLabel: user.ownerUserId,
-      category: 'application',
-      action: 'application.file.upload',
-      resourceType: 'application',
-      resourceId: id,
-      resourceLabel: app.name,
-      details: { path: uploaded.path, name: uploaded.name, type: uploaded.type, overwrite }
-    })
+    recordApplicationAudit(
+      user.ownerUserId,
+      'application.file.upload',
+      { id, name: app.name },
+      { path: uploaded.path, name: uploaded.name, type: uploaded.type, overwrite }
+    )
     return uploaded
   })

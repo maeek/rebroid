@@ -3,7 +3,7 @@
 import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { runSafeAction } from '@/server/actions/safe-action'
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import {
   unconfirmedAppCreationMessage,
@@ -125,16 +125,12 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
       const command = await orchestratorAppCatalogClient.updateApplication(id, update).catch((error: unknown) => {
         throw toUpdateApplicationError(error)
       })
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.update',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: command.name,
-        details: { fields: Object.keys(input) }
-      })
+      recordApplicationAudit(
+        user.ownerUserId,
+        'application.update',
+        { id, name: command.name },
+        { fields: Object.keys(input) }
+      )
       revalidateApplicationDetail(id)
       revalidateApplicationList()
       const app = await orchestratorAppCatalogClient.getApplication(id)
@@ -200,15 +196,7 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
       if (!isApplicationId(command?.id)) {
         throw new PublicActionError(unconfirmedAppCreationMessage, { code: 'upstream_error', status: 502 })
       }
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.create',
-        resourceType: 'application',
-        resourceId: command.id,
-        resourceLabel: command.name
-      })
+      recordApplicationAudit(user.ownerUserId, 'application.create', command)
       revalidateApplicationList()
       return { id: command.id }
     },
@@ -232,16 +220,7 @@ export const updateApkAction = async (id: string, uploadedApkId: string) =>
       }
       throw error
     })
-    recordAuditEvent({
-      actorUserId: user.ownerUserId,
-      actorLabel: user.ownerUserId,
-      category: 'application',
-      action: 'application.apk.update',
-      resourceType: 'application',
-      resourceId: id,
-      resourceLabel: command.name,
-      details: { uploadedApkId }
-    })
+    recordApplicationAudit(user.ownerUserId, 'application.apk.update', { id, name: command.name }, { uploadedApkId })
     revalidateApplicationDetail(id)
     const app = await orchestratorAppCatalogClient.getApplication(id)
     return sanitizeAndroidApplicationForUser(app, user)

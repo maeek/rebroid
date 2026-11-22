@@ -2,7 +2,7 @@
 
 import { after } from 'next/server'
 import { runSafeAction } from '@/server/actions/safe-action'
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { runWebMaintenance } from '@/server/maintenance/web-maintenance'
 import { logger } from '@/server/observability/logger'
@@ -45,16 +45,12 @@ export const requestApplicationStartAction = async (id: string, input?: SwitchAp
       enforceResourceQuotas(currentApp.runtime.resources, quotas)
       enforceSessionQuota({ inactivityTimeoutSeconds: currentApp.runtime.inactivityTimeoutSeconds }, quotas)
       const command = await orchestratorAppLifecycleClient.startApplication(id, input, user.quotas.maxOpenApps)
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.start',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: command.name,
-        details: input ? { profileMode: input.profileMode, profileName: input.profileName } : undefined
-      })
+      recordApplicationAudit(
+        user.ownerUserId,
+        'application.start',
+        { id, name: command.name },
+        input ? { profileMode: input.profileMode, profileName: input.profileName } : undefined
+      )
       revalidateApplicationList()
       revalidateApplicationDetail(id)
       return {
@@ -79,15 +75,7 @@ export const requestApplicationStopAction = async (id: string) =>
         })
       }
       const command = await orchestratorAppLifecycleClient.stopApplication(id)
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.stop',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: command.name
-      })
+      recordApplicationAudit(user.ownerUserId, 'application.stop', { id, name: command.name })
       revalidateApplicationList()
       revalidateApplicationDetail(id)
       return {
@@ -118,15 +106,7 @@ export const recreateApplicationAction = async (id: string) =>
       enforceResourceQuotas(app.runtime.resources, quotas)
       enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, quotas)
       const command = await orchestratorAppLifecycleClient.recreateApplication(id, user.quotas.maxOpenApps)
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.recreate',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: command.name
-      })
+      recordApplicationAudit(user.ownerUserId, 'application.recreate', { id, name: command.name })
       revalidateApplicationList()
       revalidateApplicationDetail(id)
     },
@@ -145,16 +125,12 @@ export const deleteApplicationProfileAction = async (id: string, profileName: st
         })
       }
       const command = await orchestratorAppLifecycleClient.deleteSavedProfile(id, profileName)
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.profile.delete',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: command.name,
-        details: { profileName }
-      })
+      recordApplicationAudit(
+        user.ownerUserId,
+        'application.profile.delete',
+        { id, name: command.name },
+        { profileName }
+      )
       revalidateApplicationList()
       revalidateApplicationDetail(id)
     },
@@ -182,15 +158,7 @@ export const requestApplicationDeletionAction = async (id: string, removeData = 
           logger.warn('application.delete_cleanup_deferred', { requestId, applicationId: id })
         }
       }
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.delete',
-        resourceType: 'application',
-        resourceId: id,
-        details: { removeData }
-      })
+      recordApplicationAudit(user.ownerUserId, 'application.delete', { id }, { removeData })
       revalidateApplicationList()
       revalidateApplicationDetail(id)
       return acknowledgement

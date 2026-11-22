@@ -1,4 +1,4 @@
-import { recordAuditEvent } from '@/server/audit/events'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { runRouteHandler } from '@/server/http/route-handler'
 import { orchestratorAppRuntimeClient } from '@/server/orchestrator/applications/runtime-client'
@@ -19,15 +19,11 @@ export const GET = (request: Request, context: { params: Promise<{ id: string }>
         }
         throw error
       })
-    recordAuditEvent({
-      actorUserId: user.ownerUserId,
-      actorLabel: user.ownerUserId,
-      category: 'application',
-      action: 'application.file.download',
-      resourceType: 'application',
-      resourceId: id,
-      resourceLabel: app.name,
-      details: { path, name: result.name, type: 'file' }
-    })
+    recordApplicationAudit(
+      user.ownerUserId,
+      'application.file.download',
+      { id, name: app.name },
+      { path, name: result.name, type: 'file' }
+    )
     return result
   })

@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { runSafeAction } from '@/server/actions/safe-action'
+import { recordApplicationAudit } from '@/server/audit/application-event'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -46,19 +47,15 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
           }
           throw error
         })
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.network.update',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: command.name,
-        details: {
+      recordApplicationAudit(
+        user.ownerUserId,
+        'application.network.update',
+        { id, name: command.name },
+        {
           networkPolicyEnabled: policy.data.networkPolicyEnabled,
           allowCidrsCount: policy.data.networkPolicyAllowCidrs?.length ?? 0
         }
-      })
+      )
       revalidateApplicationList()
       revalidateApplicationDetail(id)
       const app = await orchestratorAppCatalogClient.getApplication(id)
@@ -82,15 +79,7 @@ export const applyNetworkPolicyAction = async (id: string) =>
         })
       }
       const command = await orchestratorAppNetworkPolicyClient.applyNetworkPolicy(id)
-      recordAuditEvent({
-        actorUserId: user.ownerUserId,
-        actorLabel: user.ownerUserId,
-        category: 'application',
-        action: 'application.network.apply',
-        resourceType: 'application',
-        resourceId: id,
-        resourceLabel: command.name
-      })
+      recordApplicationAudit(user.ownerUserId, 'application.network.apply', { id, name: command.name })
       revalidateApplicationDetail(id)
       const app = await orchestratorAppCatalogClient.getApplication(id)
       return sanitizeAndroidApplicationForUser(app, user)
