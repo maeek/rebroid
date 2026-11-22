@@ -5,6 +5,7 @@ import {
   RuntimeContainersPageClient,
   RuntimeContainersPageLoading
 } from '../../components/runtime-containers-page-client'
+import { runtimeInventoryPageHeaders } from '../runtime-inventory-page-headers'
 import { loadRuntimeContainersPageData } from './page-data.server'
 import type { PlatformGridSearchParams } from '../platform-grid-search'
 
@@ -15,9 +16,8 @@ const RuntimeContainersPageContent = async ({ searchParams }: { searchParams?: P
   if (!result.ok) {
     return (
       <PlatformRouteUnavailable
-        title='Containers'
+        {...runtimeInventoryPageHeaders.containers}
         requestId={result.failure.requestId}
-        description='Docker containers visible to the platform. Managed application containers are shown first.'
         section={{ label: 'Docker' }}
       />
     )

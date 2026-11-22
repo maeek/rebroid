@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { RuntimeImagesPageClient, RuntimeImagesPageLoading } from '../../components/runtime-images-page-client'
+import { runtimeInventoryPageHeaders } from '../runtime-inventory-page-headers'
 import { loadRuntimeImagesPageData } from './page-data.server'
 import type { PlatformGridSearchParams } from '../platform-grid-search'
 
@@ -12,9 +13,8 @@ const RuntimeImagesPageContent = async ({ searchParams }: { searchParams?: Promi
   if (!result.ok) {
     return (
       <PlatformRouteUnavailable
-        title='Images'
+        {...runtimeInventoryPageHeaders.images}
         requestId={result.failure.requestId}
-        description='Local images available to application containers, custom runtimes, and platform sidecars.'
         section={{ label: 'Docker' }}
       />
     )

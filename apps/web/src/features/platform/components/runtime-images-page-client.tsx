@@ -1,18 +1,15 @@
 'use client'
 
-import { useMemo, useTransition, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
-import { PlatformPageRefreshButton, type RefreshResult } from '@/shared/ui/actions/platform-page-refresh-button'
-import { PageHeader } from '@/shared/ui/page/page-header'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeImagePullForm } from './runtime-image-pull-form'
 import { RuntimeImagesSection } from './runtime-images-section'
 import { createImageColumns } from './runtime-images-table-parts'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
+import { RuntimeInventoryPage, useInventoryRefresh } from './runtime-inventory-page'
 import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/shared/contracts/platform'
 
 export const RuntimeImagesPageClient = ({
@@ -22,86 +19,57 @@ export const RuntimeImagesPageClient = ({
   imagesPage: PlatformImagesGridPage
   gridQuery: PlatformImagesGridQuery
 }) => {
-  const router = useRouter()
-  const [isRefreshing, startRefresh] = useTransition()
-
-  const refresh = () => startRefresh(() => router.refresh())
+  const refresh = useInventoryRefresh(imagesPage)
 
   return (
-    <RuntimeImagesPageFrame
-      refreshResult={{ version: imagesPage, succeeded: true }}
-      isRefreshing={isRefreshing}
-      onRefresh={refresh}
-    >
-      <RuntimeImagePullForm onPulled={refresh} />
+    <RuntimeImagesPage refresh={refresh}>
+      <RuntimeImagePullForm onPulled={refresh.onRefresh} />
       <RuntimeImagesSection
         imagesPage={imagesPage}
         gridQuery={gridQuery}
       />
-    </RuntimeImagesPageFrame>
+    </RuntimeImagesPage>
   )
 }
 
-const RuntimeImagesPageFrame = ({
-  children,
-  isRefreshing = false,
-  loading = false,
-  refreshResult,
-  onRefresh
+const RuntimeImagesPage = ({
+  refresh,
+  children
 }: {
+  refresh?: ReturnType<typeof useInventoryRefresh>
   children: ReactNode
-  isRefreshing?: boolean
-  loading?: boolean
-  refreshResult?: RefreshResult
-  onRefresh: () => void
 }) => {
   const { isFeatureEnabled } = useFeatureFlags()
   return (
-    <StandardPage
-      gridToolbar
-      className='gap-2'
+    <RuntimeInventoryPage
+      resource='images'
+      refresh={refresh}
+      actions={
+        isFeatureEnabled('feature.image-builder') && (
+          <Button asChild>
+            <Link href='/runtime/images/build'>
+              <IconPlus className='size-4' />
+              Build image
+            </Link>
+          </Button>
+        )
+      }
     >
-      <PageHeader
-        section={{ label: 'Docker' }}
-        title='Images'
-        description='Local images available to application containers, custom runtimes, and platform sidecars.'
-        breadcrumbRefresh={
-          <PlatformPageRefreshButton
-            refreshResult={refreshResult}
-            disabled={loading}
-            isRefreshing={isRefreshing}
-            onRefresh={onRefresh}
-          />
-        }
-        actions={
-          isFeatureEnabled('feature.image-builder') && (
-            <Button asChild>
-              <Link href='/runtime/images/build'>
-                <IconPlus className='size-4' />
-                Build image
-              </Link>
-            </Button>
-          )
-        }
-      />
-      <PageContent>{children}</PageContent>
-    </StandardPage>
+      {children}
+    </RuntimeInventoryPage>
   )
 }
 
 export const RuntimeImagesPageLoading = () => {
   const columns = useMemo(() => createImageColumns(), [])
   return (
-    <RuntimeImagesPageFrame
-      loading
-      onRefresh={() => undefined}
-    >
+    <RuntimeImagesPage>
       <RuntimeImagePullForm loading />
       <RuntimeInventoryLoadingSection
         actionLabels={['Remove selected']}
         columns={columns}
         searchPlaceholder='Search images'
       />
-    </RuntimeImagesPageFrame>
+    </RuntimeImagesPage>
   )
 }
