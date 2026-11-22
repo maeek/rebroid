@@ -4,6 +4,7 @@ export type OperationErrorCode =
   | 'forbidden'
   | 'not_found'
   | 'conflict'
+  | 'runtime_file_exists'
   | 'rate_limited'
   | 'upstream_unavailable'
   | 'upstream_error'

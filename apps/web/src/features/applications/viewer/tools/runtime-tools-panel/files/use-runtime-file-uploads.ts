@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { UploadRequestError } from '@/lib/http/upload-form-data-with-progress'
+import { ActionResultError } from '@/shared/actions/action-result'
 import { uploadDownloadFileWithProgress } from './upload-download-file'
 import { runtimeFilesQueryKey } from './use-runtime-file-browser'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
@@ -56,7 +56,7 @@ export const useRuntimeFileUploads = (appId: string, scope: string) => {
             updateItem(item.id, { error: undefined, status: 'canceled' })
             return
           }
-          if (error instanceof UploadRequestError && error.status === 409) {
+          if (error instanceof ActionResultError && error.failure.code === 'runtime_file_exists') {
             updateItem(item.id, { error: error.message, status: 'conflict' })
             return
           }

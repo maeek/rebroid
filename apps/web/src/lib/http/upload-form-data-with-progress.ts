@@ -1,3 +1,5 @@
+import { ActionResultError, isActionFailure } from '@/shared/actions/action-result'
+
 interface UploadFormDataWithProgressOptions {
   body: FormData
   failureMessage: string
@@ -6,16 +8,6 @@ interface UploadFormDataWithProgressOptions {
   timeoutMessage?: string
   timeoutMs?: number
   url: string
-}
-
-export class UploadRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status: number
-  ) {
-    super(message)
-    this.name = 'UploadRequestError'
-  }
 }
 
 const hasResponseMessage = (value: unknown): value is { message: unknown } =>
@@ -67,7 +59,11 @@ export const uploadFormDataWithProgress = <Response>({
         return
       }
 
-      reject(new UploadRequestError(responseErrorMessage(request.response, failureMessage), request.status))
+      reject(
+        isActionFailure(request.response)
+          ? new ActionResultError(request.response.error)
+          : new Error(responseErrorMessage(request.response, failureMessage))
+      )
     }
     request.onerror = () => reject(new Error(failureMessage))
     request.onabort = () => reject(new DOMException('Upload canceled.', 'AbortError'))

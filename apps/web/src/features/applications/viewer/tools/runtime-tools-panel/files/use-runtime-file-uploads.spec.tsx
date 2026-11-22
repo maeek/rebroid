@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { UploadRequestError } from '@/lib/http/upload-form-data-with-progress'
+import { ActionResultError } from '@/shared/actions/action-result'
 import { useRuntimeFileUploads } from './use-runtime-file-uploads'
 
 const mocks = vi.hoisted(() => ({ upload: vi.fn() }))
@@ -75,10 +75,26 @@ describe('useRuntimeFileUploads', () => {
     })
   })
 
+  it('offers a normal retry for runtime conflicts without a replaceable file', async () => {
+    mocks.upload.mockRejectedValueOnce(
+      new ActionResultError({ message: 'Runtime changed.', code: 'conflict', status: 409, requestId: 'fixture' })
+    )
+    const { result } = renderHook(() => useRuntimeFileUploads('app-1', 'runtime-1'), { wrapper })
+    act(() => result.current.addFiles([new File(['x'], 'new.txt')], '/data'))
+    await waitFor(() => expect(result.current.items[0]?.status).toBe('failed'))
+  })
+
   it('supports cancel and an explicit Replace retry after a conflict', async () => {
     const pending = deferred<ReturnType<typeof uploadedFile>>()
     mocks.upload.mockImplementationOnce(() => pending.promise)
-    mocks.upload.mockRejectedValueOnce(new UploadRequestError('File already exists.', 409))
+    mocks.upload.mockRejectedValueOnce(
+      new ActionResultError({
+        message: 'File already exists.',
+        code: 'runtime_file_exists',
+        status: 409,
+        requestId: 'example'
+      })
+    )
     mocks.upload.mockResolvedValueOnce(uploadedFile('existing.txt'))
     const { result } = renderHook(() => useRuntimeFileUploads('app-1', 'runtime-1'), { wrapper })
 

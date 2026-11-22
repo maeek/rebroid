@@ -29,6 +29,14 @@ import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
 import { runtimeFileEntry } from '../utils/android-apps-runtime-file.utils';
 
+const requireNewUploadTarget = [
+  '[ ! -L "$target" ] || exit 43',
+  '[ ! -f "$target" ] || exit 46',
+  '[ ! -e "$target" ] || exit 43',
+];
+const requireReplaceableTarget =
+  '[ ! -L "$target" ] && { [ ! -e "$target" ] || [ -f "$target" ]; } || exit 43';
+
 const previewRuntimeKey = (app: AndroidApplication) =>
   JSON.stringify([
     app.ownerUserId,
@@ -288,12 +296,7 @@ export class RuntimeDataFilesService {
         this.dataContainmentCheck('parent'),
         '[ -d "$parent" ] || exit 44',
         'target="$parent/$name"',
-        '[ ! -d "$target" ] || exit 43',
-        ...(overwrite
-          ? [
-              '[ ! -e "$target" ] || { [ -f "$target" ] && [ ! -L "$target" ] || exit 43; }',
-            ]
-          : ['[ ! -e "$target" ] && [ ! -L "$target" ] || exit 43']),
+        ...(overwrite ? [requireReplaceableTarget] : requireNewUploadTarget),
         'printf "%s" "$parent"',
       ])
     ).trim();
@@ -370,13 +373,10 @@ export class RuntimeDataFilesService {
       'target="$parent/$name"',
       'trap \'rm -rf "$staging_dir"\' EXIT',
       ...(overwrite
-        ? [
-            '[ ! -e "$target" ] || { [ -f "$target" ] && [ ! -L "$target" ] || exit 43; }',
-            'mv -f "$staged" "$parent" || exit 45',
-          ]
+        ? [requireReplaceableTarget, 'mv -f "$staged" "$parent" || exit 45']
         : [
             'if ! ln "$staged" "$parent" 2>/dev/null; then',
-            '  if [ -e "$target" ] || [ -L "$target" ]; then exit 43; fi',
+            ...requireNewUploadTarget,
             '  exit 45',
             'fi',
           ]),
@@ -438,6 +438,13 @@ export class RuntimeDataFilesService {
         throw new ConflictException(
           'A file or directory with that name already exists.',
         );
+      }
+      if (error.details.exitCode === 46) {
+        throw new ConflictException({
+          code: 'runtime_file_exists',
+          message: 'A file with that name already exists.',
+          statusCode: 409,
+        });
       }
       if (error.details.exitCode === 44) {
         throw new ConflictException(

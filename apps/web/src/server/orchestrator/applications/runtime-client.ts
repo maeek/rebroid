@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { emptyRequest, jsonRequest, responseRequest, streamRequest } from '../request'
+import { emptyRequest, jsonRequest, OrchestratorRequestError, responseRequest, streamRequest } from '../request'
 import { applicationPath } from './application-path'
 import type {
   ApplicationClipboard,
@@ -85,7 +85,19 @@ export const orchestratorAppRuntimeClient = {
       input,
       contentType,
       { signal }
-    )
+    ).catch((error: unknown) => {
+      if (
+        error instanceof OrchestratorRequestError &&
+        error.status === 409 &&
+        error.details?.code === 'runtime_file_exists'
+      ) {
+        throw new PublicActionError('A file with that name already exists.', {
+          code: 'runtime_file_exists',
+          status: 409
+        })
+      }
+      throw error
+    })
   },
 
   getClipboard(id: string) {

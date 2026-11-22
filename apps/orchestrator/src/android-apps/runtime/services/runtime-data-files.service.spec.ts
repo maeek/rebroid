@@ -227,7 +227,7 @@ describe('RuntimeDataFilesService', () => {
         new ContainerCommandFailedException({
           message: 'target appeared before finalization',
           command: ['sh'],
-          exitCode: 43,
+          exitCode: 46,
           stdout: null,
           stderr: null,
         }),
@@ -245,7 +245,10 @@ describe('RuntimeDataFilesService', () => {
         '/data/Documents',
         false,
       ),
-    ).rejects.toBeInstanceOf(ConflictException);
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'runtime_file_exists' },
+    });
 
     expect(archive.copyFileToContainer).toHaveBeenCalledTimes(1);
     const cleanupCommand = (
