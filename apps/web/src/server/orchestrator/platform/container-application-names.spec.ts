@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { requireAdmin } from '@/server/auth/authorization'
 import { orchestratorAppCatalogClient } from '../applications/catalog-client'
-import { requireAdminUser } from '../shared'
 import { resolveContainerApplicationNames } from './container-application-names'
 import { platformContainersGridPage } from './platform-grid-utils'
 import type { PlatformContainer } from '@/shared/contracts/platform'
 
-vi.mock('../shared', () => ({ requireAdminUser: vi.fn() }))
+vi.mock('@/server/auth/authorization', () => ({ requireAdmin: vi.fn() }))
 vi.mock('../applications/catalog-client', () => ({
   orchestratorAppCatalogClient: { listApplicationSummaries: vi.fn() }
 }))
@@ -29,13 +29,13 @@ const container: PlatformContainer = {
 }
 
 beforeEach(() => {
-  vi.mocked(requireAdminUser).mockResolvedValue(undefined as never)
+  vi.mocked(requireAdmin).mockResolvedValue(undefined as never)
   vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockReset()
 })
 
 describe('container application names', () => {
   it('checks authorization before reading names', async () => {
-    vi.mocked(requireAdminUser).mockRejectedValue(new Error('Forbidden'))
+    vi.mocked(requireAdmin).mockRejectedValue(new Error('Forbidden'))
     await expect(resolveContainerApplicationNames([container])).rejects.toThrow('Forbidden')
     expect(orchestratorAppCatalogClient.listApplicationSummaries).not.toHaveBeenCalled()
   })

@@ -1,13 +1,13 @@
 import { cache } from 'react'
 import { unstable_rethrow } from 'next/navigation'
 import 'server-only'
+import { getCurrentUser } from '@/server/auth/authorization'
 import { normalizeRequestId } from '@/server/observability/request-id'
 import { orchestratorDiagnosticsClient } from './diagnostics/client'
 import { OrchestratorRequestError } from './request'
-import { requireUser } from './shared'
 
 export const getOrchestratorPageHealth = cache(async () => {
-  await requireUser()
+  await getCurrentUser()
   return orchestratorDiagnosticsClient.healthSummary()
 })
 

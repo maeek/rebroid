@@ -1,12 +1,12 @@
 import 'server-only'
+import { requireAdmin } from '@/server/auth/authorization'
 import { orchestratorAppCatalogClient } from '../applications/catalog-client'
-import { requireAdminUser } from '../shared'
 import type { PlatformContainer } from '@/shared/contracts/platform'
 
 export const resolveContainerApplicationNames = async (
   containers: PlatformContainer[]
 ): Promise<PlatformContainer[]> => {
-  await requireAdminUser()
+  await requireAdmin()
   if (!containers.some(container => container.applicationId)) return containers
   // One lightweight stored-state lookup for the whole inventory, never one request per row.
   const applications = await orchestratorAppCatalogClient.listApplicationSummaries().catch(() => [])

@@ -1,12 +1,13 @@
 import { beforeEach, expect, it, vi } from 'vitest'
+import { requireAdmin } from '@/server/auth/authorization'
 import { requireFeature } from '../features'
-import { requireAdminUser } from '../shared'
 import { orchestratorPlatformClient } from './client'
 import { createImageBuildRecipeAction, removeImageBuildContextFileAction, startImageBuildAction } from './image-actions'
 import type { ContainerImageRecipeInput } from '@/shared/contracts/platform'
 
 vi.mock('../features', () => ({ requireFeature: vi.fn() }))
-vi.mock('../shared', () => ({ requireAdminUser: vi.fn(), revalidateOrchestratorPages: vi.fn() }))
+vi.mock('@/server/auth/authorization', () => ({ requireAdmin: vi.fn() }))
+vi.mock('../shared', () => ({ revalidateOrchestratorPages: vi.fn() }))
 vi.mock('./client', () => ({
   orchestratorPlatformClient: {
     createImageBuildRecipe: vi.fn(),
@@ -31,12 +32,12 @@ it.each([
   ['removeImageBuildContextFile', () => removeImageBuildContextFileAction('context')],
   ['startImageBuild', () => startImageBuildAction(recipe)]
 ] as const)('checks administrator access before reading features for %s', async (method, invoke) => {
-  vi.mocked(requireAdminUser).mockRejectedValue(new Error('Forbidden'))
+  vi.mocked(requireAdmin).mockRejectedValue(new Error('Forbidden'))
   expect((await invoke()).ok).toBe(false)
   expect(requireFeature).not.toHaveBeenCalled()
   expect(orchestratorPlatformClient[method]).not.toHaveBeenCalled()
 
-  vi.mocked(requireAdminUser).mockReset()
+  vi.mocked(requireAdmin).mockReset()
   vi.mocked(requireFeature).mockRejectedValue(new Error('Feature unavailable'))
   expect((await invoke()).ok).toBe(false)
   expect(requireFeature).toHaveBeenCalledWith('feature.image-builder')

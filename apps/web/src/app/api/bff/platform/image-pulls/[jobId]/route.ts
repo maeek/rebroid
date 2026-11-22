@@ -1,11 +1,11 @@
 import { z } from 'zod'
+import { requireAdmin } from '@/server/auth/authorization'
 import { runRouteHandler } from '@/server/http/route-handler'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
-import { requireAdminUser } from '@/server/orchestrator/shared'
 
 export const GET = (_request: Request, context: { params: Promise<{ jobId: string }> }) =>
   runRouteHandler(async () => {
-    await requireAdminUser()
+    await requireAdmin()
     const { jobId } = await context.params
     return orchestratorPlatformClient.getPlatformImagePull(z.uuid().parse(jobId))
   })

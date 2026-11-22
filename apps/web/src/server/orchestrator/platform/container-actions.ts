@@ -1,7 +1,7 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
-import { requireAdminUser } from '../shared'
+import { requireAdmin } from '@/server/auth/authorization'
 import { orchestratorPlatformClient } from './client'
 import { resolveContainerApplicationNames } from './container-application-names'
 import { runAuditedPlatformAction } from './platform-audit'
@@ -11,13 +11,13 @@ import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/
 export const listPlatformContainersGridAction = async (
   query: PlatformContainersGridQuery = {}
 ): Promise<PlatformContainersGridPage> => {
-  await requireAdminUser()
+  await requireAdmin()
   const containers = await resolveContainerApplicationNames(await orchestratorPlatformClient.listPlatformContainers())
   return platformContainersGridPage(containers, query)
 }
 
 export const getPlatformContainerAction = async (id: string) => {
-  await requireAdminUser()
+  await requireAdmin()
   const details = await orchestratorPlatformClient.getPlatformContainer(id)
   const [container] = await resolveContainerApplicationNames([details.container])
   return { ...details, container: container ?? details.container }
@@ -26,14 +26,14 @@ export const getPlatformContainerAction = async (id: string) => {
 export const getPlatformContainerLogsAction = async (id: string) =>
   runSafeAction(
     async () => {
-      await requireAdminUser()
+      await requireAdmin()
       return orchestratorPlatformClient.getPlatformContainerLogs(id, 500)
     },
     { fallbackMessage: 'Could not load container logs.', logLabel: 'getPlatformContainerLogsAction failed' }
   )
 
 export const getPlatformContainerStatsAction = async (id: string) => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorPlatformClient.getPlatformContainerStats(id)
 }
 

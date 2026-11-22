@@ -1,9 +1,9 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
+import { requireAdmin } from '@/server/auth/authorization'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { requireFeature } from '../features'
-import { requireAdminUser } from '../shared'
 import { orchestratorPlatformClient } from './client'
 import { resolveContainerApplicationNames } from './container-application-names'
 import { resolveManualImageReference } from './manual-image-reference'
@@ -18,19 +18,19 @@ import type {
 } from '@/shared/contracts/platform'
 
 export const listPlatformImagesAction = async () => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorPlatformClient.listPlatformImages()
 }
 
 export const listPlatformImagesGridAction = async (
   query: PlatformImagesGridQuery = {}
 ): Promise<PlatformImagesGridPage> => {
-  await requireAdminUser()
+  await requireAdmin()
   return platformImagesGridPage(await orchestratorPlatformClient.listPlatformImages(), query)
 }
 
 export const getPlatformImageAction = async (id: string) => {
-  await requireAdminUser()
+  await requireAdmin()
   const details = await orchestratorPlatformClient.getPlatformImage(id)
   return { ...details, relatedContainers: await resolveContainerApplicationNames(details.relatedContainers) }
 }
@@ -73,7 +73,7 @@ export const removePlatformImageAction = async (id: string, force = false) =>
   )
 
 export const listImageBuildContextFilesAction = async () => {
-  await requireAdminUser()
+  await requireAdmin()
   await requireFeature('feature.image-builder')
   return orchestratorPlatformClient.listImageBuildContextFiles()
 }
@@ -92,7 +92,7 @@ export const removeImageBuildContextFileAction = async (id: string) =>
   )
 
 export const listImageBuildRecipesAction = async () => {
-  await requireAdminUser()
+  await requireAdmin()
   await requireFeature('feature.image-builder')
   return orchestratorPlatformClient.listImageBuildRecipes()
 }
@@ -112,7 +112,7 @@ export const createImageBuildRecipeAction = async (input: ContainerImageRecipeIn
   )
 
 export const getLatestImageBuildAction = async (buildKind: ContainerImageBuildKind) => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorPlatformClient.getLatestImageBuild(buildKind)
 }
 
@@ -131,7 +131,7 @@ export const startImageBuildAction = async (input: StartContainerImageBuildInput
   )
 
 export const listGappsBuildPresetsAction = async () => {
-  await requireAdminUser()
+  await requireAdmin()
   await requireFeature('feature.image-builder')
   return orchestratorPlatformClient.listGappsBuildPresets()
 }

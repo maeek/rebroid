@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/server/audit/events'
+import { requireAdmin } from '@/server/auth/authorization'
 import { requireFeature } from '../features'
-import { revalidateOrchestratorPages, requireAdminUser } from '../shared'
+import { revalidateOrchestratorPages } from '../shared'
 import type { FeatureFlagKey } from '@/shared/contracts/feature-flags'
 
 export const runAuditedPlatformAction = async <T>({
@@ -18,7 +19,7 @@ export const runAuditedPlatformAction = async <T>({
   resourceId?: string
   resourceType: string
 }) => {
-  const admin = await requireAdminUser()
+  const admin = await requireAdmin()
   if (feature) await requireFeature(feature)
   const result = await operation()
   recordAuditEvent({

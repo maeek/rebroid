@@ -1,10 +1,11 @@
 'use server'
 
 import { recordAuditEvent } from '@/server/audit/events'
+import { requireAdmin } from '@/server/auth/authorization'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../current-user'
-import { requireAdminUser, revalidateOrchestratorSettingsPage } from '../shared'
+import { revalidateOrchestratorSettingsPage } from '../shared'
 import { orchestratorSettingsClient } from './client'
 import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 import type { UpdateFeatureFlags } from '@/shared/contracts/feature-flags'
@@ -18,12 +19,12 @@ const requireAutomationAiRunUser = async () => {
 }
 
 export const getOrchestratorSettingsAction = async () => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorSettingsClient.getSettings()
 }
 
 export const updateFeatureFlagsAction = async (input: UpdateFeatureFlags) => {
-  const admin = await requireAdminUser()
+  const admin = await requireAdmin()
   const before = await orchestratorSettingsClient.getFeatures()
   const result = await orchestratorSettingsClient.updateFeatures(input)
   const previous = new Map(before.features.map(feature => [feature.key, feature.enabled]))
@@ -44,12 +45,12 @@ export const updateFeatureFlagsAction = async (input: UpdateFeatureFlags) => {
 }
 
 export const listAutomationAiProvidersAction = async () => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorSettingsClient.listAiProviders()
 }
 
 export const createAutomationAiProviderAction = async (input: AutomationAiProvider) => {
-  const admin = await requireAdminUser()
+  const admin = await requireAdmin()
   const result = await orchestratorSettingsClient.createAiProvider(input)
   recordAuditEvent({
     actorUserId: admin.id,
@@ -64,12 +65,12 @@ export const createAutomationAiProviderAction = async (input: AutomationAiProvid
 }
 
 export const checkAutomationAiProviderCandidateHealthAction = async (input: AutomationAiProvider) => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorSettingsClient.checkAiProviderCandidateHealth(input)
 }
 
 export const updateAutomationAiProviderAction = async (providerId: string, input: Partial<AutomationAiProvider>) => {
-  const admin = await requireAdminUser()
+  const admin = await requireAdmin()
   const result = await orchestratorSettingsClient.updateAiProvider(providerId, input)
   recordAuditEvent({
     actorUserId: admin.id,
@@ -84,7 +85,7 @@ export const updateAutomationAiProviderAction = async (providerId: string, input
 }
 
 export const deleteAutomationAiProviderAction = async (providerId: string) => {
-  const admin = await requireAdminUser()
+  const admin = await requireAdmin()
   await orchestratorSettingsClient.deleteAiProvider(providerId)
   recordAuditEvent({
     actorUserId: admin.id,
@@ -107,12 +108,12 @@ export const checkAutomationAiProviderHealthAction = async (
 }
 
 export const listAutomationAiProviderRemoteModelsAction = async (providerId: string) => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorSettingsClient.listAiProviderRemoteModels(providerId)
 }
 
 export const createAutomationAiProviderModelAction = async (providerId: string, input: AutomationAiProviderModel) => {
-  const admin = await requireAdminUser()
+  const admin = await requireAdmin()
   const result = await orchestratorSettingsClient.createAiProviderModel(providerId, input)
   recordAuditEvent({
     actorUserId: admin.id,
@@ -131,7 +132,7 @@ export const downloadAutomationAiProviderModelAction = async (
   providerId: string,
   input: { modelId: string; label?: string }
 ) => {
-  const admin = await requireAdminUser()
+  const admin = await requireAdmin()
   const result = await orchestratorSettingsClient.downloadAiProviderModel(providerId, input)
   recordAuditEvent({
     actorUserId: admin.id,
@@ -147,7 +148,7 @@ export const downloadAutomationAiProviderModelAction = async (
 }
 
 export const getAutomationAiProviderModelDownloadAction = async (providerId: string, downloadId: string) => {
-  await requireAdminUser()
+  await requireAdmin()
   return orchestratorSettingsClient.getAiProviderModelDownload(providerId, downloadId)
 }
 

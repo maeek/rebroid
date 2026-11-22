@@ -1,14 +1,15 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
+import { getCurrentUser } from '@/server/auth/authorization'
 import { getOwnedApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
-import { revalidateAppIconPaths, requireUser } from '../shared'
+import { revalidateAppIconPaths } from '../shared'
 import { removeStoredAppIcon, setStoredAppIcon } from '../store'
 
 export const setAppIconAction = async (appId: string, icon: string | null) =>
   runSafeAction(
     async () => {
-      await requireUser()
+      await getCurrentUser()
       await getOwnedApplicationAction(appId)
       let savedIcon = null
       if (icon === null) await removeStoredAppIcon(appId)

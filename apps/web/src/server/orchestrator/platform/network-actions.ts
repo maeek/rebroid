@@ -1,7 +1,7 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
-import { requireAdminUser } from '../shared'
+import { requireAdmin } from '@/server/auth/authorization'
 import { orchestratorPlatformClient } from './client'
 import { resolveContainerApplicationNames } from './container-application-names'
 import { runAuditedPlatformAction } from './platform-audit'
@@ -11,12 +11,12 @@ import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/shar
 export const listPlatformNetworksGridAction = async (
   query: PlatformNetworksGridQuery = {}
 ): Promise<PlatformNetworksGridPage> => {
-  await requireAdminUser()
+  await requireAdmin()
   return platformNetworksGridPage(await orchestratorPlatformClient.listPlatformNetworks(), query)
 }
 
 export const getPlatformNetworkAction = async (id: string) => {
-  await requireAdminUser()
+  await requireAdmin()
   const details = await orchestratorPlatformClient.getPlatformNetwork(id)
   return { ...details, relatedContainers: await resolveContainerApplicationNames(details.relatedContainers) }
 }
