@@ -37,6 +37,15 @@ import {
   uploadedRuntimeFile,
 } from '../utils/android-apps-runtime-file.utils';
 
+const resolveDataPath = (variable: 'dir' | 'parent' | 'source') => [
+  '[ -L "$candidate" ] && exit 41',
+  `${variable}=$(realpath "$candidate" 2>/dev/null) || exit 40`,
+  `case "$${variable}" in /data|/data/*) ;; *) exit 41 ;; esac`,
+];
+const resolveParentDirectory = [
+  ...resolveDataPath('parent'),
+  '[ -d "$parent" ] || exit 44',
+];
 const requireNewUploadTarget = [
   '[ ! -L "$target" ] || exit 43',
   '[ ! -f "$target" ] || exit 46',
@@ -72,9 +81,7 @@ export class RuntimeDataFilesService {
     const directory = normalizeDataPath(requestedPath);
     const stdout = await this.runDataCommand(app, [
       `candidate=${shellQuote(directory)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'dir=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('dir'),
+      ...resolveDataPath('dir'),
       '[ -d "$dir" ] || exit 44',
       'find "$dir" -mindepth 1 -maxdepth 1 -print 2>/dev/null | while IFS= read -r entry; do',
       'name=${entry##*/}',
@@ -137,10 +144,7 @@ export class RuntimeDataFilesService {
     await this.runDataCommand(app, [
       `candidate=${shellQuote(parentPath)}`,
       `name=${shellQuote(name)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('parent'),
-      '[ -d "$parent" ] || exit 44',
+      ...resolveParentDirectory,
       'target="$parent/$name"',
       '[ ! -e "$target" ] && [ ! -L "$target" ] || exit 43',
       'mkdir "$target"',
@@ -156,9 +160,7 @@ export class RuntimeDataFilesService {
     const stdout = await this.runDataCommand(app, [
       `candidate=${shellQuote(path)}`,
       `name=${shellQuote(name)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('source'),
+      ...resolveDataPath('source'),
       '[ "$source" != "/data" ] || exit 41',
       'parent=${source%/*}',
       'target="$parent/$name"',
@@ -184,9 +186,7 @@ export class RuntimeDataFilesService {
     const path = normalizeEntryPath(requestedPath);
     const stdout = await this.runDataCommand(app, [
       `candidate=${shellQuote(path)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('source'),
+      ...resolveDataPath('source'),
       '[ "$source" != "/data" ] || exit 41',
       'if [ -d "$source" ]; then type=directory; else [ -f "$source" ] || exit 44; type=file; fi',
       'rm -rf "$source"',
@@ -232,9 +232,7 @@ export class RuntimeDataFilesService {
   ) {
     const resolvedFile = await this.runDataCommand(app, [
       `candidate=${shellQuote(path)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('source'),
+      ...resolveDataPath('source'),
       '[ -f "$source" ] || exit 44',
       'version=$(stat -c "%d|%i|%s|%y|%z" "$source" 2>/dev/null || true)',
       'printf "%s\t%s" "$source" "$version"',
@@ -262,9 +260,7 @@ export class RuntimeDataFilesService {
     const resolvedPath = (
       await this.runDataCommand(app, [
         `candidate=${shellQuote(filePath)}`,
-        '[ -L "$candidate" ] && exit 41',
-        'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
-        this.dataContainmentCheck('source'),
+        ...resolveDataPath('source'),
         '[ -f "$source" ] || exit 44',
         'printf "%s" "$source"',
       ])
@@ -294,10 +290,7 @@ export class RuntimeDataFilesService {
       await this.runDataCommand(app, [
         `candidate=${shellQuote(directory)}`,
         `name=${shellQuote(fileName)}`,
-        '[ -L "$candidate" ] && exit 41',
-        'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
-        this.dataContainmentCheck('parent'),
-        '[ -d "$parent" ] || exit 44',
+        ...resolveParentDirectory,
         'target="$parent/$name"',
         ...(overwrite ? [requireReplaceableTarget] : requireNewUploadTarget),
         'printf "%s" "$parent"',
@@ -395,16 +388,9 @@ export class RuntimeDataFilesService {
     return [
       `candidate=${shellQuote(directory)}`,
       `staging_name=${shellQuote(stagingName)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('parent'),
-      '[ -d "$parent" ] || exit 44',
+      ...resolveParentDirectory,
       'staging_dir="$parent/$staging_name"',
     ];
-  }
-
-  private dataContainmentCheck(variable: string) {
-    return `case "$${variable}" in /data|/data/*) ;; *) exit 41 ;; esac`;
   }
 
   private async runDataCommand(
