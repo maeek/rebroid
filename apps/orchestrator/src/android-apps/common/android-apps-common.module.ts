@@ -7,6 +7,7 @@ import { AndroidAppsPersistenceModule } from '../persistence/android-apps-persis
 import { ANDROID_APPS_RUNTIME_LOG_MAINTENANCE } from '../contracts/android-apps-runtime-log-maintenance.port';
 import { LifecycleBackgroundJobRunner } from '../lifecycle/services/lifecycle-background-job-runner.service';
 import { AndroidAppsLogService } from './services/android-apps-log.service';
+import { ProfileVolumeAccess } from './services/profile-volume-access.service';
 import { AndroidAppsPolicyGate } from './services/android-apps-policy-gate.service';
 import { AndroidAppsRuntimeOperationGate } from './services/android-apps-runtime-operation-gate.service';
 import { AndroidAppsLifecycleTransitionService } from './services/android-apps-lifecycle-transition.service';
@@ -28,6 +29,7 @@ import { AndroidAppsTcpAdbService } from './services/android-apps-tcp-adb.servic
   providers: [
     AndroidAppsLogService,
     AndroidAppsPolicyGate,
+    ProfileVolumeAccess,
     AndroidAppsRuntimeOperationGate,
     {
       provide: ANDROID_APPS_RUNTIME_LOG_MAINTENANCE,
@@ -45,6 +47,7 @@ import { AndroidAppsTcpAdbService } from './services/android-apps-tcp-adb.servic
   exports: [
     AndroidAppsLogService,
     AndroidAppsPolicyGate,
+    ProfileVolumeAccess,
     AndroidAppsRuntimeOperationGate,
     ANDROID_APPS_RUNTIME_LOG_MAINTENANCE,
     AndroidAppsLifecycleTransitionService,

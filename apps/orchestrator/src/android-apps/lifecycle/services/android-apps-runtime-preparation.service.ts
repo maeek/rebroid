@@ -1,3 +1,4 @@
+import { ProfileVolumeAccess } from '../../common/services/profile-volume-access.service';
 import {
   Inject,
   ConflictException,
@@ -51,6 +52,7 @@ export class AndroidAppsRuntimePreparationService {
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly writer: AndroidAppsStateWriter,
+    private readonly volumeAccess: ProfileVolumeAccess,
   ) {}
 
   async switchProfile(
@@ -155,9 +157,11 @@ export class AndroidAppsRuntimePreparationService {
         'This profile shares storage with another persistent profile. Its volume must be preserved.',
       );
     }
-    await this.resources.removeVolume(plan.volumeName);
-    app.savedProfilesJson = plan.savedProfilesJson;
-    await this.writer.saveFields(app, 'savedProfilesJson');
+    await this.volumeAccess.withRemoval(plan.volumeName, async () => {
+      await this.resources.removeVolume(plan.volumeName);
+      app.savedProfilesJson = plan.savedProfilesJson;
+      await this.writer.saveFields(app, 'savedProfilesJson');
+    });
   }
 
   private async selectProfile(

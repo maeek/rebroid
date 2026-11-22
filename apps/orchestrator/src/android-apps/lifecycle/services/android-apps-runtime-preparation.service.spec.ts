@@ -1,3 +1,4 @@
+import { ProfileVolumeAccess } from '../../common/services/profile-volume-access.service';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
@@ -14,6 +15,7 @@ const makeService = () => {
       .fn()
       .mockImplementation(async (app: AndroidApplication) => app),
   };
+  const volumeAccess = new ProfileVolumeAccess();
   const service = new AndroidAppsRuntimePreparationService(
     {} as never,
     {} as never,
@@ -22,9 +24,10 @@ const makeService = () => {
     {} as never,
     {} as never,
     state as never,
+    volumeAccess,
   );
 
-  return { resources, service, state };
+  return { resources, service, state, volumeAccess };
 };
 
 const makeApp = (patch: Partial<AndroidApplication> = {}): AndroidApplication =>
@@ -63,6 +66,32 @@ it('cleans up stored GPU flags without replacing the existing container', async 
 });
 
 describe('AndroidAppsRuntimePreparationService profile deletion', () => {
+  it('preserves a busy volume and fences uploads until its history update finishes', async () => {
+    const { resources, service, state, volumeAccess } = makeService();
+    const app = makeApp();
+    const volume = 'rebroid-data-demo-work-app-1';
+    await volumeAccess.withUpload(volume, async () => {
+      await expect(
+        service.deleteSavedPersistentProfile(app, 'work'),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(resources.removeVolume).not.toHaveBeenCalled();
+      expect(state.saveFields).not.toHaveBeenCalled();
+    });
+    state.saveFields.mockImplementationOnce(async () => {
+      await expect(volumeAccess.withUpload(volume, jest.fn())).rejects.toThrow(
+        ConflictException,
+      );
+      throw new Error('database unavailable');
+    });
+    await expect(
+      service.deleteSavedPersistentProfile(app, 'work'),
+    ).rejects.toThrow('database unavailable');
+    await expect(
+      volumeAccess.withUpload(volume, async () => true),
+    ).resolves.toBe(true);
+    expect(resources.removeVolume).toHaveBeenCalledTimes(1);
+  });
+
   it('deletes a non-active saved persistent profile and removes its volume', async () => {
     const { resources, service, state } = makeService();
     const app = makeApp();

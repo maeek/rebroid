@@ -1,3 +1,4 @@
+import { ProfileVolumeAccess } from '../../common/services/profile-volume-access.service';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import type { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
@@ -13,6 +14,7 @@ const setup = () => {
     networkPolicy as never,
     {} as never,
     { saveFields: async () => {} } as never,
+    new ProfileVolumeAccess(),
   );
   const app = {
     id: 'app-1',

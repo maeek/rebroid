@@ -165,7 +165,9 @@ Uploads to a stopped profile require the engine's volume mountpoint to be access
 the orchestrator. The default Compose deployment exposes the engine socket and keeps profile
 mountpoints on the engine host. Start the profile to transfer files through its running container.
 When the mountpoint is accessible, the orchestrator creates the Android Downloads directory inside
-it and publishes each file after the upload finishes.
+it and publishes each file after the upload finishes. An offline upload and a saved-profile
+deletion targeting the same volume return a conflict for the later operation. Retry it after
+the first operation finishes. Transfers to other volumes can continue.
 
 Ordinary Start uses the stored volume name for the active profile. Saved-profile selection and
 offline Downloads derive the volume name from the resource prefix, application name, profile

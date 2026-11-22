@@ -1,3 +1,4 @@
+import { ProfileVolumeAccess } from '../../common/services/profile-volume-access.service';
 import { runtimeResourceNames } from '../../../network-isolation/runtime-resource-names';
 import {
   Inject,
@@ -44,10 +45,13 @@ export class RuntimeDownloadVolumeService {
     @Inject(DOCKER_RESOURCE_RUNTIME)
     private readonly resources: DockerResourceRuntimePort,
     private readonly uploads: RuntimeUploadStreamService,
+    private readonly volumeAccess: ProfileVolumeAccess,
   ) {}
 
   async listFiles(app: AndroidApplication, profileName: string | null) {
-    const directory = await this.getDirectory(app, profileName);
+    const directory = await this.getDirectory(
+      this.volumeName(app, profileName),
+    );
     if (!directory) {
       return [];
     }
@@ -81,35 +85,39 @@ export class RuntimeDownloadVolumeService {
     fileName: string,
     profileName: string | null,
   ): Promise<ApplicationRuntimeFileUploadDto> {
-    const directory = await this.getDirectory(app, profileName, {
-      create: true,
-    });
-    if (!directory) {
+    const volumeName = this.volumeName(app, profileName);
+    if (!volumeName) {
       stream.resume();
       throw new ConflictException(persistentDownloadRequiredMessage);
     }
 
-    const targetPath = join(directory, fileName);
-    const sizeBytes = await this.uploads.withStagedFile(
-      stream,
-      async (stagedPath, stagedFile) => {
-        const previous = await readVolumeEntry(lstat(targetPath));
-        if (previous) {
-          if (!previous.isFile())
-            throw new ConflictException('Download must be a regular file.');
-          await access(targetPath, constants.W_OK);
-          const staged = await stagedFile.stat();
-          if (staged.uid !== previous.uid || staged.gid !== previous.gid) {
-            await stagedFile.chown(previous.uid, previous.gid);
+    return this.volumeAccess.withUpload(volumeName, async () => {
+      await this.resources.createVolume(app.id, volumeName);
+      const directory = await this.getDirectory(volumeName, true);
+      if (!directory)
+        throw new ServiceUnavailableException(unavailableVolumeMessage);
+      const targetPath = join(directory, fileName);
+      const sizeBytes = await this.uploads.withStagedFile(
+        stream,
+        async (stagedPath, stagedFile) => {
+          const previous = await readVolumeEntry(lstat(targetPath));
+          if (previous) {
+            if (!previous.isFile())
+              throw new ConflictException('Download must be a regular file.');
+            await access(targetPath, constants.W_OK);
+            const staged = await stagedFile.stat();
+            if (staged.uid !== previous.uid || staged.gid !== previous.gid) {
+              await stagedFile.chown(previous.uid, previous.gid);
+            }
+            await stagedFile.chmod(previous.mode & 0o777);
           }
-          await stagedFile.chmod(previous.mode & 0o777);
-        }
-        await rename(stagedPath, targetPath);
-      },
-      { directory, mode: 0o644 },
-    );
+          await rename(stagedPath, targetPath);
+        },
+        { directory, mode: 0o644 },
+      );
 
-    return uploadedRuntimeFile(downloadDirectory, fileName, sizeBytes);
+      return uploadedRuntimeFile(downloadDirectory, fileName, sizeBytes);
+    });
   }
 
   async readFile(
@@ -119,7 +127,9 @@ export class RuntimeDownloadVolumeService {
   ) {
     if (!profileName)
       throw new ConflictException(persistentDownloadRequiredMessage);
-    const directory = await this.getDirectory(app, profileName);
+    const directory = await this.getDirectory(
+      this.volumeName(app, profileName),
+    );
     await using file = directory
       ? await readVolumeEntry(
           open(
@@ -148,34 +158,24 @@ export class RuntimeDownloadVolumeService {
     return Buffer.concat(chunks, size);
   }
 
-  private async getDirectory(
-    app: AndroidApplication,
-    profileName: string | null,
-    options: { create?: boolean } = {},
-  ) {
-    if (!profileName) {
-      return null;
-    }
+  private volumeName(app: AndroidApplication, profileName: string | null) {
+    return profileName
+      ? runtimeResourceNames(app, this.dockerConfig.resourcePrefix).volumeFor(
+          profileName,
+        )
+      : null;
+  }
 
-    const volumeName = runtimeResourceNames(
-      app,
-      this.dockerConfig.resourcePrefix,
-    ).volumeFor(profileName);
-
-    if (options.create) {
-      await this.resources.createVolume(app.id, volumeName);
-    }
-
+  private async getDirectory(volumeName: string | null, create = false) {
+    if (!volumeName) return null;
     const volume = await this.resources.inspectVolume(volumeName);
     if (!volume?.Mountpoint) {
-      if (options.create)
-        throw new ServiceUnavailableException(unavailableVolumeMessage);
       return null;
     }
     let directory = volume.Mountpoint;
     for (const segment of downloadSubdirectories) {
       directory = join(directory, segment);
-      if (options.create) {
+      if (create) {
         // The engine owns the mountpoint. Create only directories inside it.
         try {
           await mkdir(directory);
@@ -189,7 +189,7 @@ export class RuntimeDownloadVolumeService {
         }
       }
       const info = await readVolumeEntry(lstat(directory));
-      if (!info && !options.create) return null;
+      if (!info && !create) return null;
       if (!info?.isDirectory())
         throw new ServiceUnavailableException(unavailableVolumeMessage);
     }

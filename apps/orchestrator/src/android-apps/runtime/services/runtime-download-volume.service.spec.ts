@@ -1,3 +1,4 @@
+import { ProfileVolumeAccess } from '../../common/services/profile-volume-access.service';
 import { ConflictException } from '@nestjs/common';
 import {
   chmod,
@@ -20,6 +21,7 @@ import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 describe('RuntimeDownloadVolumeService', () => {
   let tempDir: string;
   let service: RuntimeDownloadVolumeService;
+  let volumeAccess: ProfileVolumeAccess;
   let resources: {
     createVolume: jest.Mock;
     inspectVolume: jest.Mock;
@@ -37,10 +39,12 @@ describe('RuntimeDownloadVolumeService', () => {
       createVolume: jest.fn(),
       inspectVolume: jest.fn().mockResolvedValue({ Mountpoint: tempDir }),
     };
+    volumeAccess = new ProfileVolumeAccess();
     service = new RuntimeDownloadVolumeService(
       { resourcePrefix: 'rebroid' } as never,
       resources as never,
       new RuntimeUploadStreamService({} as never),
+      volumeAccess,
     );
   });
 
@@ -88,6 +92,49 @@ describe('RuntimeDownloadVolumeService', () => {
       'app-1',
       'rebroid-data-demo-app-default-app-1',
     );
+  });
+
+  it('protects the physical volume until all concurrent uploads to its aliases finish', async () => {
+    const volume = 'rebroid-data-demo-app-work-app-1';
+    let finishSecond!: () => void;
+    resources.createVolume.mockResolvedValueOnce(undefined).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishSecond = resolve;
+      }),
+    );
+    const first = service.storeStream(
+      app,
+      Readable.from(['one']),
+      'one.txt',
+      'Work',
+    );
+    const second = service.storeStream(
+      app,
+      Readable.from(['two']),
+      'two.txt',
+      'work',
+    );
+    try {
+      await first;
+      const remove = jest.fn().mockResolvedValue(undefined);
+      await expect(volumeAccess.withRemoval(volume, remove)).rejects.toThrow(
+        ConflictException,
+      );
+      await volumeAccess.withRemoval(
+        'rebroid-data-demo-app-personal-app-1',
+        remove,
+      );
+      expect(remove).toHaveBeenCalledTimes(1);
+    } finally {
+      finishSecond();
+      await second;
+    }
+    await volumeAccess.withRemoval(volume, async () => {
+      await expect(
+        service.storeStream(app, Readable.from(['three']), 'three.txt', 'WORK'),
+      ).rejects.toMatchObject({ status: 409 });
+    });
+    expect(resources.createVolume).toHaveBeenCalledTimes(2);
   });
 
   it('rejects an inaccessible volume instead of creating its reported mountpoint', async () => {
