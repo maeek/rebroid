@@ -25,69 +25,39 @@ import {
   IconX
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
-import { getAutomationActionIconKey, type AutomationActionIconKey } from '../../actions/action-registry'
+import { getAutomationActionDefinition } from '../../actions/action-registry'
+import type { AutomationActionIconKey } from '../../actions/automation-action-definition'
+import type { ComponentType } from 'react'
+
+const commandIcons = {
+  alert: IconAlertTriangle,
+  check: IconCheck,
+  click: IconClick,
+  clock: IconClock,
+  debug: IconBug,
+  device: IconDeviceMobile,
+  file: IconFile,
+  'file-check': IconFileCheck,
+  'file-export': IconFileExport,
+  'file-import': IconFileImport,
+  files: IconFiles,
+  keyboard: IconKeyboard,
+  message: IconMessage,
+  network: IconNetwork,
+  rotate: IconRotateClockwise,
+  route: IconRoute,
+  screenshot: IconScreenshot,
+  search: IconSearch,
+  shield: IconShieldLock,
+  sparkles: GradientSparklesIcon,
+  swipe: IconSwipe,
+  terminal: IconTerminal2,
+  text: IconTypography,
+  trash: IconTrash,
+  x: IconX
+} satisfies Record<AutomationActionIconKey, ComponentType<{ className?: string }>>
 
 export function AutomationCommandIcon({ uses, className }: { uses: string; className?: string }) {
-  return (
-    <AutomationActionIcon
-      iconKey={getAutomationActionIconKey(uses)}
-      className={className}
-    />
-  )
-}
-
-function AutomationActionIcon({ iconKey, className }: { iconKey: AutomationActionIconKey; className?: string }) {
-  switch (iconKey) {
-    case 'alert':
-      return <IconAlertTriangle className={className} />
-    case 'check':
-      return <IconCheck className={className} />
-    case 'click':
-      return <IconClick className={className} />
-    case 'clock':
-      return <IconClock className={className} />
-    case 'debug':
-      return <IconBug className={className} />
-    case 'file':
-      return <IconFile className={className} />
-    case 'file-check':
-      return <IconFileCheck className={className} />
-    case 'file-export':
-      return <IconFileExport className={className} />
-    case 'file-import':
-      return <IconFileImport className={className} />
-    case 'files':
-      return <IconFiles className={className} />
-    case 'keyboard':
-      return <IconKeyboard className={className} />
-    case 'message':
-      return <IconMessage className={className} />
-    case 'network':
-      return <IconNetwork className={className} />
-    case 'route':
-      return <IconRoute className={className} />
-    case 'rotate':
-      return <IconRotateClockwise className={className} />
-    case 'screenshot':
-      return <IconScreenshot className={className} />
-    case 'search':
-      return <IconSearch className={className} />
-    case 'shield':
-      return <IconShieldLock className={className} />
-    case 'sparkles':
-      return <GradientSparklesIcon className={className} />
-    case 'swipe':
-      return <IconSwipe className={className} />
-    case 'terminal':
-      return <IconTerminal2 className={className} />
-    case 'text':
-      return <IconTypography className={className} />
-    case 'trash':
-      return <IconTrash className={className} />
-    case 'x':
-      return <IconX className={className} />
-    case 'device':
-    default:
-      return <IconDeviceMobile className={className} />
-  }
+  const Icon = commandIcons[getAutomationActionDefinition(uses).iconKey]
+  return <Icon className={className} />
 }

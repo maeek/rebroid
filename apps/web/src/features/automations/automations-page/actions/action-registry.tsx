@@ -42,11 +42,7 @@ import { setRestrictionsAction } from './network/set-restrictions.action'
 import { SchemaActionFields } from './shared/schema-action-fields'
 import { visionLocateAction } from './vision/locate.action'
 import { visionObserveAction } from './vision/observe.action'
-import type {
-  AutomationActionCategory,
-  AutomationActionDefinition,
-  AutomationActionIconKey
-} from './automation-action-definition'
+import type { AutomationActionDefinition } from './automation-action-definition'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const actionDefinitions = [
@@ -95,56 +91,21 @@ const actionDefinitions = [
 
 const actionDefinitionByUses = new Map(actionDefinitions.map(definition => [definition.uses, definition]))
 
-const fallbackCategory = (uses: string): AutomationActionCategory =>
-  uses.startsWith('ai.')
-    ? 'AI'
-    : uses.startsWith('vision.')
-      ? 'Vision'
-      : uses.startsWith('container.network.')
-        ? 'Network'
-        : uses.startsWith('assert.')
-          ? 'Assertions'
-          : uses.startsWith('flow.')
-            ? 'Flow'
-            : uses.startsWith('debug.') || uses.startsWith('artifact.')
-              ? 'Debug'
-              : uses.includes('File')
-                ? 'Files'
-                : 'Device'
-
-const fallbackIconKey = (category: AutomationActionCategory): AutomationActionIconKey => {
-  switch (category) {
-    case 'Touch':
-      return 'click'
-    case 'Text':
-      return 'text'
-    case 'Files':
-      return 'file'
-    case 'Network':
-      return 'network'
-    case 'Assertions':
-      return 'check'
-    case 'Flow':
-      return 'route'
-    case 'Debug':
-      return 'debug'
-    case 'Vision':
-      return 'search'
-    case 'AI':
-      return 'sparkles'
-    case 'Device':
-    default:
-      return 'device'
-  }
+const fallbackAppearance = (uses: string): Pick<AutomationActionDefinition, 'category' | 'iconKey'> => {
+  if (uses.startsWith('ai.')) return { category: 'AI', iconKey: 'sparkles' }
+  if (uses.startsWith('vision.')) return { category: 'Vision', iconKey: 'search' }
+  if (uses.startsWith('container.network.')) return { category: 'Network', iconKey: 'network' }
+  if (uses.startsWith('assert.')) return { category: 'Assertions', iconKey: 'check' }
+  if (uses.startsWith('flow.')) return { category: 'Flow', iconKey: 'route' }
+  if (uses.startsWith('debug.') || uses.startsWith('artifact.')) return { category: 'Debug', iconKey: 'debug' }
+  if (uses.includes('File')) return { category: 'Files', iconKey: 'file' }
+  return { category: 'Device', iconKey: 'device' }
 }
 
 const createFallbackDefinition = (uses: string, command?: AutomationCommand): AutomationActionDefinition => {
-  const category = fallbackCategory(uses)
-
   return {
     uses,
-    category,
-    iconKey: fallbackIconKey(category),
+    ...fallbackAppearance(uses),
     label: command?.label ?? uses,
     description: command?.description ?? 'This action does not have a visual editor yet.',
     defaultInput: () => ({ ...command?.editor.inputDefaults }),
@@ -165,8 +126,6 @@ export const getAutomationActionDefinitions = () => actionDefinitions
 
 export const getAutomationActionDefinition = (uses: string, command?: AutomationCommand): AutomationActionDefinition =>
   actionDefinitionByUses.get(uses) ?? createFallbackDefinition(uses, command)
-
-export const getAutomationActionIconKey = (uses: string) => getAutomationActionDefinition(uses).iconKey
 
 export const getDefaultActionInput = (uses: string, command?: AutomationCommand) =>
   getAutomationActionDefinition(uses, command).defaultInput()
@@ -197,5 +156,3 @@ export const getBackendActionInput = (
 
 export const summarizeActionInput = (uses: string, input: Record<string, unknown>, command?: AutomationCommand) =>
   getAutomationActionDefinition(uses, command).summary(input)
-
-export type { AutomationActionCategory, AutomationActionIconKey }

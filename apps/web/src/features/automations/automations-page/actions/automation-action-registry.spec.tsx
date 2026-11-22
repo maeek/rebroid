@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { buildYaml, defaultStep, definitionToForm } from '../editor/builder-utils'
 import {
+  getAutomationActionDefinition,
   getAutomationActionDefinitions,
   getBackendActionInput,
   getDefaultActionInput,
@@ -54,6 +55,20 @@ const knownV1Uses = [
 ]
 
 describe('automation action registry', () => {
+  it.each([
+    ['ai.newFile', 'AI', 'sparkles'],
+    ['vision.newFile', 'Vision', 'search'],
+    ['container.network.newFile', 'Network', 'network'],
+    ['assert.newFile', 'Assertions', 'check'],
+    ['flow.newFile', 'Flow', 'route'],
+    ['debug.newFile', 'Debug', 'debug'],
+    ['artifact.newFile', 'Debug', 'debug'],
+    ['android.newFile', 'Files', 'file'],
+    ['unknown', 'Device', 'device']
+  ])('chooses the fallback presentation for %s', (uses, category, iconKey) => {
+    expect(getAutomationActionDefinition(uses)).toMatchObject({ uses, category, iconKey })
+  })
+
   it('defines every V1 action explicitly', () => {
     const registeredUses = new Set(getAutomationActionDefinitions().map(definition => definition.uses))
 
