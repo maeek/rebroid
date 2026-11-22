@@ -29,16 +29,6 @@ const recordScheduledTaskAudit = async (
   })
 }
 
-export const listScheduledTaskActionsAction = async () => {
-  await requireAdminUser()
-  return orchestratorScheduledTasksClient.listActions()
-}
-
-export const listScheduledTasksAction = async () => {
-  await requireAdminUser()
-  return orchestratorScheduledTasksClient.list()
-}
-
 export const createScheduledTaskAction = async (input: SaveScheduledTaskInput) => {
   await requireAdminUser()
   const task = await orchestratorScheduledTasksClient.create(input)

@@ -3,11 +3,12 @@ import { ScheduledTasksPage } from '../../scheduled-tasks-page/scheduled-tasks-p
 import { loadPlatformSchedulerPageData } from './page-data.server'
 
 export async function PlatformSchedulerPageEntry() {
-  const { actions, orchestratorError, tasks } = await loadPlatformSchedulerPageData()
+  const result = await loadPlatformSchedulerPageData()
 
-  if (orchestratorError) {
+  if (!result.ok) {
     return (
       <PlatformRouteUnavailable
+        requestId={result.requestId}
         title='Maintenance tasks'
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
         section={{ label: 'System' }}
@@ -17,8 +18,8 @@ export async function PlatformSchedulerPageEntry() {
 
   return (
     <ScheduledTasksPage
-      initialActions={actions}
-      initialTasks={tasks}
+      initialActions={result.data.actions}
+      initialTasks={result.data.tasks}
     />
   )
 }
