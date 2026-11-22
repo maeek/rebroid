@@ -371,7 +371,7 @@ const MetricsTableSkeleton = ({ columns }: { columns: number }) => (
   <>
     {Array.from({ length: 4 }, (_, row) => (
       <TableRow key={row}>
-        {Array.from({ length: columns }, (cell, column) => (
+        {Array.from({ length: columns }, (_cell, column) => (
           <TableCell key={column}>
             <Skeleton className='h-4 w-20 max-w-full' />
           </TableCell>
