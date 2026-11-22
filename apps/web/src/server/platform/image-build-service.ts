@@ -1,7 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
 import { requireAdmin } from '@/server/auth/authorization'
-import { requireFeature } from '@/server/orchestrator/features'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
 import { runAuditedPlatformAction } from '@/server/orchestrator/platform/platform-audit'
 import type { StartGappsBuildInput } from '@/shared/contracts/platform'
@@ -9,13 +8,14 @@ import type { StartGappsBuildInput } from '@/shared/contracts/platform'
 export const gappsAndroidVersionSchema = z.enum(['16', '15', '14', '13'])
 
 export const getImageBuildJob = async (id: string) => {
-  await requireAdmin()
+  await requireAdmin('api')
   return orchestratorPlatformClient.getImageBuildJob(id)
 }
 
 export const cancelImageBuild = async (id: string) => {
   return runAuditedPlatformAction({
     action: 'docker.image_build.cancel',
+    response: 'api',
     operation: () => orchestratorPlatformClient.cancelImageBuild(id),
     resourceType: 'docker_image_build',
     resourceId: id
@@ -23,9 +23,10 @@ export const cancelImageBuild = async (id: string) => {
 }
 
 export const startGappsBuild = async (input: StartGappsBuildInput) => {
-  await requireFeature('feature.image-builder')
   return runAuditedPlatformAction({
     action: 'docker.image_build.gapps_patch.start',
+    response: 'api',
+    feature: 'feature.image-builder',
     details: { ...input },
     operation: () => orchestratorPlatformClient.startGappsBuild(input),
     resourceType: 'docker_image_build',
@@ -34,9 +35,10 @@ export const startGappsBuild = async (input: StartGappsBuildInput) => {
 }
 
 export const clearGappsCache = async (androidVersion: string) => {
-  await requireFeature('feature.image-builder')
   return runAuditedPlatformAction({
     action: 'docker.image_build.gapps_cache.clear',
+    response: 'api',
+    feature: 'feature.image-builder',
     details: { androidVersion },
     operation: () => orchestratorPlatformClient.clearGappsCache(androidVersion),
     resourceType: 'docker_image_build_cache',

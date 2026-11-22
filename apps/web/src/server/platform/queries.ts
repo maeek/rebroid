@@ -5,12 +5,12 @@ import { orchestratorDiagnosticsClient } from '@/server/orchestrator/diagnostics
 import { buildResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 export const getSystemResources = async () => {
-  await requireAdmin()
+  await requireAdmin('api')
   return orchestratorDiagnosticsClient.getSystemResources()
 }
 
 export const getResourceLimitBounds = async () => {
-  const user = await getCurrentUserContext()
+  const user = await getCurrentUserContext('api')
   const resources = await orchestratorDiagnosticsClient.getSystemResourceCapacity().catch(() => null)
   return buildResourceLimitBounds(resources, user.quotas)
 }

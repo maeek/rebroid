@@ -5,7 +5,7 @@ import { orchestratorPlatformClient } from '@/server/orchestrator/platform/clien
 
 export const GET = (_request: Request, context: { params: Promise<{ jobId: string }> }) =>
   runRouteHandler(async () => {
-    await requireAdmin()
+    await requireAdmin('api')
     const { jobId } = await context.params
     return orchestratorPlatformClient.getPlatformImagePull(z.uuid().parse(jobId))
   })

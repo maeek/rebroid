@@ -8,12 +8,12 @@ import { dockerOperationLimitsSchema } from '@/shared/contracts/docker-operation
 const path = '/platform/docker/operation-limits'
 
 export const readDockerOperationLimits = async () => {
-  await requireAdmin()
+  await requireAdmin('api')
   return request(path, undefined, dockerOperationLimitsSchema)
 }
 
 export const saveDockerOperationLimits = async (input: unknown) => {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('api')
   const parsed = dockerOperationLimitsSchema.safeParse(input)
   if (!parsed.success)
     throw new PublicActionError('Enter valid Docker operation limits.', { code: 'validation', status: 400 })

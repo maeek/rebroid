@@ -23,7 +23,7 @@ const providerBillingSchema = z.array(
 )
 
 export const readAiProviderBillingIssues = async (signal?: AbortSignal): Promise<AiProviderBillingIssueEntry[]> => {
-  await requireAdmin()
+  await requireAdmin('api')
   const providers = providerBillingSchema.parse(await orchestratorSettingsClient.listAiProviders(signal))
   return providers.flatMap(({ id, billingIssue }) => (billingIssue ? [{ providerId: id, issue: billingIssue }] : []))
 }

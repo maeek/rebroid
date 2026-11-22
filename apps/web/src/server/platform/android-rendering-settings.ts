@@ -8,12 +8,12 @@ import { androidRenderingSettingsSchema } from '@/shared/contracts/android-rende
 const path = '/settings/android-rendering'
 
 export const readAndroidRenderingSettings = async () => {
-  await requireAdmin()
+  await requireAdmin('api')
   return request(path, undefined, androidRenderingSettingsSchema)
 }
 
 export const saveAndroidRenderingSettings = async (input: unknown) => {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('api')
   const parsed = androidRenderingSettingsSchema.safeParse(input)
   if (!parsed.success) {
     throw new PublicActionError('Enter valid Android rendering settings.', {

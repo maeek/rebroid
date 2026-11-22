@@ -5,7 +5,6 @@ import {
   canInspectActiveWorkflowRuns,
   listActiveWorkflowRuns
 } from '@/server/orchestrator/automations/active-workflow-runs-query'
-import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { loadFeatureFlags } from '@/server/orchestrator/features'
 import { isAppInProgress } from '@/shared/model/applications/app-gallery-status'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
@@ -15,12 +14,11 @@ import type { PlatformOperationsSnapshot } from '@/shared/contracts/platform-ope
 const overviewItemLimit = 3
 
 export const getPlatformOperations = async (): Promise<PlatformOperationsSnapshot> => {
-  await requireAdmin()
-  const user = await getCurrentUserContext()
+  const admin = await requireAdmin('api')
   const [apps, runs, manifest] = await Promise.all([
     orchestratorAppCatalogClient.listApplicationGallery(),
-    canInspectActiveWorkflowRuns(user.permissions) ? listActiveWorkflowRuns(user.ownerUserId) : null,
-    hasPermission(user.permissions, 'automations:manage') ? loadFeatureFlags() : null
+    canInspectActiveWorkflowRuns(admin.effectivePermissions) ? listActiveWorkflowRuns(admin.id) : null,
+    hasPermission(admin.effectivePermissions, 'automations:manage') ? loadFeatureFlags() : null
   ])
   return {
     collectedAt: new Date().toISOString(),

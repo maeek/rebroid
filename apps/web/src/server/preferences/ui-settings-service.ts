@@ -41,28 +41,28 @@ const recordUpdate = (
   })
 
 export const saveGeneralUiSettings = async (settings: GeneralUiSettings) => {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('api')
   const web = await saveWebSettings(settings)
   recordUpdate(admin, 'general')
   return combineSettings(web, await readOptionalRuntimeSettings())
 }
 
 export const resetGeneralUiSettings = async () => {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('api')
   const web = await saveWebSettings(pickGeneralUiSettings(defaultWebSettingsResponse))
   recordUpdate(admin, 'general_reset')
   return combineSettings(web, await readOptionalRuntimeSettings())
 }
 
 export const saveAiUiSettings = async (settings: AiUiSettings) => {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('api')
   const web = await saveWebSettings(settings)
   recordUpdate(admin, 'ai')
   return combineSettings(web, await readOptionalRuntimeSettings())
 }
 
 export const saveRuntimeUiSettings = async (settings: RuntimeUiSettingsPatch) => {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('api')
   const { removeDataOnDelete, ...runtimeSettings } = settings
   const changesRuntime = Object.keys(runtimeSettings).length > 0
   let web = await getWebSettings()
@@ -96,7 +96,7 @@ export const saveRuntimeUiSettings = async (settings: RuntimeUiSettingsPatch) =>
 }
 
 export const resetRuntimeUiSettings = async () => {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('api')
   const web = await getWebSettings()
   const orchestrator = await orchestratorSettingsClient.resetSettings()
   recordUpdate(admin, 'runtime_reset')

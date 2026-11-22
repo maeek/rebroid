@@ -40,9 +40,11 @@ export const getCurrentUser = cache(async (response?: AuthResponse) => (await ge
 
 export const getCurrentSessionIdentity = async () => (await getCurrentAccount()).identity
 
-export const requireAdmin = async () => {
-  const user = await getCurrentUser()
+export const requireAdmin = async (response?: 'api') => {
+  const user = await getCurrentUser(response)
   if (!user.isPlatformAdmin) {
+    if (response === 'api')
+      throw new PublicActionError('Administrator access is required.', { code: 'forbidden', status: 403 })
     redirect('/apps')
   }
   return user

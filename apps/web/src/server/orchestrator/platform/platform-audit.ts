@@ -9,6 +9,7 @@ export const runAuditedPlatformAction = async <T>({
   details,
   feature,
   operation,
+  response,
   resourceId,
   resourceType
 }: {
@@ -16,11 +17,12 @@ export const runAuditedPlatformAction = async <T>({
   details?: Record<string, unknown>
   feature?: FeatureFlagKey
   operation: () => Promise<T>
+  response?: 'api'
   resourceId?: string
   resourceType: string
 }) => {
-  const admin = await requireAdmin()
-  if (feature) await requireFeature(feature)
+  const admin = await requireAdmin(response)
+  if (feature) await requireFeature(feature, response)
   const result = await operation()
   recordAuditEvent({
     actorUserId: admin.id,
