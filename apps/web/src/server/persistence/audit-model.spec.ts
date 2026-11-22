@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  auditOrderBy,
-  auditRetentionCutoff,
-  auditWhere,
-  normalizeAuditDetails,
-  normalizeAuditPagination,
-  parseAuditRow
-} from './audit-model'
+import { auditOrderBy, auditRetentionCutoff, auditWhere, normalizeAuditDetails, parseAuditRow } from './audit-model'
 
 describe('audit model', () => {
   it('serializes details with bigint values', () => {
@@ -52,10 +45,9 @@ describe('audit model', () => {
     expect(where.values.slice(-3)).toEqual(['user-1', 'application', 'success'])
   })
 
-  it('builds allowlisted order clauses and pagination', () => {
+  it('builds allowlisted order clauses', () => {
     expect(auditOrderBy([{ id: 'actorLabel', desc: false }])).toBe('coalesce(actor_username, actor_label) ASC, id DESC')
     expect(auditOrderBy()).toBe('created_at DESC, id DESC')
-    expect(normalizeAuditPagination(-4, 500)).toEqual({ page: 1, pageSize: 100 })
   })
 
   it('returns null for disabled retention and cutoff for valid retention', () => {

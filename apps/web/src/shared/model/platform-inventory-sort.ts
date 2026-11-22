@@ -4,7 +4,9 @@ const inventorySorting = {
   networks: { fields: ['name', 'driver', 'scope', 'containers'], fallback: 'name:asc', direction: 'asc' }
 }
 
-export const parsePlatformInventorySort = (resource: keyof typeof inventorySorting, sort: string | undefined) => {
+export type PlatformInventoryResource = keyof typeof inventorySorting
+
+export const parsePlatformInventorySort = (resource: PlatformInventoryResource, sort: string | undefined) => {
   const { fields, fallback, direction: defaultDirection } = inventorySorting[resource]
   return (sort || fallback)
     .split(',')

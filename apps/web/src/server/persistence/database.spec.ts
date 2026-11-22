@@ -202,6 +202,8 @@ describe('fresh web database', () => {
     ).toEqual(['Alpha'])
     expect(listAuditEvents({ resourceId: 'app-a' }, { page: 999, pageSize: 1 }).page).toBe(2)
     expect(listAuditEvents({ resourceId: 'missing' }, { page: 999 }).page).toBe(1)
+    expect(listAuditEvents({}, { page: NaN, pageSize: Infinity })).toMatchObject({ page: 1, pageSize: 20 })
+    expect(listAuditEvents({}, { page: -4, pageSize: 500 })).toMatchObject({ page: 1, pageSize: 100 })
   })
 
   it('provides one current actor label per ID while preserving historical event labels', () => {

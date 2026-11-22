@@ -1,5 +1,6 @@
 import 'server-only'
 import { auditExportLimit } from '@/shared/model/audit-export'
+import { normalizePagination } from '@/shared/model/pagination'
 import {
   auditActorName,
   auditEventsWithActors,
@@ -8,7 +9,6 @@ import {
   auditSelectColumns,
   auditWhere,
   normalizeAuditDetails,
-  normalizeAuditPagination,
   parseAuditRow
 } from './audit-model'
 import { getDatabase } from './database'
@@ -40,7 +40,7 @@ export const listAuditEvents = (
   filters: AuditEventFilters = {},
   options: { page?: number; pageSize?: number; sorting?: AuditEventSort[] } = {}
 ): AuditEventPage => {
-  const { page: requestedPage, pageSize } = normalizeAuditPagination(options.page, options.pageSize)
+  const { page: requestedPage, pageSize } = normalizePagination(options)
   const where = auditWhere(filters)
   const client = getDatabase()
   const total = (

@@ -1,4 +1,5 @@
-import { parsePlatformInventorySort } from '@/shared/model/platform-inventory-sort'
+import { normalizePagination } from '@/shared/model/pagination'
+import { parsePlatformInventorySort, type PlatformInventoryResource } from '@/shared/model/platform-inventory-sort'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import { resolvePlatformImageRuntimeMetadata } from '@/shared/model/runtime-image/runtime-image-metadata'
 import type {
@@ -13,10 +14,27 @@ import type {
   PlatformNetworksGridQuery
 } from '@/shared/contracts/platform'
 
-const pageBounds = (query: { page?: number; pageSize?: number }) => ({
-  page: Math.max(Math.trunc(query.page ?? 1), 1),
-  pageSize: Math.min(Math.max(Math.trunc(query.pageSize ?? 20), 1), 100)
-})
+const inventoryPage = <T extends { id: string }>(
+  items: T[],
+  query: { page?: number; pageSize?: number; sort?: string },
+  resource: PlatformInventoryResource,
+  compareField: (field: string, left: T, right: T) => number,
+  priority?: (left: T, right: T) => number
+) => {
+  const { page, pageSize } = normalizePagination(query)
+  const sorting = parsePlatformInventorySort(resource, query.sort)
+  const sorted = items.toSorted((left, right) => {
+    const rank = priority?.(left, right)
+    if (rank) return rank
+    for (const { id, desc } of sorting) {
+      const order = compareField(id, left, right)
+      if (order) return desc ? -order : order
+    }
+    return left.id.localeCompare(right.id)
+  })
+  const offset = (page - 1) * pageSize
+  return { items: sorted.slice(offset, offset + pageSize), total: sorted.length, page, pageSize }
+}
 
 const uniqueValues = (values: Array<string | null | undefined>) =>
   Array.from(new Set(values.filter((value): value is string => Boolean(value)))).toSorted((left, right) =>
@@ -25,33 +43,25 @@ const uniqueValues = (values: Array<string | null | undefined>) =>
 
 const containerName = (container: PlatformContainer) => container.names[0] ?? container.shortId
 
-const sortContainers = (containers: PlatformContainer[], sort?: string) => {
-  const sorting = parsePlatformInventorySort('containers', sort)
-
-  return [...containers].sort((left, right) => {
-    if (left.orphaned !== right.orphaned) return left.orphaned ? -1 : 1
-    if (left.managed !== right.managed) return left.managed ? -1 : 1
-    for (const item of sorting) {
-      const multiplier = item.desc ? -1 : 1
-      let result = 0
-      if (item.id === 'name') result = containerName(left).localeCompare(containerName(right))
-      else if (item.id === 'state') result = left.state.localeCompare(right.state)
-      else if (item.id === 'image') result = left.image.localeCompare(right.image)
-      else if (item.id === 'applicationId')
-        result = (left.applicationName ?? left.applicationId ?? '').localeCompare(
-          right.applicationName ?? right.applicationId ?? ''
-        )
-      if (result !== 0) return result * multiplier
-    }
-    return left.id.localeCompare(right.id)
-  })
+const compareContainers = (field: string, left: PlatformContainer, right: PlatformContainer) => {
+  if (field === 'name') return containerName(left).localeCompare(containerName(right))
+  if (field === 'state') return left.state.localeCompare(right.state)
+  if (field === 'image') return left.image.localeCompare(right.image)
+  if (field === 'applicationId') {
+    return (left.applicationName ?? left.applicationId ?? '').localeCompare(
+      right.applicationName ?? right.applicationId ?? ''
+    )
+  }
+  return 0
 }
+
+const containerPriority = (left: PlatformContainer, right: PlatformContainer) =>
+  Number(right.orphaned) - Number(left.orphaned) || Number(right.managed) - Number(left.managed)
 
 export const platformContainersGridPage = (
   containers: PlatformContainer[],
   query: PlatformContainersGridQuery = {}
 ): PlatformContainersGridPage => {
-  const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
   const orphanedCount = containers.filter(container => container.orphaned).length
   const scoped = query.ownership === 'all' ? containers : containers.filter(container => container.managed)
@@ -84,13 +94,8 @@ export const platformContainersGridPage = (
           .includes(search)
       )
     : structured
-  const sorted = sortContainers(filtered, query.sort)
-  const offset = (page - 1) * pageSize
   return {
-    items: sorted.slice(offset, offset + pageSize),
-    total: sorted.length,
-    page,
-    pageSize,
+    ...inventoryPage(filtered, query, 'containers', compareContainers, containerPriority),
     orphanedCount,
     facets: {
       states: uniqueValues(containers.map(container => container.state)),
@@ -108,33 +113,17 @@ export const platformContainersGridPage = (
   }
 }
 
-const sortImages = (images: PlatformImage[], sort?: string) => {
-  const sorting = parsePlatformInventorySort('images', sort)
-
-  return [...images].sort((left, right) => {
-    for (const item of sorting) {
-      const multiplier = item.desc ? -1 : 1
-      let result = 0
-      if (item.id === 'name') {
-        result = imageDisplayName(left).localeCompare(imageDisplayName(right))
-      } else if (item.id === 'sizeBytes') {
-        result = left.sizeBytes - right.sizeBytes
-      } else if (item.id === 'createdAt') {
-        result = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
-      } else if (item.id === 'containers') {
-        result = left.containers - right.containers
-      }
-      if (result !== 0) return result * multiplier
-    }
-    return left.id.localeCompare(right.id)
-  })
+const compareImages = (field: string, left: PlatformImage, right: PlatformImage) => {
+  if (field === 'name') return imageDisplayName(left).localeCompare(imageDisplayName(right))
+  if (field === 'sizeBytes') return left.sizeBytes - right.sizeBytes
+  if (field === 'createdAt') return Date.parse(left.createdAt) - Date.parse(right.createdAt)
+  return field === 'containers' ? left.containers - right.containers : 0
 }
 
 export const platformImagesGridPage = (
   images: PlatformImage[],
   query: PlatformImagesGridQuery = {}
 ): PlatformImagesGridPage => {
-  const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
   const imageDetails = images.map(image => ({ image, metadata: resolvePlatformImageRuntimeMetadata(image).metadata }))
   const scoped = query.ownership === 'all' ? imageDetails : imageDetails.filter(({ image }) => image.managed)
@@ -166,13 +155,8 @@ export const platformImagesGridPage = (
           .includes(search)
       )
     : structured
-  const sorted = sortImages(filtered, query.sort)
-  const offset = (page - 1) * pageSize
   return {
-    items: sorted.slice(offset, offset + pageSize),
-    total: sorted.length,
-    page,
-    pageSize,
+    ...inventoryPage(filtered, query, 'images', compareImages),
     facets: {
       androidVersions: uniqueValues(imageDetails.map(({ metadata }) => metadata.androidVersion)),
       architectures: uniqueValues(imageDetails.map(({ metadata }) => metadata.architecture))
@@ -180,29 +164,15 @@ export const platformImagesGridPage = (
   }
 }
 
-const sortNetworks = (networks: PlatformNetwork[], sort?: string) => {
-  const sorting = parsePlatformInventorySort('networks', sort)
-
-  return [...networks].sort((left, right) => {
-    if (left.managed !== right.managed) return left.managed ? -1 : 1
-    for (const item of sorting) {
-      const multiplier = item.desc ? -1 : 1
-      let result = 0
-      if (item.id === 'name') result = left.name.localeCompare(right.name)
-      else if (item.id === 'driver') result = left.driver.localeCompare(right.driver)
-      else if (item.id === 'scope') result = left.scope.localeCompare(right.scope)
-      else if (item.id === 'containers') result = left.containers.length - right.containers.length
-      if (result !== 0) return result * multiplier
-    }
-    return left.id.localeCompare(right.id)
-  })
+const compareNetworks = (field: string, left: PlatformNetwork, right: PlatformNetwork) => {
+  if (field === 'name' || field === 'driver' || field === 'scope') return left[field].localeCompare(right[field])
+  return field === 'containers' ? left.containers.length - right.containers.length : 0
 }
 
 export const platformNetworksGridPage = (
   networks: PlatformNetwork[],
   query: PlatformNetworksGridQuery = {}
 ): PlatformNetworksGridPage => {
-  const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
   const scoped = query.ownership === 'all' ? networks : networks.filter(network => network.managed)
   const structured = scoped.filter(network => {
@@ -232,13 +202,14 @@ export const platformNetworksGridPage = (
           .includes(search)
       )
     : structured
-  const sorted = sortNetworks(filtered, query.sort)
-  const offset = (page - 1) * pageSize
   return {
-    items: sorted.slice(offset, offset + pageSize),
-    total: sorted.length,
-    page,
-    pageSize,
+    ...inventoryPage(
+      filtered,
+      query,
+      'networks',
+      compareNetworks,
+      (left, right) => Number(right.managed) - Number(left.managed)
+    ),
     facets: {
       drivers: uniqueValues(networks.map(network => network.driver)),
       scopes: uniqueValues(networks.map(network => network.scope))

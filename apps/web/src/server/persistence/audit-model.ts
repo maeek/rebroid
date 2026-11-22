@@ -165,11 +165,6 @@ export const auditOrderBy = (sorting: AuditEventSort[] = []) => {
   return clauses.length > 0 ? `${clauses.join(', ')}, id DESC` : 'created_at DESC, id DESC'
 }
 
-export const normalizeAuditPagination = (page: number | undefined, pageSize: number | undefined) => ({
-  page: Math.max(Math.trunc(page ?? 1), 1),
-  pageSize: Math.min(Math.max(Math.trunc(pageSize ?? 20), 1), 100)
-})
-
 export const auditRetentionCutoff = (retentionDays: number, now = Date.now()) => {
   if (!Number.isFinite(retentionDays) || retentionDays < 1) return null
 
