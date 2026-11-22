@@ -8,6 +8,7 @@ import {
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import { useImmediateSave } from '@/hooks/use-immediate-save'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
   createScheduledTaskAction,
   deleteScheduledTaskAction,
@@ -89,9 +90,11 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
       if (workflowHistoryTask && !Object.keys(update).length) {
         saved = workflowHistoryTask
       } else if (form.id) {
-        saved = await updateScheduledTaskAction(form.id, update)
+        saved = unwrapActionResult(await updateScheduledTaskAction(form.id, update))
       } else {
-        saved = await createScheduledTaskAction({ name, enabled, actionType, cronExpression, payload })
+        saved = unwrapActionResult(
+          await createScheduledTaskAction({ name, enabled, actionType, cronExpression, payload })
+        )
       }
       replaceTask(saved)
       setIsFormOpen(false)
@@ -100,7 +103,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     } catch (error) {
       toast({
         title: 'Could not save scheduled task',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -112,13 +115,13 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     setBusyTaskId(task.id)
     try {
       await toggleFeedback.save(task.id, async () => {
-        replaceTask(await updateScheduledTaskAction(task.id, { enabled }))
+        replaceTask(unwrapActionResult(await updateScheduledTaskAction(task.id, { enabled })))
       })
     } catch (error) {
       if (quiet) throw error
       toast({
         title: 'Could not update scheduled task',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -145,7 +148,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
       if (quiet) throw error
       toast({
         title: 'Could not run scheduled task',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -157,7 +160,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
   const deleteTask = async (task: ScheduledTask, quiet = false) => {
     setBusyTaskId(task.id)
     try {
-      await deleteScheduledTaskAction(task.id)
+      unwrapActionResult(await deleteScheduledTaskAction(task.id))
       setTasks(current => current.filter(item => item.id !== task.id))
       if (form.id === task.id) {
         setIsFormOpen(false)
@@ -168,7 +171,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
       if (quiet) throw error
       toast({
         title: 'Could not delete scheduled task',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {

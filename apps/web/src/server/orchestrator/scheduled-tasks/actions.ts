@@ -3,59 +3,54 @@
 import { revalidatePath } from 'next/cache'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
-import { getCurrentUser } from '@/server/auth/authorization'
+import { getCurrentUser, requireAdmin } from '@/server/auth/authorization'
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { isWorkflowHistoryRetentionTask, type SaveScheduledTaskInput } from '@/shared/contracts/scheduled-task'
-import { requireAdminUser } from '../shared'
+import {
+  isWorkflowHistoryRetentionTask,
+  type SaveScheduledTaskInput,
+  type ScheduledTask
+} from '@/shared/contracts/scheduled-task'
 import { orchestratorScheduledTasksClient } from './client'
 import { getWorkflowHistoryRetentionTask, toWorkflowHistoryRetention } from './workflow-history-retention'
 
-const recordScheduledTaskAudit = async (
-  action: string,
-  details?: Record<string, unknown>,
-  resourceId?: string,
-  resourceLabel?: string
-) => {
-  const admin = await requireAdminUser()
+type Admin = Awaited<ReturnType<typeof requireAdmin>>
+
+const adminTaskAction = (fallbackMessage: string, perform: (admin: Admin) => Promise<ScheduledTask>) =>
+  runSafeAction(async () => perform(await requireAdmin()), { fallbackMessage, logLabel: fallbackMessage })
+
+function auditTask(
+  admin: Admin,
+  action: 'create' | 'update' | 'run' | 'delete',
+  task: ScheduledTask,
+  details?: Record<string, unknown>
+) {
   recordAuditEvent({
     actorUserId: admin.id,
     actorLabel: admin.name || admin.username || admin.id,
     category: 'settings',
-    action,
+    action: `scheduled_task.${action}`,
     resourceType: 'scheduled_task',
-    resourceId,
-    resourceLabel,
-    details
+    resourceId: task.id,
+    resourceLabel: task.name,
+    details: { actionType: task.actionType, ...details }
   })
-}
-
-export const createScheduledTaskAction = async (input: SaveScheduledTaskInput) => {
-  await requireAdminUser()
-  const task = await orchestratorScheduledTasksClient.create(input)
-  await recordScheduledTaskAudit(
-    'scheduled_task.create',
-    { actionType: task.actionType, cronExpression: task.cronExpression },
-    task.id,
-    task.name
-  )
   return task
 }
 
-export const updateScheduledTaskAction = async (id: string, input: Partial<SaveScheduledTaskInput>) => {
-  await requireAdminUser()
+export const createScheduledTaskAction = async (input: SaveScheduledTaskInput) =>
+  adminTaskAction('Could not create the maintenance task.', async admin => {
+    const task = await orchestratorScheduledTasksClient.create(input)
+    return auditTask(admin, 'create', task, { cronExpression: task.cronExpression })
+  })
+
+async function updateTask(admin: Admin, id: string, input: Partial<SaveScheduledTaskInput>) {
   const task = await orchestratorScheduledTasksClient.update(id, input)
   const workflowHistoryTask = isWorkflowHistoryRetentionTask(task)
-  await recordScheduledTaskAudit(
-    'scheduled_task.update',
-    {
-      fields: Object.keys(input),
-      actionType: task.actionType,
-      ...(workflowHistoryTask &&
-        input.payload?.retentionDays !== undefined && { retentionDays: task.payload?.retentionDays })
-    },
-    task.id,
-    task.name
-  )
+  auditTask(admin, 'update', task, {
+    fields: Object.keys(input),
+    ...(workflowHistoryTask &&
+      input.payload?.retentionDays !== undefined && { retentionDays: task.payload?.retentionDays })
+  })
   if (workflowHistoryTask) {
     revalidatePath('/automations')
     revalidatePath('/platform/scheduler')
@@ -63,10 +58,14 @@ export const updateScheduledTaskAction = async (id: string, input: Partial<SaveS
   return task
 }
 
+export const updateScheduledTaskAction = async (id: string, input: Partial<SaveScheduledTaskInput>) =>
+  adminTaskAction('Could not update the maintenance task.', admin => updateTask(admin, id, input))
+
 export const saveWorkflowHistoryRetentionAction = async (retentionDays: number) =>
   runSafeAction(
     async () => {
-      if (!(await getCurrentUser()).isPlatformAdmin) {
+      const admin = await getCurrentUser()
+      if (!admin.isPlatformAdmin) {
         throw new PublicActionError('Only platform administrators can change workflow history retention.', {
           code: 'forbidden',
           status: 403
@@ -79,26 +78,18 @@ export const saveWorkflowHistoryRetentionAction = async (retentionDays: number) 
         })
       }
       const task = await getWorkflowHistoryRetentionTask()
-      const saved = await updateScheduledTaskAction(task.id, { payload: { retentionDays } })
+      const saved = await updateTask(admin, task.id, { payload: { retentionDays } })
       return toWorkflowHistoryRetention(saved)
     },
     { fallbackMessage: 'Could not save workflow history retention.', logLabel: 'Save workflow history retention' }
   )
 
 export const runScheduledTaskNowAction = async (id: string) =>
-  runSafeAction(
-    async () => {
-      await requireAdminUser()
-      const task = await orchestratorScheduledTasksClient.runNow(id)
-      await recordScheduledTaskAudit('scheduled_task.run', { actionType: task.actionType }, task.id, task.name)
-      return task
-    },
-    { fallbackMessage: 'Could not run the maintenance task.', logLabel: 'runScheduledTaskNowAction failed' }
+  adminTaskAction('Could not run the maintenance task.', async admin =>
+    auditTask(admin, 'run', await orchestratorScheduledTasksClient.runNow(id))
   )
 
-export const deleteScheduledTaskAction = async (id: string) => {
-  await requireAdminUser()
-  const task = await orchestratorScheduledTasksClient.remove(id)
-  await recordScheduledTaskAudit('scheduled_task.delete', { actionType: task.actionType }, task.id, task.name)
-  return task
-}
+export const deleteScheduledTaskAction = async (id: string) =>
+  adminTaskAction('Could not delete the maintenance task.', async admin =>
+    auditTask(admin, 'delete', await orchestratorScheduledTasksClient.remove(id))
+  )

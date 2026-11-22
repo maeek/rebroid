@@ -68,7 +68,7 @@ describe('Scheduler page', () => {
 
   it('updates availability from the row and keeps the switch in sync', async () => {
     const task = schedulerPreviewTasks[0]
-    vi.mocked(updateScheduledTaskAction).mockResolvedValue({ ...task, enabled: false, nextRunAt: null })
+    vi.mocked(updateScheduledTaskAction).mockResolvedValue(actionOk({ ...task, enabled: false, nextRunAt: null }))
     renderPage()
     fireEvent.click(screen.getByRole('switch', { name: 'Disable Clean orphaned APK files' }))
     await waitFor(() => expect(updateScheduledTaskAction).toHaveBeenCalledWith(task.id, { enabled: false }))
@@ -83,7 +83,7 @@ describe('Scheduler page', () => {
       actionType: 'clean_image_build_history',
       payload: { retentionDays: 30 }
     } as const
-    vi.mocked(updateScheduledTaskAction).mockResolvedValue({ ...task, payload: { retentionDays: 60 } })
+    vi.mocked(updateScheduledTaskAction).mockResolvedValue(actionOk({ ...task, payload: { retentionDays: 60 } }))
     render(
       <ScheduledTasksPage
         initialActions={[{ type: task.actionType, label: task.name, description: 'Remove old completed builds.' }]}
@@ -137,7 +137,7 @@ describe('Scheduler page', () => {
 
   it('saves a custom task rename without sending the old schedule or action options', async () => {
     const task = schedulerPreviewTasks.at(-1)!
-    vi.mocked(updateScheduledTaskAction).mockResolvedValue({ ...task, name: 'Sunday cleanup' })
+    vi.mocked(updateScheduledTaskAction).mockResolvedValue(actionOk({ ...task, name: 'Sunday cleanup' }))
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: task.name }))
     const dialog = await screen.findByRole('dialog')

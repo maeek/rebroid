@@ -3,14 +3,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { recordAuditEvent } from '@/server/audit/events'
 import { getCurrentUser, requireAdmin } from '@/server/auth/authorization'
 import { workflowHistoryRetentionKey, type ScheduledTask } from '@/shared/contracts/scheduled-task'
-import { saveWorkflowHistoryRetentionAction } from './actions'
+import {
+  createScheduledTaskAction,
+  deleteScheduledTaskAction,
+  saveWorkflowHistoryRetentionAction,
+  updateScheduledTaskAction
+} from './actions'
 import { orchestratorScheduledTasksClient } from './client'
 import { loadWorkflowHistoryRetention } from './workflow-history-retention'
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/server/auth/authorization', () => ({ getCurrentUser: vi.fn(), requireAdmin: vi.fn() }))
-vi.mock('./client', () => ({ orchestratorScheduledTasksClient: { list: vi.fn(), update: vi.fn() } }))
+vi.mock('./client', () => ({
+  orchestratorScheduledTasksClient: { create: vi.fn(), list: vi.fn(), remove: vi.fn(), update: vi.fn() }
+}))
 
 const admin = {
   id: 'admin',
@@ -93,11 +100,29 @@ describe('workflow history retention settings', () => {
       data: { retentionDays: 14, enabled: false }
     })
     expect(orchestratorScheduledTasksClient.update).toHaveBeenCalledWith(builtIn.id, { payload: { retentionDays: 14 } })
+    expect(requireAdmin).not.toHaveBeenCalled()
     expect(revalidatePath).toHaveBeenCalledWith('/automations')
     expect(revalidatePath).toHaveBeenCalledWith('/platform/scheduler')
     expect(vi.mocked(recordAuditEvent).mock.lastCall?.[0]).toMatchObject({
       action: 'scheduled_task.update',
       details: { retentionDays: 14 }
     })
+  })
+})
+
+describe('maintenance task mutations', () => {
+  it.each([
+    ['create', () => createScheduledTaskAction({ ...builtIn, payload: {} })],
+    ['update', () => updateScheduledTaskAction(builtIn.id, { enabled: true })],
+    ['remove', () => deleteScheduledTaskAction(builtIn.id)]
+  ] as const)('returns a safe, correlated failure for %s', async (method, invoke) => {
+    vi.resetAllMocks()
+    vi.mocked(requireAdmin).mockResolvedValue(admin)
+    vi.mocked(orchestratorScheduledTasksClient[method]).mockRejectedValue(new Error('private storage details'))
+    const result = await invoke()
+    expect(result).toMatchObject({ ok: false, error: { code: 'internal' } })
+    expect(JSON.stringify(result)).not.toContain('private storage details')
+    expect(requireAdmin).toHaveBeenCalledTimes(1)
+    expect(recordAuditEvent).not.toHaveBeenCalled()
   })
 })
