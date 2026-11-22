@@ -81,17 +81,15 @@ test("the browser and server builds agree on portrait SPS dimensions and level",
 
 test("mixed Annex-B start codes omit empty NAL units and keep configuration independent of the packet", () => {
   const bytes = Uint8Array.from([
-    0, 0, 1, 0x67, 0x42, 0xc0, 0x33,
-    0, 0, 0, 1, 0, 0, 1, 0x68, 0x20,
-    0, 0, 1,
+    0, 0, 1, 0x67, 0x42, 0xc0, 0x33, 0, 0, 0, 1, 0, 0, 1, 0x68, 0x20, 0, 0, 1,
   ]);
   const config = codecConfiguration(bytes);
   const sample = annexBToAvcSample(bytes);
   bytes.fill(0);
-  assert.deepEqual([...sample], [
-    0, 0, 0, 4, 0x67, 0x42, 0xc0, 0x33,
-    0, 0, 0, 2, 0x68, 0x20,
-  ]);
+  assert.deepEqual(
+    [...sample],
+    [0, 0, 0, 4, 0x67, 0x42, 0xc0, 0x33, 0, 0, 0, 2, 0x68, 0x20],
+  );
   assert.deepEqual([...config.sps], [0x67, 0x42, 0xc0, 0x33]);
   assert.deepEqual([...config.pps], [0x68, 0x20]);
 });
