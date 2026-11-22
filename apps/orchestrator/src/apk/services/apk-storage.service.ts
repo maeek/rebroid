@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { link, mkdir, readdir, stat, unlink } from 'node:fs/promises';
+import { link, lstat, mkdir, readdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { writeHashedUpload } from '../../common/write-hashed-upload';
@@ -95,30 +95,30 @@ export class ApkStorageService {
     const cutoff = Date.now() - 60 * 60 * 1000;
     let removed = 0;
     for (const name of await readdir(apkDir)) {
+      const sha256 = name.endsWith('.apk') ? name.slice(0, -4) : null;
       if (
-        (!name.endsWith('.apk') || referenced.has(name)) &&
-        !name.endsWith('.upload')
+        referenced.has(name) ||
+        (sha256 === null && !name.endsWith('.upload'))
       )
         continue;
       const path = join(apkDir, name);
       const deleteIfOrphaned = async () => {
         if (this.activeUploads.has(path)) return false;
-        const metadata = await stat(path).catch(
+        const metadata = await lstat(path).catch(
           (error: NodeJS.ErrnoException) => {
             if (error.code !== 'ENOENT') throw error;
             return null;
           },
         );
-        if (!metadata || metadata.mtimeMs > cutoff) return false;
-        if (name.endsWith('.apk')) {
-          const sha256 = name.slice(0, -4);
-          if (await this.uploadedApks.countBySha256(sha256)) return false;
-        }
+        if (!metadata?.isFile() || metadata.mtimeMs > cutoff) return false;
+        if (sha256 !== null && (await this.uploadedApks.countBySha256(sha256)))
+          return false;
         return this.removeFile(path);
       };
-      const deleted = name.endsWith('.apk')
-        ? await this.withHash(name.slice(0, -4), deleteIfOrphaned)
-        : await deleteIfOrphaned();
+      const deleted =
+        sha256 === null
+          ? await deleteIfOrphaned()
+          : await this.withHash(sha256, deleteIfOrphaned);
       if (deleted) removed += 1;
     }
     return removed;

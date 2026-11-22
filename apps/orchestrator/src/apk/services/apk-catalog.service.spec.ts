@@ -1,5 +1,14 @@
 import { ConfigService } from '@nestjs/config';
-import { mkdtemp, readFile, rm, utimes } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  utimes,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -91,6 +100,28 @@ describe('APK catalog shared blob coordination', () => {
 
   afterEach(async () => {
     await rm(directory, { recursive: true, force: true });
+  });
+
+  it('limits orphan cleanup to old regular files in APK storage', async () => {
+    const apks = join(directory, 'apks');
+    await mkdir(apks);
+    const target = join(directory, 'retained');
+    const orphan = join(apks, 'abandoned.upload');
+    await writeFile(target, 'unrelated');
+    await writeFile(orphan, 'partial');
+    await mkdir(join(apks, 'archive.apk'));
+    await symlink(target, join(apks, 'linked.upload'));
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    await Promise.all(
+      [target, orphan, join(apks, 'archive.apk')].map((path) =>
+        utimes(path, old, old),
+      ),
+    );
+    await expect(storage.cleanupOrphanedFiles()).resolves.toBe(1);
+    expect((await readdir(apks)).sort()).toEqual([
+      'archive.apk',
+      'linked.upload',
+    ]);
   });
 
   it('deduplicates concurrent owner uploads after publication and analysis', async () => {
