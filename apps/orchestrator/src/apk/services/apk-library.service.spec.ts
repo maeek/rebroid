@@ -79,6 +79,20 @@ describe('APK library', () => {
     return { upload, id: `sha256:${upload.sha256}` };
   };
 
+  it('reads distinct inspection evidence from older upload records', async () => {
+    const { upload } = await save('original', 'owner');
+    upload.googlePlayServicesEvidenceJson = JSON.stringify([
+      'manifest_fcm_receiver',
+      'unknown',
+      'manifest_fcm_receiver',
+      'dex_play_core',
+    ]);
+    await uploads.save(upload);
+    await expect(library.list()).resolves.toMatchObject([
+      { inspectionEvidence: ['manifest_fcm_receiver', 'dex_play_core'] },
+    ]);
+  });
+
   it('distinguishes exact and package blocks and retains rules after deleting shared bytes', async () => {
     const first = await save('build-1', 'owner');
     await save('build-1', 'another-owner');

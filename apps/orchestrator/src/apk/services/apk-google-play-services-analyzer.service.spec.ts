@@ -27,6 +27,23 @@ describe('ApkGooglePlayServicesAnalyzerService', () => {
     });
   });
 
+  it('reports one evidence code for equivalent manifest and DEX references', async () => {
+    const { service } = createService(
+      [
+        'com.google.firebase.MESSAGING_EVENT',
+        'com.google.android.c2dm.intent.RECEIVE',
+      ],
+      [
+        'Lcom/google/android/play/core/integrity/',
+        'Lcom/google/android/gms/playintegrity/',
+      ],
+    );
+    await expect(service.analyze('/tmp/app.apk')).resolves.toMatchObject({
+      verdict: 'required',
+      evidence: ['manifest_fcm_receiver', 'dex_play_integrity'],
+    });
+  });
+
   it('marks DEX-only Play Services references as likely', async () => {
     const { service } = createService(
       ['manifest'],

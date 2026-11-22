@@ -13,7 +13,7 @@ import type {
   ApkLibraryMutationDto,
   ApkLibraryMutationResultDto,
 } from '../dto/apk-library.dto';
-import { UploadedApkResponseDto } from '../dto/uploaded-apk-response.dto';
+import { readGooglePlayServicesEvidence } from '../utils/google-play-services-evidence';
 import type { ApkBlockRule } from '../entities/apk-block-rule.entity';
 import { ApkBlockRulesRepository } from '../persistence/apk-block-rules.repository';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
@@ -79,7 +79,7 @@ export class ApkLibraryService {
             })),
           ),
           googlePlayServices: upload.googlePlayServicesVerdict,
-          inspectionEvidence: UploadedApkResponseDto.parseEvidence(
+          inspectionEvidence: readGooglePlayServicesEvidence(
             upload.googlePlayServicesEvidenceJson,
           ),
         };

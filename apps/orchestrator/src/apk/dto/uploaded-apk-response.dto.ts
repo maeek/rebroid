@@ -1,3 +1,4 @@
+import { readGooglePlayServicesEvidence } from '../utils/google-play-services-evidence';
 import { ApiProperty } from '@nestjs/swagger';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
 import {
@@ -63,7 +64,7 @@ export class UploadedApkResponseDto {
       packageName: entity.packageName,
       googlePlayServices: {
         verdict: entity.googlePlayServicesVerdict,
-        evidence: UploadedApkResponseDto.parseEvidence(
+        evidence: readGooglePlayServicesEvidence(
           entity.googlePlayServicesEvidenceJson,
         ),
         analysisVersion: entity.googlePlayServicesAnalysisVersion,
@@ -71,19 +72,5 @@ export class UploadedApkResponseDto {
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };
-  }
-
-  static parseEvidence(value: string): GooglePlayServicesEvidenceCode[] {
-    try {
-      const parsed: unknown = JSON.parse(value);
-      if (!Array.isArray(parsed)) return [];
-      const allowed = new Set<string>(googlePlayServicesEvidenceCodes);
-      return parsed.filter(
-        (item): item is GooglePlayServicesEvidenceCode =>
-          typeof item === 'string' && allowed.has(item),
-      );
-    } catch {
-      return [];
-    }
   }
 }

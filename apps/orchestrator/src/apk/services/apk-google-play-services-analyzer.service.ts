@@ -82,33 +82,30 @@ export class ApkGooglePlayServicesAnalyzerService {
       if (manifestStrings.size === 0) {
         return this.unknown('analysis_failed');
       }
-      const evidence = manifestSignals
-        .filter(({ needle }) => manifestStrings.has(needle))
-        .map(({ code }) => code);
+      const evidence = new Set<GooglePlayServicesEvidenceCode>();
+      for (const { needle, code } of manifestSignals) {
+        if (manifestStrings.has(needle)) evidence.add(code);
+      }
+      const hasManifestEvidence = evidence.size > 0;
       const dexMatches = await this.archive.scanAsciiPatterns(
         filePath,
         /^classes\d*\.dex$/,
         dexSignals.map(({ needle }) => needle),
         maxDexBytes,
       );
-      for (const signal of dexSignals) {
-        if (dexMatches.has(signal.needle) && !evidence.includes(signal.code)) {
-          evidence.push(signal.code);
-        }
+      for (const { needle, code } of dexSignals) {
+        if (dexMatches.has(needle)) evidence.add(code);
       }
 
-      const hasManifestEvidence = evidence.some((code) =>
-        code.startsWith('manifest_'),
-      );
       let verdict: GooglePlayServicesAnalysis['verdict'] = 'not_detected';
       if (hasManifestEvidence) {
         verdict = 'required';
-      } else if (evidence.length > 0) {
+      } else if (evidence.size > 0) {
         verdict = 'likely';
       }
       return {
         verdict,
-        evidence,
+        evidence: [...evidence],
         analysisVersion,
       };
     } catch (error) {
