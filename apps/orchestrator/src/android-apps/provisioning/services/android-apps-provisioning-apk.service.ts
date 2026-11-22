@@ -1,3 +1,4 @@
+import { shellQuote } from '../../../common/shell-quote';
 import {
   Inject,
   Injectable,
@@ -29,7 +30,6 @@ import {
   buildLaunchPackageCommand,
   buildPmInstallCommand,
   resolveInstalledPackageName,
-  shellQuote,
 } from '../utils/android-apps-apk-provisioning.utils';
 
 @Injectable()

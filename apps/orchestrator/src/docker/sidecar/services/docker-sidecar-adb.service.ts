@@ -1,3 +1,4 @@
+import { shellQuote } from '../../../common/shell-quote';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   OperationDeadlineExceededError,
@@ -135,7 +136,7 @@ export class DockerSidecarAdbService {
     preparation: AdbPreparation,
     target: string,
   ): Promise<ViewerTargetStatus> {
-    const quotedTarget = this.shellQuote(target);
+    const quotedTarget = shellQuote(target);
     try {
       const connectCommand = [
         'sh',
@@ -200,7 +201,7 @@ export class DockerSidecarAdbService {
   }
 
   private async reconnectTarget(preparation: AdbPreparation, target: string) {
-    const quotedTarget = this.shellQuote(target);
+    const quotedTarget = shellQuote(target);
     const command = [
       'sh',
       '-lc',
@@ -261,7 +262,7 @@ export class DockerSidecarAdbService {
       'sh',
       '-lc',
       [
-        `timeout --foreground 10s adb -s ${this.shellQuote(target)} shell ${this.shellQuote(
+        `timeout --foreground 10s adb -s ${shellQuote(target)} shell ${shellQuote(
           [
             'settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true',
             'svc power stayon true >/dev/null 2>&1 || true',
@@ -296,7 +297,7 @@ export class DockerSidecarAdbService {
       '-lc',
       [
         'node -e',
-        this.shellQuote(
+        shellQuote(
           [
             'const net = require("node:net");',
             `const host = ${hostLiteral};`,
@@ -447,9 +448,5 @@ export class DockerSidecarAdbService {
       stdout: details.stdout,
       stderr: details.stderr,
     };
-  }
-
-  private shellQuote(value: string) {
-    return `'${value.replaceAll("'", "'\\''")}'`;
   }
 }

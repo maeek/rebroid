@@ -1,3 +1,4 @@
+import { shellQuote } from '../../../common/shell-quote';
 import { Inject, Injectable } from '@nestjs/common';
 import { Readable } from 'node:stream';
 import type { MultipartUploadRequest } from '../../../common/http-upload';
@@ -22,7 +23,7 @@ import {
 import { runtimeDownloadTarget } from '../utils/runtime-download-target';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
 import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
-import { RuntimeFilePathService } from './runtime-file-path.service';
+import { downloadDirectory } from '../utils/runtime-file-path';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 
 @Injectable()
@@ -34,7 +35,6 @@ export class RuntimeDownloadFilesService {
     private readonly exec: DockerContainerExecPort,
     private readonly logs: AndroidAppsLogService,
     private readonly reconciler: AndroidAppsRuntimeStateReconciler,
-    private readonly paths: RuntimeFilePathService,
     private readonly volumes: RuntimeDownloadVolumeService,
     private readonly uploads: RuntimeUploadStreamService,
   ) {}
@@ -79,7 +79,7 @@ export class RuntimeDownloadFilesService {
         : await readRuntimeDownload(
             this.archive,
             target.containerId,
-            `${this.paths.downloadDirectory}/${safeFileName}`,
+            `${downloadDirectory}/${safeFileName}`,
           );
     return {
       name: safeFileName,
@@ -93,7 +93,7 @@ export class RuntimeDownloadFilesService {
       'sh',
       '-lc',
       [
-        `dir="${this.paths.downloadDirectory}"`,
+        `dir="${downloadDirectory}"`,
         'mkdir -p "$dir"',
         'find "$dir" -maxdepth 1 -type f -print 2>/dev/null | while IFS= read -r file; do',
         'name=${file##*/}',
@@ -104,7 +104,7 @@ export class RuntimeDownloadFilesService {
       ].join('\n'),
     ]);
 
-    return parseDownloadFiles(stdout, this.paths.downloadDirectory);
+    return parseDownloadFiles(stdout, downloadDirectory);
   }
 
   private async storeDownloadFileStream(
@@ -141,7 +141,7 @@ export class RuntimeDownloadFilesService {
     await this.exec.execInContainer(containerId, [
       'sh',
       '-lc',
-      `mkdir -p ${this.paths.shellQuote(this.paths.downloadDirectory)}`,
+      `mkdir -p ${shellQuote(downloadDirectory)}`,
     ]);
 
     const sizeBytes = await this.uploads.withStagedFile(
@@ -150,7 +150,7 @@ export class RuntimeDownloadFilesService {
         await this.archive.copyFileToContainer(
           containerId,
           tempPath,
-          this.paths.downloadDirectory,
+          downloadDirectory,
           fileName,
         );
         await this.prepareRunningDownloadFile(containerId, fileName);
@@ -165,13 +165,13 @@ export class RuntimeDownloadFilesService {
     containerId: string,
     fileName: string,
   ) {
-    const filePath = `${this.paths.downloadDirectory}/${fileName}`;
+    const filePath = `${downloadDirectory}/${fileName}`;
 
     await this.exec.execInContainer(containerId, [
       'sh',
       '-lc',
       [
-        `file_path=${this.paths.shellQuote(filePath)}`,
+        `file_path=${shellQuote(filePath)}`,
         'chown 1023:1023 "$file_path" 2>/dev/null || true',
         'chmod 0644 "$file_path" 2>/dev/null || true',
         'sync "$file_path" 2>/dev/null || sync',
@@ -193,15 +193,15 @@ export class RuntimeDownloadFilesService {
   }
 
   private async scanRunningDownloadFile(containerId: string, fileName: string) {
-    const filePath = `${this.paths.downloadDirectory}/${fileName}`;
+    const filePath = `${downloadDirectory}/${fileName}`;
     const publicPath = `/sdcard/Download/${fileName}`;
 
     await this.exec.execInContainer(containerId, [
       'sh',
       '-lc',
       [
-        `file_path=${this.paths.shellQuote(filePath)}`,
-        `public_path=${this.paths.shellQuote(publicPath)}`,
+        `file_path=${shellQuote(filePath)}`,
+        `public_path=${shellQuote(publicPath)}`,
         'run_with_timeout() {',
         '  timeout_seconds="$1"',
         '  shift',

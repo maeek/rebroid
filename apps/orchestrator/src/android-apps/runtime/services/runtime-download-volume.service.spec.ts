@@ -15,7 +15,6 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
-import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 
 describe('RuntimeDownloadVolumeService', () => {
@@ -25,7 +24,6 @@ describe('RuntimeDownloadVolumeService', () => {
     createVolume: jest.Mock;
     inspectVolume: jest.Mock;
   };
-  const paths = new RuntimeFilePathService();
   const app = {
     id: 'app-1',
     name: 'Demo App',
@@ -42,7 +40,6 @@ describe('RuntimeDownloadVolumeService', () => {
     service = new RuntimeDownloadVolumeService(
       { resourcePrefix: 'rebroid' } as never,
       resources as never,
-      paths,
       new RuntimeUploadStreamService({} as never),
     );
   });

@@ -16,7 +16,7 @@ import {
 import { DockerEngineConfigService } from '../../../config/docker-engine-config.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
-import { RuntimeFilePathService } from './runtime-file-path.service';
+import { downloadDirectory } from '../utils/runtime-file-path';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { isRuntimeDownloadFileName } from '../utils/android-apps-runtime-file.utils';
 import { mapWithConcurrency } from '../../../common/map-with-concurrency';
@@ -37,7 +37,6 @@ export class RuntimeDownloadVolumeService {
     private readonly dockerConfig: DockerEngineConfigService,
     @Inject(DOCKER_RESOURCE_RUNTIME)
     private readonly resources: DockerResourceRuntimePort,
-    private readonly paths: RuntimeFilePathService,
     private readonly uploads: RuntimeUploadStreamService,
   ) {}
 
@@ -62,7 +61,7 @@ export class RuntimeDownloadVolumeService {
 
       return {
         name,
-        path: `${this.paths.downloadDirectory}/${name}`,
+        path: `${downloadDirectory}/${name}`,
         type: 'file' as const,
         sizeBytes: fileStat.size,
         itemCount: null,
@@ -155,7 +154,7 @@ export class RuntimeDownloadVolumeService {
     return {
       uploaded: true,
       name: fileName,
-      path: `${this.paths.downloadDirectory}/${fileName}`,
+      path: `${downloadDirectory}/${fileName}`,
       type: 'file' as const,
       sizeBytes,
       itemCount: null,

@@ -10,7 +10,6 @@ import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { DockerContainerArchiveReadLimitError } from '../../../docker/contracts/docker-container-archive.port';
 import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
 import { RuntimeDataFilesService } from './runtime-data-files.service';
-import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeFilePreviewService } from './runtime-file-preview.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 
@@ -46,7 +45,6 @@ describe('RuntimeDataFilesService', () => {
       archive as never,
       exec as never,
       reconciler as never,
-      new RuntimeFilePathService(),
       new RuntimeUploadStreamService(operations),
       new RuntimeFilePreviewService(archive as never),
       { getStored: jest.fn().mockResolvedValue(app) } as never,

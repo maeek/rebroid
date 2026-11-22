@@ -1,9 +1,9 @@
+import { shellQuote } from '../../../common/shell-quote';
 import { spawnSync } from 'node:child_process';
 import {
   buildLaunchPackageCommand,
   buildPmInstallCommand,
   resolveInstalledPackageName,
-  shellQuote,
 } from './android-apps-apk-provisioning.utils';
 
 describe('android APK provisioning utils', () => {

@@ -26,7 +26,6 @@ function fixture() {
     {} as never,
     {} as never,
     { reconcileById: async () => app } as never,
-    {} as never,
     { storeStream } as never,
     new RuntimeUploadStreamService(operations),
   );

@@ -13,7 +13,6 @@ import { AndroidAppsRuntimeSnapshotService } from './services/android-apps-runti
 import { RuntimeDataFilesService } from './services/runtime-data-files.service';
 import { RuntimeDownloadFilesService } from './services/runtime-download-files.service';
 import { RuntimeDownloadVolumeService } from './services/runtime-download-volume.service';
-import { RuntimeFilePathService } from './services/runtime-file-path.service';
 import { RuntimeFilePreviewService } from './services/runtime-file-preview.service';
 import { RuntimeUploadStreamService } from './services/runtime-upload-stream.service';
 
@@ -37,7 +36,6 @@ import { RuntimeUploadStreamService } from './services/runtime-upload-stream.ser
     RuntimeDataFilesService,
     RuntimeDownloadFilesService,
     RuntimeDownloadVolumeService,
-    RuntimeFilePathService,
     RuntimeFilePreviewService,
     RuntimeUploadStreamService,
   ],

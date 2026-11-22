@@ -1,5 +1,4 @@
-export const shellQuote = (value: string) =>
-  `'${value.replaceAll("'", "'\\''")}'`;
+import { shellQuote } from '../../../common/shell-quote';
 
 export const buildPmInstallCommand = (apkPath: string) =>
   [

@@ -1,3 +1,4 @@
+import { shellQuote } from '../../../common/shell-quote';
 import {
   ConflictException,
   Inject,
@@ -23,7 +24,11 @@ import type { RunningAndroidApplication } from '../../common/utils/running-appli
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
-import { RuntimeFilePathService } from './runtime-file-path.service';
+import {
+  normalizeDataPath,
+  normalizeEntryName,
+  normalizeEntryPath,
+} from '../utils/runtime-file-path';
 import { RuntimeFilePreviewService } from './runtime-file-preview.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
@@ -54,7 +59,6 @@ export class RuntimeDataFilesService {
     @Inject(DOCKER_CONTAINER_EXEC)
     private readonly exec: DockerContainerExecPort,
     private readonly reconciler: AndroidAppsRuntimeStateReconciler,
-    private readonly paths: RuntimeFilePathService,
     private readonly uploads: RuntimeUploadStreamService,
     private readonly previews: RuntimeFilePreviewService,
     private readonly queries: AndroidAppsQueryService,
@@ -62,9 +66,9 @@ export class RuntimeDataFilesService {
 
   async listFiles(id: string, requestedPath?: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const directory = this.paths.normalizeDataPath(requestedPath);
+    const directory = normalizeDataPath(requestedPath);
     const stdout = await this.runDataCommand(app, [
-      `candidate=${this.paths.shellQuote(directory)}`,
+      `candidate=${shellQuote(directory)}`,
       '[ -L "$candidate" ] && exit 41',
       'dir=$(realpath "$candidate" 2>/dev/null) || exit 40',
       this.dataContainmentCheck('dir'),
@@ -112,7 +116,7 @@ export class RuntimeDataFilesService {
   ) {
     return this.uploads.consumeFileUpload(id, request, async () => {
       const app = await this.reconciler.requireRunningById(id);
-      const directory = this.paths.normalizeDataPath(requestedPath);
+      const directory = normalizeDataPath(requestedPath);
       return (stream, name) =>
         this.storeRunningFileStream(app, stream, name, directory, overwrite);
     });
@@ -124,12 +128,12 @@ export class RuntimeDataFilesService {
     value: string,
   ) {
     const app = await this.reconciler.requireRunningById(id);
-    const parentPath = this.paths.normalizeDataPath(requestedParentPath);
-    const name = this.paths.normalizeEntryName(value);
+    const parentPath = normalizeDataPath(requestedParentPath);
+    const name = normalizeEntryName(value);
     const path = posix.join(parentPath, name);
     await this.runDataCommand(app, [
-      `candidate=${this.paths.shellQuote(parentPath)}`,
-      `name=${this.paths.shellQuote(name)}`,
+      `candidate=${shellQuote(parentPath)}`,
+      `name=${shellQuote(name)}`,
       '[ -L "$candidate" ] && exit 41',
       'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
       this.dataContainmentCheck('parent'),
@@ -143,12 +147,12 @@ export class RuntimeDataFilesService {
 
   async renameFile(id: string, requestedPath: string, value: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const path = this.paths.normalizeEntryPath(requestedPath);
-    const name = this.paths.normalizeEntryName(value);
+    const path = normalizeEntryPath(requestedPath);
+    const name = normalizeEntryName(value);
     const destinationPath = posix.join(posix.dirname(path), name);
     const stdout = await this.runDataCommand(app, [
-      `candidate=${this.paths.shellQuote(path)}`,
-      `name=${this.paths.shellQuote(name)}`,
+      `candidate=${shellQuote(path)}`,
+      `name=${shellQuote(name)}`,
       '[ -L "$candidate" ] && exit 41',
       'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
       this.dataContainmentCheck('source'),
@@ -174,9 +178,9 @@ export class RuntimeDataFilesService {
 
   async deleteFile(id: string, requestedPath: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const path = this.paths.normalizeEntryPath(requestedPath);
+    const path = normalizeEntryPath(requestedPath);
     const stdout = await this.runDataCommand(app, [
-      `candidate=${this.paths.shellQuote(path)}`,
+      `candidate=${shellQuote(path)}`,
       '[ -L "$candidate" ] && exit 41',
       'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
       this.dataContainmentCheck('source'),
@@ -197,7 +201,7 @@ export class RuntimeDataFilesService {
 
   async previewFile(id: string, requestedPath?: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const path = this.paths.normalizeEntryPath(requestedPath);
+    const path = normalizeEntryPath(requestedPath);
     const runtime = previewRuntimeKey(app);
     const resolveFile = () => this.resolvePreviewFile(app, path);
     const file = await resolveFile();
@@ -224,7 +228,7 @@ export class RuntimeDataFilesService {
     path: string,
   ) {
     const resolvedFile = await this.runDataCommand(app, [
-      `candidate=${this.paths.shellQuote(path)}`,
+      `candidate=${shellQuote(path)}`,
       '[ -L "$candidate" ] && exit 41',
       'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
       this.dataContainmentCheck('source'),
@@ -251,10 +255,10 @@ export class RuntimeDataFilesService {
 
   async downloadRuntimeFile(id: string, requestedPath?: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const filePath = this.paths.normalizeEntryPath(requestedPath);
+    const filePath = normalizeEntryPath(requestedPath);
     const resolvedPath = (
       await this.runDataCommand(app, [
-        `candidate=${this.paths.shellQuote(filePath)}`,
+        `candidate=${shellQuote(filePath)}`,
         '[ -L "$candidate" ] && exit 41',
         'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
         this.dataContainmentCheck('source'),
@@ -282,11 +286,11 @@ export class RuntimeDataFilesService {
     directory: string,
     overwrite: boolean,
   ): Promise<ApplicationRuntimeFileUploadDto> {
-    const fileName = this.paths.normalizeEntryName(originalName);
+    const fileName = normalizeEntryName(originalName);
     const resolvedDirectory = (
       await this.runDataCommand(app, [
-        `candidate=${this.paths.shellQuote(directory)}`,
-        `name=${this.paths.shellQuote(fileName)}`,
+        `candidate=${shellQuote(directory)}`,
+        `name=${shellQuote(fileName)}`,
         '[ -L "$candidate" ] && exit 41',
         'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
         this.dataContainmentCheck('parent'),
@@ -362,7 +366,7 @@ export class RuntimeDataFilesService {
   ) {
     await this.runDataCommand(app, [
       ...this.uploadStagingPreamble(directory, stagingName),
-      `name=${this.paths.shellQuote(fileName)}`,
+      `name=${shellQuote(fileName)}`,
       '[ -d "$staging_dir" ] && [ ! -L "$staging_dir" ] || exit 44',
       'staged="$staging_dir/$name"',
       '[ -f "$staged" ] && [ ! -L "$staged" ] || exit 44',
@@ -394,8 +398,8 @@ export class RuntimeDataFilesService {
 
   private uploadStagingPreamble(directory: string, stagingName: string) {
     return [
-      `candidate=${this.paths.shellQuote(directory)}`,
-      `staging_name=${this.paths.shellQuote(stagingName)}`,
+      `candidate=${shellQuote(directory)}`,
+      `staging_name=${shellQuote(stagingName)}`,
       '[ -L "$candidate" ] && exit 41',
       'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
       this.dataContainmentCheck('parent'),
