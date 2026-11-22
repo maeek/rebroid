@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
-import { getAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
@@ -9,14 +8,13 @@ import type { AutomationRun } from '@/shared/contracts/automation'
 vi.mock('@/server/orchestrator/applications/application-gallery-query', () => ({
   listApplicationNames: vi.fn()
 }))
-vi.mock('@/server/orchestrator/automations/automation-management-actions', () => ({ getAutomationAction: vi.fn() }))
 vi.mock('@/server/orchestrator/automations/client', () => ({
-  orchestratorAutomationsClient: { getRun: vi.fn(), listRunHistory: vi.fn() }
+  orchestratorAutomationsClient: { get: vi.fn(), getRun: vi.fn(), listRunHistory: vi.fn() }
 }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
 beforeEach(() => {
-  vi.mocked(getAutomationAction).mockResolvedValue({ id: 'workflow' } as Awaited<
-    ReturnType<typeof getAutomationAction>
+  vi.mocked(orchestratorAutomationsClient.get).mockResolvedValue({ id: 'workflow' } as Awaited<
+    ReturnType<typeof orchestratorAutomationsClient.get>
   >)
   vi.mocked(listApplicationNames).mockResolvedValue([])
   vi.mocked(orchestratorAutomationsClient.listRunHistory).mockResolvedValue([])
@@ -41,7 +39,7 @@ describe('selected historical automation run', () => {
   })
   it('keeps the selected run accessible when the workflow catalog is disabled', async () => {
     const selected = { id: 'active-run', automationId: 'workflow', status: 'running' } as AutomationRun
-    vi.mocked(getAutomationAction).mockRejectedValue(
+    vi.mocked(orchestratorAutomationsClient.get).mockRejectedValue(
       new OrchestratorRequestError('Disabled', 409, 'request', { code: 'feature_disabled' })
     )
     vi.mocked(orchestratorAutomationsClient.getRun).mockResolvedValue(selected)

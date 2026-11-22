@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
 import { isWorkflowRun, workflowCatalogIsDisabled } from '@/server/orchestrator/automations/active-workflow-runs-query'
-import { getAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
@@ -11,7 +10,7 @@ export const loadAutomationTracesPageData = async (id: string, selectedRunId?: s
   const user = await getCurrentUserContext()
   if (!hasPermission(user.permissions, 'automations:manage')) notFound()
   let catalogDisabled = false
-  const automation = await getAutomationAction(id).catch(error => {
+  const automation = await orchestratorAutomationsClient.get(user.ownerUserId, id).catch(error => {
     if (error instanceof OrchestratorRequestError && error.status === 404) return null
     if (workflowCatalogIsDisabled(error)) {
       catalogDisabled = true

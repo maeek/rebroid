@@ -10,18 +10,12 @@ import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-
 import {
   assertAutomationPermission,
   assertDefinitionPermissions,
-  listPermittedAutomationCommands,
   listPermittedDraftCommands,
   recordAutomationAudit,
   requireAutomationUser
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type { AutomationRunEvent, DraftAutomationYamlInput, SaveAutomationInput } from '@/shared/contracts/automation'
-
-export const listAutomationCommandsAction = async () => {
-  const user = await requireAutomationUser('automations:manage')
-  return listPermittedAutomationCommands(user)
-}
 
 export const validateAutomationYamlAction = async (yaml: string) => {
   const user = await requireAutomationUser('automations:manage')
@@ -146,11 +140,6 @@ export const draftWorkflowFromAdHocRunAction = async ({
     runId
   })
   return draft
-}
-
-export const getAutomationAction = async (id: string) => {
-  const user = await requireAutomationUser('automations:manage')
-  return orchestratorAutomationsClient.get(user.ownerUserId, id)
 }
 
 const saveWorkflowInput = z.object({ yaml: z.string() }).strict()
