@@ -143,8 +143,7 @@ export class RuntimeDataFilesService {
 
   async renameFile(id: string, requestedPath: string, value: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const path = this.paths.normalizeDataPath(requestedPath);
-    this.paths.assertMutablePath(path);
+    const path = this.paths.normalizeEntryPath(requestedPath);
     const name = this.paths.normalizeEntryName(value);
     const destinationPath = posix.join(posix.dirname(path), name);
     const stdout = await this.runDataCommand(app, [
@@ -175,8 +174,7 @@ export class RuntimeDataFilesService {
 
   async deleteFile(id: string, requestedPath: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const path = this.paths.normalizeDataPath(requestedPath);
-    this.paths.assertMutablePath(path);
+    const path = this.paths.normalizeEntryPath(requestedPath);
     const stdout = await this.runDataCommand(app, [
       `candidate=${this.paths.shellQuote(path)}`,
       '[ -L "$candidate" ] && exit 41',
@@ -199,8 +197,7 @@ export class RuntimeDataFilesService {
 
   async previewFile(id: string, requestedPath?: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const path = this.paths.normalizeDataPath(requestedPath);
-    this.paths.assertMutablePath(path);
+    const path = this.paths.normalizeEntryPath(requestedPath);
     const runtime = previewRuntimeKey(app);
     const resolveFile = () => this.resolvePreviewFile(app, path);
     const file = await resolveFile();
@@ -254,8 +251,7 @@ export class RuntimeDataFilesService {
 
   async downloadRuntimeFile(id: string, requestedPath?: string) {
     const app = await this.reconciler.requireRunningById(id);
-    const filePath = this.paths.normalizeDataPath(requestedPath);
-    this.paths.assertMutablePath(filePath);
+    const filePath = this.paths.normalizeEntryPath(requestedPath);
     const resolvedPath = (
       await this.runDataCommand(app, [
         `candidate=${this.paths.shellQuote(filePath)}`,

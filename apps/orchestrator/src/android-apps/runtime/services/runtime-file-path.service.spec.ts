@@ -28,8 +28,12 @@ describe('RuntimeFilePathService', () => {
   );
 
   it('protects the runtime data root from mutation', () => {
-    expect(() => service.assertMutablePath('/data')).toThrow(ConflictException);
-    expect(() => service.assertMutablePath('/data/Documents')).not.toThrow();
+    expect(() => service.normalizeEntryPath('/data/')).toThrow(
+      ConflictException,
+    );
+    expect(service.normalizeEntryPath('/data/Documents/')).toBe(
+      '/data/Documents',
+    );
   });
 
   it('quotes shell paths without exposing quote boundaries', () => {

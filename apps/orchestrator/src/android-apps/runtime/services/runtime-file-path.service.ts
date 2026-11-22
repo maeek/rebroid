@@ -7,9 +7,9 @@ export class RuntimeFilePathService {
   readonly downloadDirectory = '/data/media/0/Download';
 
   normalizeDataPath(requestedPath?: string) {
-    const normalized = posix.normalize(
-      requestedPath?.trim() || this.dataDirectory,
-    );
+    const normalized = posix
+      .normalize(requestedPath?.trim() || this.dataDirectory)
+      .replace(/\/$/, '');
     if (
       normalized.includes('\0') ||
       (!normalized.startsWith(`${this.dataDirectory}/`) &&
@@ -41,10 +41,12 @@ export class RuntimeFilePathService {
     return normalized;
   }
 
-  assertMutablePath(path: string) {
+  normalizeEntryPath(requestedPath?: string) {
+    const path = this.normalizeDataPath(requestedPath);
     if (path === this.dataDirectory) {
       throw new ConflictException('The runtime data root cannot be changed.');
     }
+    return path;
   }
 
   shellQuote(value: string) {

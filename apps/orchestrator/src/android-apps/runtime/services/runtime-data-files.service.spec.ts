@@ -144,7 +144,7 @@ describe('RuntimeDataFilesService', () => {
       ConflictException,
     );
     await expect(
-      service.renameFile('app-1', '/data', 'renamed'),
+      service.renameFile('app-1', '/data/', 'renamed'),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(exec.execInContainerWithOutput).not.toHaveBeenCalled();
   });
