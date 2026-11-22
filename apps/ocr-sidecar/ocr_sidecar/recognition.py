@@ -8,6 +8,7 @@ from .config import Settings
 from .image_input import OcrRequest, decode_image
 from .preprocessing import RecognitionStopped, resize_image, run_cascade
 from .runtime import OcrRuntime
+from .worker_capacity import wait_for_worker
 
 
 class RecognitionRejected(Exception):
@@ -45,14 +46,7 @@ class Recognition:
             self._capacity.release()
             raise
 
-        def release(done: asyncio.Future):
-            self._capacity.release()
-            if not done.cancelled():
-                done.exception()
-
-        # Cancellation of the HTTP task cannot release capacity while native inference is active.
-        worker.add_done_callback(release)
-        return await asyncio.shield(worker)
+        return await wait_for_worker(worker, self._capacity)
 
     def _recognize(self, payload: OcrRequest, check_active):
         started = time.perf_counter()

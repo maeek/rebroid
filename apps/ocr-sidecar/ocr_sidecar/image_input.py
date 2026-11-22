@@ -13,6 +13,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 
 from .config import Settings
+from .worker_capacity import wait_for_worker
 
 _IMAGE_FORMATS = {"image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WEBP"}
 _BASE64_PARAMETER = re.compile(r";base64(?=[;,])", re.ASCII | re.IGNORECASE)
@@ -65,14 +66,7 @@ class OcrRequestReader:
             self._slots.release()
             raise
 
-        def release(done: asyncio.Task):
-            self._slots.release()
-            if not done.cancelled():
-                done.exception()
-
-        # Keep ingress capacity reserved if the HTTP task is canceled during JSON validation.
-        parser.add_done_callback(release)
-        return await asyncio.shield(parser)
+        return await wait_for_worker(parser, self._slots)
 
 
 async def _read_body(request: Request, max_encoded_bytes: int) -> bytearray:
