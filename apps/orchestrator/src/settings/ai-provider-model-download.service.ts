@@ -11,7 +11,10 @@ import {
   text,
 } from './ai-provider-settings';
 import { replaceAiProvider, requireAiProvider } from './ai-provider-catalog';
-import { aiProviderErrorMessage } from './utils/ai-provider-health.utils';
+import {
+  aiProviderErrorMessage,
+  providerDiagnosticMessage,
+} from './utils/ai-provider-health.utils';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import type { AutomationAiProviderModelDownloadDto } from './dto/automation-ai-provider-download.dto';
 import { downloadOllamaModel } from './ollama-model-download';
@@ -100,8 +103,6 @@ export class AiProviderModelDownloadService {
     { job, endpoint }: ActiveDownload,
     apiKey: string | null,
   ) {
-    const publicMessage = (message: string) =>
-      apiKey ? message.replaceAll(apiKey, '[redacted]') : message;
     this.updateDownload(job, {
       status: 'running',
       message: 'Starting Ollama model download.',
@@ -113,7 +114,7 @@ export class AiProviderModelDownloadService {
         apiKey,
         ({ message, total, completed, percent }) => {
           this.updateDownload(job, {
-            message: publicMessage(message),
+            message: providerDiagnosticMessage(message, apiKey).slice(0, 500),
             ...(total === undefined ? {} : { total }),
             ...(completed === undefined ? {} : { completed }),
             ...(percent === undefined ? {} : { percent }),
@@ -137,7 +138,10 @@ export class AiProviderModelDownloadService {
     } catch (error) {
       this.updateDownload(job, {
         status: 'failed',
-        message: publicMessage(aiProviderErrorMessage(error)),
+        message: providerDiagnosticMessage(
+          aiProviderErrorMessage(error),
+          apiKey,
+        ).slice(0, 500),
         finishedAt: new Date().toISOString(),
       });
     } finally {

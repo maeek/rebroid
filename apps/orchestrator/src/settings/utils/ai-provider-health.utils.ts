@@ -104,6 +104,11 @@ export const isProviderTimeoutError = (error: unknown) =>
     error.name === 'AbortError' ||
     /aborted due to timeout/i.test(error.message));
 
+export const providerDiagnosticMessage = (
+  message: string,
+  apiKey?: string | null,
+) => (apiKey ? message.replaceAll(apiKey, '[redacted]') : message);
+
 export const aiProviderErrorMessage = (error: unknown) => {
   if (!(error instanceof Error)) return 'Provider health check failed.';
   const cause = record(error.cause);

@@ -130,6 +130,27 @@ describe('AiProviderHealthService', () => {
     });
   });
 
+  it.each([
+    ['provider rejected fixture-key', ' - provider rejected [redacted]'],
+    ['x'.repeat(495) + 'fixture-key', ''],
+  ])(
+    'keeps the HTTP status and only publishes safe role diagnostics',
+    async (body, detail) => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce(Response.json({ data: [{ id: 'planner' }] }))
+        .mockResolvedValueOnce(new Response(body, { status: 401 }));
+      const result = await new AiProviderHealthService().checkProviderHealth(
+        provider({ apiKey: 'fixture-key' }),
+        'planner',
+        'planner',
+      );
+      expect(result.message).toBe(
+        `Planner role check failed: HTTP 401${detail}`,
+      );
+    },
+  );
+
   it.each([{ catalog: [{ id: 'planner' }] }, { catalog: [] }])(
     'verifies a schema-only controller through streaming with catalog $catalog',
     async ({ catalog }) => {

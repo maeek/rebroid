@@ -29,6 +29,7 @@ import {
 import { MetricsService } from '../metrics/metrics.service';
 import {
   aiProviderErrorMessage,
+  providerDiagnosticMessage,
   isProviderTimeoutError,
   modelRoleLabel,
   modelRoleProbeIncompatibility,
@@ -64,7 +65,7 @@ export class AiProviderHealthService {
     }
     if (!model && role) {
       return this.healthResult(
-        provider.id,
+        provider,
         undefined,
         'disabled',
         `No enabled model is configured for the ${role} role.`,
@@ -72,7 +73,7 @@ export class AiProviderHealthService {
     }
     if (model && !model.enabled) {
       return this.healthResult(
-        provider.id,
+        provider,
         model.id,
         'disabled',
         'Model is disabled.',
@@ -80,7 +81,7 @@ export class AiProviderHealthService {
     }
     if (model && role && !model.roles.includes(role)) {
       return this.healthResult(
-        provider.id,
+        provider,
         model.id,
         'disabled',
         `Model is not enabled for the ${role} role.`,
@@ -95,7 +96,7 @@ export class AiProviderHealthService {
       );
       if (!response.ok) {
         return this.healthResult(
-          provider.id,
+          provider,
           model?.id,
           'error',
           `Provider returned HTTP ${response.status}.`,
@@ -109,7 +110,7 @@ export class AiProviderHealthService {
         !response.models.some((remote) => remote.id === model.id)
       ) {
         return this.healthResult(
-          provider.id,
+          provider,
           model.id,
           'error',
           `Provider is reachable, but model "${model.id}" was not listed.`,
@@ -121,7 +122,7 @@ export class AiProviderHealthService {
       }
       const serverFlavor = await this.detectServerFlavor(provider);
       return this.healthResult(
-        provider.id,
+        provider,
         model?.id,
         'ok',
         model
@@ -131,7 +132,7 @@ export class AiProviderHealthService {
       );
     } catch (error) {
       return this.healthResult(
-        provider.id,
+        provider,
         model?.id,
         'error',
         this.providerModelListErrorMessage(error),
@@ -150,7 +151,7 @@ export class AiProviderHealthService {
       else if (role === 'planner' && modelSupportsTools(model)) mode = 'tool';
       if (!mode) {
         return this.healthResult(
-          provider.id,
+          provider,
           model.id,
           'error',
           'The controller model requires structured output or tool calling.',
@@ -207,17 +208,17 @@ export class AiProviderHealthService {
               : null,
             detail: response.ok
               ? ''
-              : await readBoundedProviderText(response, 500),
+              : await readBoundedProviderText(response, 501),
           }),
         ),
       );
       if (!response.ok) {
-        const detail = response.detail;
+        const detail = response.detail.length > 500 ? '' : response.detail;
         return this.healthResult(
-          provider.id,
+          provider,
           model.id,
           'error',
-          `${modelRoleLabel(role)} role check failed: HTTP ${response.status}${detail ? ` - ${detail.slice(0, 500)}` : ''}`,
+          `${modelRoleLabel(role)} role check failed: HTTP ${response.status}${detail ? ` - ${detail}` : ''}`,
         );
       }
       const incompatibility = modelRoleProbeIncompatibility(
@@ -226,18 +227,13 @@ export class AiProviderHealthService {
         mode,
       );
       if (incompatibility) {
-        return this.healthResult(
-          provider.id,
-          model.id,
-          'error',
-          incompatibility,
-        );
+        return this.healthResult(provider, model.id, 'error', incompatibility);
       }
       return null;
     } catch (error) {
       const roleLabel = modelRoleLabel(role);
       return this.healthResult(
-        provider.id,
+        provider,
         model.id,
         'error',
         isProviderTimeoutError(error)
@@ -264,7 +260,7 @@ export class AiProviderHealthService {
       );
       if (!response.ok) {
         return this.healthResult(
-          provider.id,
+          provider,
           undefined,
           'error',
           `Provider returned HTTP ${response.status}.`,
@@ -274,21 +270,21 @@ export class AiProviderHealthService {
       const missing = requiredModels.find((model) => !available.has(model.id));
       if (missing) {
         return this.healthResult(
-          provider.id,
+          provider,
           undefined,
           'error',
           `This OpenAI project does not list ${missing.id}. Turn off the starter model to connect and choose a different model.`,
         );
       }
       return this.healthResult(
-        provider.id,
+        provider,
         undefined,
         'ok',
         'Provider connection is reachable.',
       );
     } catch (error) {
       return this.healthResult(
-        provider.id,
+        provider,
         undefined,
         'error',
         this.providerModelListErrorMessage(error),
@@ -407,17 +403,17 @@ export class AiProviderHealthService {
   }
 
   private healthResult(
-    providerId: string,
+    provider: AutomationAiProvider,
     modelId: string | undefined,
     status: AutomationAiProviderHealthDto['status'],
     message: string,
     diagnostics?: { serverFlavor?: string },
   ): AutomationAiProviderHealthDto {
     return {
-      providerId,
+      providerId: provider.id,
       ...(modelId ? { modelId } : {}),
       status,
-      message,
+      message: providerDiagnosticMessage(message, provider.apiKey),
       checkedAt: new Date().toISOString(),
       ...(diagnostics?.serverFlavor
         ? { serverFlavor: diagnostics.serverFlavor }
