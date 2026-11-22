@@ -73,9 +73,7 @@ describe('apk resource table utilities', () => {
     buffer.writeUInt32LE(0, 28);
     buffer.set(Buffer.from([4, 4, 105, 99, 111, 110, 0]), 32);
 
-    expect(readBinaryXmlStringPool(buffer, 0)).toEqual({
-      strings: ['icon'],
-    });
+    expect(readBinaryXmlStringPool(buffer, 0)).toEqual(['icon']);
   });
 
   it('shares aliased strings and bounds decoding of overlapping strings', () => {
@@ -88,10 +86,10 @@ describe('apk resource table utilities', () => {
     buffer.writeUInt32LE(36, 20);
     buffer.set([8, 8, 6, 6, 65, 65, 65, 65, 65, 65], 36);
 
-    expect(readBinaryXmlStringPool(buffer, 0).strings).toHaveLength(2);
+    expect(readBinaryXmlStringPool(buffer, 0)).toHaveLength(2);
 
     buffer.writeUInt32LE(2, 32);
-    expect(readBinaryXmlStringPool(buffer, 0)).toEqual({ strings: [] });
+    expect(readBinaryXmlStringPool(buffer, 0)).toEqual([]);
   });
 
   it('bounds malformed chunks, attributes, and string offsets', () => {
@@ -117,7 +115,7 @@ describe('apk resource table utilities', () => {
     malformedPool.writeUInt32LE(0x00000100, 16);
     malformedPool.writeUInt32LE(0xffffffff, 20);
     expect(() => readBinaryXmlStringPool(malformedPool, 0)).not.toThrow();
-    expect(readBinaryXmlStringPool(malformedPool, 0)).toEqual({ strings: [] });
+    expect(readBinaryXmlStringPool(malformedPool, 0)).toEqual([]);
     expect(readResourceTableHeader(Buffer.from([0x02]))).toBeNull();
     expect(readUtf8String(Buffer.from([0x80]), 0)).toBe('');
     expect(readUtf16String(Buffer.from([0x00, 0x80]), 0)).toBe('');

@@ -1,6 +1,5 @@
 import {
   noEntry,
-  ParsedStringPool,
   resStringPoolType,
   resTableTypeType,
   resTableType,
@@ -96,7 +95,7 @@ export const readBinaryXmlElementAttributes = (
   let resourceMap: number[] = [];
   for (const chunk of readBinaryResourceChunks(buffer)) {
     if (chunk.type === resStringPoolType) {
-      strings = readBinaryXmlStringPool(buffer, chunk.offset).strings;
+      strings = readBinaryXmlStringPool(buffer, chunk.offset);
       continue;
     }
     if (chunk.type === resXmlResourceMapType) {
@@ -144,7 +143,7 @@ export const readResourceTableHeader = (buffer: Buffer) => {
     return null;
   }
   return {
-    stringPool: readBinaryXmlStringPool(buffer, stringPoolChunk.offset),
+    strings: readBinaryXmlStringPool(buffer, stringPoolChunk.offset),
     packagesOffset: stringPoolChunk.offset + stringPoolChunk.size,
   };
 };
@@ -231,19 +230,19 @@ export const readBinaryXmlResourceMap = (
 export const readBinaryXmlStringPool = (
   buffer: Buffer,
   offset: number,
-): ParsedStringPool => {
+): string[] => {
   if (
     offset + 28 > buffer.length ||
     buffer.readUInt16LE(offset) !== resStringPoolType
   ) {
-    return { strings: [] };
+    return [];
   }
 
   const headerSize = readChunkHeaderSize(buffer, offset);
   const chunkSize = buffer.readUInt32LE(offset + 4);
   const chunkEnd = offset + chunkSize;
   if (headerSize < 28 || chunkSize < headerSize || chunkEnd > buffer.length) {
-    return { strings: [] };
+    return [];
   }
   const stringCount = buffer.readUInt32LE(offset + 8);
   const flags = buffer.readUInt32LE(offset + 16);
@@ -258,7 +257,7 @@ export const readBinaryXmlStringPool = (
     stringsStart < offset + headerSize + stringCount * 4 ||
     stringsStart > chunkEnd
   ) {
-    return { strings: [] };
+    return [];
   }
   const decodedByOffset = new Map<number, string>();
   let remainingCharacters = Math.min(chunkEnd - stringsStart, 8 * 1024 * 1024);
@@ -266,20 +265,20 @@ export const readBinaryXmlStringPool = (
     const stringOffsetPosition = offset + headerSize + index * 4;
     const stringOffset =
       stringsStart + buffer.readUInt32LE(stringOffsetPosition);
-    if (stringOffset >= chunkEnd) return { strings: [] };
+    if (stringOffset >= chunkEnd) return [];
     let decoded = decodedByOffset.get(stringOffset);
     if (decoded === undefined) {
       decoded = isUtf8
         ? readUtf8String(buffer, stringOffset, chunkEnd)
         : readUtf16String(buffer, stringOffset, chunkEnd);
       remainingCharacters -= decoded.length;
-      if (remainingCharacters < 0) return { strings: [] };
+      if (remainingCharacters < 0) return [];
       decodedByOffset.set(stringOffset, decoded);
     }
     strings.push(decoded);
   }
 
-  return { strings };
+  return strings;
 };
 
 export const readUtf8String = (

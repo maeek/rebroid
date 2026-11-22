@@ -32,11 +32,11 @@ export function readApkResourceMetadata(
       if (entry.dataType !== typedValueString) continue;
       if (!label && !foundLabelInPackage && entry.resourceId === labelId) {
         foundLabelInPackage = true;
-        label = header.stringPool.strings[entry.data] || null;
+        label = header.strings[entry.data] || null;
         if (label && !iconIds.length) return { label, icons };
       }
       if (!iconIds.includes(entry.resourceId)) continue;
-      const entryName = header.stringPool.strings[entry.data];
+      const entryName = header.strings[entry.data];
       if (entryName && imageMimeType(entryName.toLowerCase())) {
         icons.push({
           entryName,

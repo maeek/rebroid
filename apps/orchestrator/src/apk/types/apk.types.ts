@@ -9,10 +9,6 @@ export interface IconCandidate {
   mimeType: string;
 }
 
-export interface ParsedStringPool {
-  strings: string[];
-}
-
 export const maxIconBytes = 512 * 1024;
 export const maxCandidatesToRead = 24;
 export const resStringPoolType = 0x0001;

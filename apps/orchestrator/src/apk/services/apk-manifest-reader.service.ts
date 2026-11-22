@@ -19,7 +19,7 @@ export class ApkManifestReaderService {
   readStrings(manifest: Buffer) {
     for (const chunk of readBinaryResourceChunks(manifest)) {
       if (chunk.type === resStringPoolType) {
-        return readBinaryXmlStringPool(manifest, chunk.offset).strings;
+        return readBinaryXmlStringPool(manifest, chunk.offset);
       }
     }
     return [];
