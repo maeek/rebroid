@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react'
 import {
   IconAlertTriangle,
   IconBug,
@@ -27,7 +28,6 @@ import {
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { getAutomationActionDefinition } from '../../actions/action-registry'
 import type { AutomationActionIconKey } from '../../actions/automation-action-definition'
-import type { ComponentType } from 'react'
 
 const commandIcons = {
   alert: IconAlertTriangle,
