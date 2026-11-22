@@ -18,6 +18,16 @@ const maximumBodyBytes = 128 * 1024;
 class RequestBodyTooLargeError extends Error {}
 class InvalidRequestBodyError extends Error {}
 
+function decodeApplicationId(value: string) {
+  try {
+    const id = decodeURIComponent(value);
+    if (isFirewallApplicationId(id)) return id;
+  } catch (error) {
+    if (!(error instanceof URIError)) throw error;
+  }
+  throw new InvalidFirewallPolicyError("Invalid application id.");
+}
+
 const json = (response: ServerResponse, status: number, body: unknown) => {
   response.writeHead(status, { "content-type": "application/json" });
   response.end(JSON.stringify(body));
@@ -128,19 +138,16 @@ export const createFirewallAgentServer = ({
         });
         return;
       }
-      const [path, query] = (request.url ?? "").split("?", 2);
-      const match = path.match(/^\/v1\/policies\/([^/]+)(\/refresh)?$/);
+      const match = request.url?.match(
+        /^\/v1\/policies\/([^/?]+)(\/refresh)?(?:\?(.*))?$/,
+      );
       if (!match) {
         json(response, 404, { message: "Not found." });
         return;
       }
-      const applicationId = decodeURIComponent(match[1]);
-      const refresh = Boolean(match[2]);
+      const [, encodedId, refresh, query] = match;
       if (request.method === "DELETE" && !refresh) {
-        if (!isFirewallApplicationId(applicationId)) {
-          json(response, 400, { message: "Invalid application id." });
-          return;
-        }
+        const applicationId = decodeApplicationId(encodedId);
         const removal = parsePolicyRemovalQuery(query);
         if (!removal) {
           json(response, 400, { message: "Invalid policy removal query." });
@@ -166,7 +173,7 @@ export const createFirewallAgentServer = ({
       }
       if (request.method === "PUT") {
         const policy = validatePolicy(
-          applicationId,
+          decodeApplicationId(encodedId),
           await readJsonBody(request),
         );
         const result = refresh

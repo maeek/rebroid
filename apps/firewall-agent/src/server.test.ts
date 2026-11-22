@@ -127,6 +127,12 @@ test("policy removal validates the query after authorization and application ID 
     },
   );
   secret = "secret";
+  for (const method of ["PUT", "DELETE"]) {
+    assert.deepEqual(await requestAgent(server, method, "/v1/policies/%"), {
+      status: 400,
+      body: { message: "Invalid application id." },
+    });
+  }
   assert.deepEqual(
     await requestAgent(
       server,
@@ -173,12 +179,21 @@ test("policy removal validates the query after authorization and application ID 
     ),
     { status: 200, body: { status: "unchanged" } },
   );
+  assert.equal(
+    await requestPolicy(
+      server,
+      "DELETE",
+      "/v1/policies/app%2D1?containerId=old?runtime",
+    ),
+    200,
+  );
   assert.deepEqual(
     remove.mock.calls.map(({ arguments: args }) => args),
     [
       ["app-1", undefined, undefined, undefined],
       ["app-1", undefined, undefined, 0],
       ["app-1", "old runtime", 7, 2],
+      ["app-1", "old?runtime", undefined, undefined],
     ],
   );
 });
