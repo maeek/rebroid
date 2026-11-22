@@ -205,7 +205,8 @@ export async function* readProviderStreamFrames(
   const separatorPrefix = format === 'openai-sse' ? /(?:\r?\n\r?|\r)$/ : /\r$/;
   const decoder = new TextDecoder();
   const reader = body.getReader();
-  let buffer = '';
+  let frame = '';
+  let prefix = '';
   let bytes = 0;
   try {
     while (true) {
@@ -214,23 +215,22 @@ export async function* readProviderStreamFrames(
       if (bytes > providerStreamLimits.responseBytes) {
         throw new ProviderResponseLimitError('stream body size');
       }
-      buffer += decoder.decode(value, { stream: !done });
-      const frames = buffer.split(separator);
-      buffer = done ? '' : (frames.pop() ?? '');
-      for (const frame of frames) {
+      // Only a partial separator can match across two decoded chunks.
+      const parts = (prefix + decoder.decode(value, { stream: !done })).split(
+        separator,
+      );
+      for (const [index, part] of parts.entries()) {
+        const unfinished = !done && index === parts.length - 1;
+        prefix = unfinished ? (part.match(separatorPrefix)?.[0] ?? '') : '';
+        frame += part.slice(0, part.length - prefix.length);
         if (frame.length > providerStreamLimits.frameCharacters) {
           throw new ProviderResponseLimitError('stream frame size');
         }
+        if (unfinished) break;
         if (!done || frame.trim()) yield frame;
+        frame = '';
       }
       if (done) return;
-      if (
-        buffer.length > providerStreamLimits.frameCharacters &&
-        buffer.length - (buffer.match(separatorPrefix)?.[0].length ?? 0) >
-          providerStreamLimits.frameCharacters
-      ) {
-        throw new ProviderResponseLimitError('stream frame size');
-      }
     }
   } finally {
     void reader.cancel().catch(() => undefined);

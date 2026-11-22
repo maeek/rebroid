@@ -1,6 +1,7 @@
 import {
   consumeChatCompletionStream,
   providerStreamLimits,
+  readProviderStreamFrames,
 } from './ai-provider-stream';
 
 const stream = (chunks: string[], cancel = jest.fn()) =>
@@ -13,6 +14,20 @@ const stream = (chunks: string[], cancel = jest.fn()) =>
   });
 
 describe('provider stream limits', () => {
+  it('preserves partial separators and UTF-8 characters across single-byte chunks', async () => {
+    const bytes = new TextEncoder().encode('α\r\nsecond\n\r\nnext\r\n\nlast\r');
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const byte of bytes) controller.enqueue(Uint8Array.of(byte));
+        controller.close();
+      },
+    });
+    const frames: string[] = [];
+    for await (const frame of readProviderStreamFrames(body, 'openai-sse'))
+      frames.push(frame);
+    expect(frames).toEqual(['α\r\nsecond', 'next', 'last\r']);
+  });
+
   it.each(['openai-sse', 'ollama-ndjson'] as const)(
     'cancels an unterminated oversized %s frame',
     async (format) => {
