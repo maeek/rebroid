@@ -183,6 +183,29 @@ describe('RuntimeDownloadVolumeService', () => {
     );
   });
 
+  it('distinguishes missing persistent downloads from an offline temporary profile', async () => {
+    const read = () => service.readFile(app, 'missing.txt', 'default');
+    await expect(service.listFiles(app, 'default')).resolves.toEqual([]);
+    await expect(read()).rejects.toMatchObject({ status: 404 });
+    await mkdir(join(tempDir, 'media', '0', 'Download'), { recursive: true });
+    await expect(read()).rejects.toMatchObject({ status: 404 });
+    resources.inspectVolume.mockResolvedValue(null);
+    await expect(read()).rejects.toMatchObject({ status: 404 });
+    await expect(
+      service.readFile(app, 'missing.txt', null),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('reports an unusable profile directory for both listings and reads', async () => {
+    await writeFile(join(tempDir, 'media'), 'not a directory');
+    await expect(service.listFiles(app, 'default')).rejects.toMatchObject({
+      status: 503,
+    });
+    await expect(
+      service.readFile(app, 'notes.txt', 'default'),
+    ).rejects.toMatchObject({ status: 503 });
+  });
+
   it('rejects writes for non-persistent profile queries', async () => {
     await expect(
       service.storeStream(app, Readable.from(['body']), 'upload.txt', null),

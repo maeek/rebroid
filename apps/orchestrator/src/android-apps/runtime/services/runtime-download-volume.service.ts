@@ -3,6 +3,7 @@ import {
   Inject,
   ConflictException,
   Injectable,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { constants } from 'node:fs';
@@ -46,15 +47,10 @@ export class RuntimeDownloadVolumeService {
       return [];
     }
 
-    let entries: string[];
-    try {
-      entries = (await readdir(directory)).filter(isRuntimeDownloadFileName);
-    } catch {
-      return [];
-    }
-
+    const names = await readVolumeEntry(readdir(directory));
+    const entries = names?.filter(isRuntimeDownloadFileName) ?? [];
     const files = await mapWithConcurrency(entries, 16, async (name) => {
-      const fileStat = await lstat(join(directory, name)).catch(() => null);
+      const fileStat = await readVolumeEntry(lstat(join(directory, name)));
       if (!fileStat?.isFile()) {
         return null;
       }
@@ -92,12 +88,7 @@ export class RuntimeDownloadVolumeService {
     const sizeBytes = await this.uploads.withStagedFile(
       stream,
       async (stagedPath, stagedFile) => {
-        const previous = await lstat(targetPath).catch(
-          (error: NodeJS.ErrnoException) => {
-            if (error.code === 'ENOENT') return undefined;
-            throw error;
-          },
-        );
+        const previous = await readVolumeEntry(lstat(targetPath));
         if (previous) {
           if (!previous.isFile())
             throw new ConflictException('Download must be a regular file.');
@@ -121,33 +112,35 @@ export class RuntimeDownloadVolumeService {
     fileName: string,
     profileName: string | null,
   ) {
-    const directory = await this.getRequiredDirectory(app, profileName);
-
-    const file = await open(
-      join(directory, fileName),
-      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-    );
-    try {
-      const info = await file.stat();
-      if (!info.isFile())
-        throw new ConflictException('Download must be a regular file.');
-      if (info.size > maximumRuntimeDownloadBytes)
-        throw runtimeDownloadTooLarge();
-      const chunks: Buffer[] = [];
-      let size = 0;
-      for await (const chunk of file.createReadStream({
-        autoClose: false,
-        end: maximumRuntimeDownloadBytes,
-      })) {
-        const bytes = chunk as Buffer;
-        size += bytes.length;
-        if (size > maximumRuntimeDownloadBytes) throw runtimeDownloadTooLarge();
-        chunks.push(bytes);
-      }
-      return Buffer.concat(chunks, size);
-    } finally {
-      await file.close();
+    if (!profileName)
+      throw new ConflictException(persistentDownloadRequiredMessage);
+    const directory = await this.getDirectory(app, profileName);
+    await using file = directory
+      ? await readVolumeEntry(
+          open(
+            join(directory, fileName),
+            constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+          ),
+        )
+      : null;
+    if (!file) throw new NotFoundException('Download file was not found.');
+    const info = await file.stat();
+    if (!info.isFile())
+      throw new ConflictException('Download must be a regular file.');
+    if (info.size > maximumRuntimeDownloadBytes)
+      throw runtimeDownloadTooLarge();
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of file.createReadStream({
+      autoClose: false,
+      end: maximumRuntimeDownloadBytes,
+    })) {
+      const bytes = chunk as Buffer;
+      size += bytes.length;
+      if (size > maximumRuntimeDownloadBytes) throw runtimeDownloadTooLarge();
+      chunks.push(bytes);
     }
+    return Buffer.concat(chunks, size);
   }
 
   uploadResult(fileName: string, sizeBytes: number) {
@@ -160,18 +153,6 @@ export class RuntimeDownloadVolumeService {
       itemCount: null,
       modifiedAt: new Date().toISOString(),
     };
-  }
-
-  private async getRequiredDirectory(
-    app: AndroidApplication,
-    profileName: string | null,
-  ) {
-    const directory = await this.getDirectory(app, profileName);
-    if (!directory) {
-      throw new ConflictException(persistentDownloadRequiredMessage);
-    }
-
-    return directory;
   }
 
   private async getDirectory(
@@ -198,27 +179,34 @@ export class RuntimeDownloadVolumeService {
         throw new ServiceUnavailableException(unavailableVolumeMessage);
       return null;
     }
-    if (!options.create)
-      return join(volume.Mountpoint, ...downloadSubdirectories);
-
     let directory = volume.Mountpoint;
-    try {
-      // The engine owns the mountpoint. Create only the directories inside it.
-      for (const segment of downloadSubdirectories) {
-        directory = join(directory, segment);
-        await mkdir(directory).catch(async (error: NodeJS.ErrnoException) => {
-          if (
-            error.code !== 'EEXIST' ||
-            !(await lstat(directory)).isDirectory()
-          )
-            throw error;
-        });
+    for (const segment of downloadSubdirectories) {
+      directory = join(directory, segment);
+      if (options.create) {
+        // The engine owns the mountpoint. Create only directories inside it.
+        try {
+          await mkdir(directory);
+          continue;
+        } catch (cause) {
+          if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') {
+            throw new ServiceUnavailableException(unavailableVolumeMessage, {
+              cause,
+            });
+          }
+        }
       }
-    } catch (cause) {
-      throw new ServiceUnavailableException(unavailableVolumeMessage, {
-        cause,
-      });
+      const info = await readVolumeEntry(lstat(directory));
+      if (!info && !options.create) return null;
+      if (!info?.isDirectory())
+        throw new ServiceUnavailableException(unavailableVolumeMessage);
     }
     return directory;
   }
+}
+
+function readVolumeEntry<T>(operation: Promise<T>) {
+  return operation.catch((cause: NodeJS.ErrnoException) => {
+    if (cause.code === 'ENOENT') return null;
+    throw new ServiceUnavailableException(unavailableVolumeMessage, { cause });
+  });
 }
