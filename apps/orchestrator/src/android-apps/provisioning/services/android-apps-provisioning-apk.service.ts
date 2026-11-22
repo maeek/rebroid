@@ -108,10 +108,12 @@ export class AndroidAppsProvisioningApkService {
     });
     const packagesBefore = await this.listThirdPartyPackages(app.containerId);
     const declaredPackageName = await this.extractPackageNameFromApk(app);
-    const installResult = await this.runApkInstallCommand(
+    const installResult = await this.runApkCommand(
       app.id,
       app.containerId,
-      targetPath,
+      buildPmInstallCommand(targetPath),
+      'APK install command failed',
+      { target: targetPath },
     );
     const packagesAfter = await this.listThirdPartyPackages(app.containerId);
     const packageName = resolveInstalledPackageName({
@@ -167,10 +169,12 @@ export class AndroidAppsProvisioningApkService {
     await this.logs.append(app.id, 'Launching installed APK', {
       packageName,
     });
-    const result = await this.runLaunchPackageCommand(
+    const result = await this.runApkCommand(
       app.id,
       app.containerId,
-      packageName,
+      buildLaunchPackageCommand(packageName),
+      'Installed APK launch command failed',
+      { packageName },
     );
     await this.logs.append(app.id, 'Installed APK launch command completed', {
       packageName,
@@ -209,72 +213,29 @@ export class AndroidAppsProvisioningApkService {
     return installed;
   }
 
-  /** Runs the APK install command and logs captured output on failure. */
-  private async runApkInstallCommand(
+  private async runApkCommand(
     applicationId: string,
     containerId: string,
-    targetPath: string,
+    command: string,
+    failureMessage: string,
+    context: { target: string } | { packageName: string },
   ) {
     try {
       return await this.exec.execInContainerWithOutput(containerId, [
         'sh',
         '-lc',
-        buildPmInstallCommand(targetPath),
+        command,
       ]);
     } catch (error) {
-      await this.logs.append(applicationId, 'APK install command failed', {
-        target: targetPath,
+      const details =
+        error instanceof ContainerCommandFailedException ? error.details : null;
+      await this.logs.append(applicationId, failureMessage, {
+        ...context,
         error: getErrorMessage(error),
-        stdout:
-          error instanceof ContainerCommandFailedException
-            ? error.details.stdout?.trim() || null
-            : null,
-        stderr:
-          error instanceof ContainerCommandFailedException
-            ? error.details.stderr?.trim() || null
-            : null,
-        exitCode:
-          error instanceof ContainerCommandFailedException
-            ? error.details.exitCode
-            : null,
+        stdout: details?.stdout?.trim() || null,
+        stderr: details?.stderr?.trim() || null,
+        exitCode: details?.exitCode ?? null,
       });
-      throw error;
-    }
-  }
-
-  /** Runs the launch command and logs captured output on failure. */
-  private async runLaunchPackageCommand(
-    applicationId: string,
-    containerId: string,
-    packageName: string,
-  ) {
-    try {
-      return await this.exec.execInContainerWithOutput(containerId, [
-        'sh',
-        '-lc',
-        buildLaunchPackageCommand(packageName),
-      ]);
-    } catch (error) {
-      await this.logs.append(
-        applicationId,
-        'Installed APK launch command failed',
-        {
-          packageName,
-          error: getErrorMessage(error),
-          stdout:
-            error instanceof ContainerCommandFailedException
-              ? error.details.stdout?.trim() || null
-              : null,
-          stderr:
-            error instanceof ContainerCommandFailedException
-              ? error.details.stderr?.trim() || null
-              : null,
-          exitCode:
-            error instanceof ContainerCommandFailedException
-              ? error.details.exitCode
-              : null,
-        },
-      );
       throw error;
     }
   }
