@@ -21,6 +21,27 @@ describe('AutomationTagsInput', () => {
     expect(onChange).toHaveBeenCalledWith([{ name: 'release', color: '#64748b' }])
   })
 
+  it('restores the saved name when another tag already has the requested spelling', () => {
+    const onChange = vi.fn()
+    render(
+      <AutomationTagsInput
+        id='tags'
+        value={[
+          { name: 'release', color: '#64748b' },
+          { name: 'stable', color: '#ffffff' }
+        ]}
+        onChange={onChange}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'release' }))
+    const field = screen.getByDisplayValue('release')
+    fireEvent.change(field, { target: { value: 'STABLE' } })
+    fireEvent.blur(field)
+    expect(field).toHaveValue('release')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Tags')).toHaveAttribute('maxlength', '48')
+  })
+
   it('edits and removes existing tags through the popover', () => {
     const onChange = vi.fn()
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { type InputHTMLAttributes, type KeyboardEvent, type ReactNode, useState } from 'react'
+import { DEFAULT_AUTOMATION_TAG_COLOR, type AutomationTag } from '@rebroid/automation-core/definition'
 import { IconPalette, IconTrash, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
@@ -9,23 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { chipInputSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import {
-  createAutomationTag,
-  defaultAutomationTagColor,
-  isHexColor,
-  normalizeTagColor,
-  normalizeTagName,
-  type AutomationTag
-} from './automation-tags'
-
-const colorText = (hex: string) => {
-  const normalized = normalizeTagColor(hex).slice(1)
-  const red = Number.parseInt(normalized.slice(0, 2), 16)
-  const green = Number.parseInt(normalized.slice(2, 4), 16)
-  const blue = Number.parseInt(normalized.slice(4, 6), 16)
-  const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
-  return luminance > 0.62 ? '#111827' : '#f8fafc'
-}
+import { automationTagStyle, createAutomationTag, isHexColor } from './automation-tags'
 
 export function AutomationTagsInput({
   id,
@@ -44,7 +29,7 @@ export function AutomationTagsInput({
   const [openTag, setOpenTag] = useState<string | null>(null)
 
   const commitDraft = () => {
-    const name = normalizeTagName(draft)
+    const name = draft.trim()
     if (!name) return
     const exists = value.some(item => item.name.toLowerCase() === name.toLowerCase())
     if (!exists) {
@@ -63,29 +48,17 @@ export function AutomationTagsInput({
     commitDraft()
   }
 
-  const updateTag = (sourceName: string, patch: Partial<AutomationTag>) => {
-    const sourceKey = sourceName.toLowerCase()
-    const current = value.find(item => item.name.toLowerCase() === sourceKey)
-    if (!current) return
+  const updateTag = (current: AutomationTag, patch: Partial<AutomationTag>) => {
+    const nextName = patch.name?.trim() ?? current.name
+    if (!nextName || value.some(item => item !== current && item.name.toLowerCase() === nextName.toLowerCase())) {
+      return false
+    }
 
-    const nextName = patch.name !== undefined ? normalizeTagName(patch.name) : current.name
-    const nextColor = patch.color !== undefined ? patch.color.trim() : current.color
-    if (!nextName) return
-
-    const duplicate = value.some(item => item.name.toLowerCase() === nextName.toLowerCase() && item !== current)
-    if (duplicate) return
-
-    onChange(
-      value.map(item =>
-        item === current
-          ? {
-              name: nextName,
-              color: isHexColor(nextColor) ? nextColor.toLowerCase() : current.color
-            }
-          : item
-      )
-    )
+    const nextColor = patch.color?.trim() ?? current.color
+    const color = isHexColor(nextColor) ? nextColor.toLowerCase() : current.color
+    onChange(value.map(item => (item === current ? { name: nextName, color } : item)))
     setOpenTag(nextName)
+    return true
   }
 
   const removeTag = (tag: AutomationTag) => {
@@ -117,7 +90,7 @@ export function AutomationTagsInput({
               <button
                 type='button'
                 className='flex max-w-full items-center gap-1 rounded-control border border-white/20 px-2 py-1 text-xs font-medium shadow-xs transition hover:ring-2 hover:ring-ring/35'
-                style={{ backgroundColor: tag.color, color: colorText(tag.color) }}
+                style={automationTagStyle(tag.color)}
               >
                 <span className='truncate'>{tag.name}</span>
                 <IconPalette className='size-3.5 opacity-80' />
@@ -129,7 +102,7 @@ export function AutomationTagsInput({
             >
               <TagEditor
                 tag={tag}
-                onChange={patch => updateTag(tag.name, patch)}
+                onChange={patch => updateTag(tag, patch)}
                 onRemove={() => removeTag(tag)}
                 onClose={() => setOpenTag(null)}
               />
@@ -153,6 +126,7 @@ function TagInputControl({ children, ...props }: InputHTMLAttributes<HTMLInputEl
       <input
         {...props}
         className='h-6 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted'
+        maxLength={48}
         placeholder='Add tag and press Enter'
       />
     </div>
@@ -166,18 +140,17 @@ function TagEditor({
   onClose
 }: {
   tag: AutomationTag
-  onChange: (patch: Partial<AutomationTag>) => void
+  onChange: (patch: Partial<AutomationTag>) => boolean
   onRemove: () => void
   onClose: () => void
 }) {
   const [name, setName] = useState(tag.name)
-  const [color, setColor] = useState(tag.color || defaultAutomationTagColor)
+  const [color, setColor] = useState(tag.color || DEFAULT_AUTOMATION_TAG_COLOR)
   const colorValid = isHexColor(color)
 
   const applyName = () => {
-    const nextName = normalizeTagName(name)
-    if (nextName) onChange({ name: nextName })
-    else setName(tag.name)
+    const nextName = name.trim()
+    setName(onChange({ name: nextName }) ? nextName : tag.name)
   }
 
   const applyColor = () => {
@@ -223,7 +196,7 @@ function TagEditor({
         <div className='grid grid-cols-[2.5rem_minmax(0,1fr)] gap-2'>
           <input
             type='color'
-            value={colorValid ? color : defaultAutomationTagColor}
+            value={colorValid ? color : DEFAULT_AUTOMATION_TAG_COLOR}
             className='h-9 w-10 rounded-control border border-control-border bg-control p-1'
             aria-label='Tag color'
             onChange={event => {

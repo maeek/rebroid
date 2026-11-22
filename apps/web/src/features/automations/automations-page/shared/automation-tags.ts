@@ -1,21 +1,24 @@
-export interface AutomationTag {
-  name: string
-  color: string
-}
-
-export const defaultAutomationTagColor = '#64748b'
+import { DEFAULT_AUTOMATION_TAG_COLOR, type AutomationTag } from '@rebroid/automation-core/definition'
 
 export const isHexColor = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value.trim())
 
-export const normalizeTagName = (value: string) => value.trim()
+const normalizeTagColor = (value: string) =>
+  isHexColor(value) ? value.trim().toLowerCase() : DEFAULT_AUTOMATION_TAG_COLOR
 
-export const normalizeTagColor = (value: string) =>
-  isHexColor(value) ? value.trim().toLowerCase() : defaultAutomationTagColor
-
-export const createAutomationTag = (name: string, color = defaultAutomationTagColor): AutomationTag => ({
-  name: normalizeTagName(name),
+export const createAutomationTag = (name: string, color: string = DEFAULT_AUTOMATION_TAG_COLOR): AutomationTag => ({
+  name: name.trim(),
   color: normalizeTagColor(color)
 })
+
+export function automationTagStyle(hex: string) {
+  const backgroundColor = normalizeTagColor(hex)
+  const normalized = backgroundColor.slice(1)
+  const red = Number.parseInt(normalized.slice(0, 2), 16)
+  const green = Number.parseInt(normalized.slice(2, 4), 16)
+  const blue = Number.parseInt(normalized.slice(4, 6), 16)
+  const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+  return { backgroundColor, color: luminance > 0.62 ? '#111827' : '#f8fafc' }
+}
 
 export function buildAutomationTagCatalog(names: string[], tags: AutomationTag[]) {
   const byName = new Map<string, AutomationTag>()
