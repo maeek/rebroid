@@ -27,46 +27,48 @@ type ScheduledTaskPayload = Record<string, unknown> | null | undefined;
 const defaultWorkflowHistoryRetentionDays = 7;
 
 type ScheduledTaskActionDefinition = ScheduledTaskActionDto & {
-  normalizePayload: (
+  normalizePayload?: (
     payload: ScheduledTaskPayload,
   ) => Record<string, unknown> | null;
   run: (payload: Record<string, unknown> | null) => Promise<unknown>;
 };
 
-const booleanValue = (
-  payload: ScheduledTaskPayload,
-  key: string,
-  fallback: boolean,
-) => {
-  const value = payload?.[key];
-  if (value === undefined || value === null) {
-    return fallback;
-  }
-  if (typeof value !== 'boolean') {
-    throw new BadRequestException(`${key} must be a boolean.`);
-  }
+const danglingOnly = (payload: ScheduledTaskPayload) => {
+  const value = payload?.danglingOnly ?? true;
+  if (typeof value !== 'boolean')
+    throw new BadRequestException('danglingOnly must be a boolean.');
   return value;
 };
 
-const integerValue = (
-  payload: ScheduledTaskPayload,
-  key: string,
-  fallback: number,
-  minimum: number,
-  maximum: number,
-) => {
-  const value = payload?.[key];
-  if (value === undefined || value === null || value === '') {
-    return fallback;
-  }
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
-    throw new BadRequestException(
-      `${key} must be an integer between ${minimum} and ${maximum}.`,
-    );
-  }
-  return parsed;
-};
+function withRetention(
+  defaultDays: number,
+  cleanup: (days: number) => Promise<unknown>,
+) {
+  const daysFor = (payload: ScheduledTaskPayload) => {
+    const value = payload?.retentionDays;
+    if (value == null || value === '') return defaultDays;
+    const days = typeof value === 'string' ? Number(value) : value;
+    if (
+      typeof days !== 'number' ||
+      !Number.isInteger(days) ||
+      days < 1 ||
+      days > 3650
+    )
+      throw new BadRequestException(
+        'retentionDays must be an integer between 1 and 3650.',
+      );
+    return days;
+  };
+  return {
+    normalizePayload: (payload: ScheduledTaskPayload) => ({
+      retentionDays: daysFor(payload),
+    }),
+    run: (payload: ScheduledTaskPayload) => cleanup(daysFor(payload)),
+  };
+}
+
+const cutoffDaysAgo = (days: number) =>
+  new Date(Date.now() - days * 86_400_000);
 
 @Injectable()
 export class ScheduledTaskActionsService {
@@ -83,7 +85,7 @@ export class ScheduledTaskActionsService {
   ) {}
 
   listActions(): ScheduledTaskActionDto[] {
-    return this.definitions().map(({ type, label, description }) => ({
+    return this.definitions.map(({ type, label, description }) => ({
       type,
       label,
       description,
@@ -94,7 +96,7 @@ export class ScheduledTaskActionsService {
     type: ScheduledTaskActionType,
     payload: ScheduledTaskPayload,
   ) {
-    return this.getDefinition(type).normalizePayload(payload);
+    return this.getDefinition(type).normalizePayload?.(payload) ?? null;
   }
 
   run(type: ScheduledTaskActionType, payload: Record<string, unknown> | null) {
@@ -102,7 +104,7 @@ export class ScheduledTaskActionsService {
   }
 
   private getDefinition(type: ScheduledTaskActionType) {
-    const definition = this.definitions().find((item) => item.type === type);
+    const definition = this.definitions.find((item) => item.type === type);
     if (!definition) {
       throw new BadRequestException(
         `Unsupported scheduled task action: ${type}`,
@@ -111,115 +113,76 @@ export class ScheduledTaskActionsService {
     return definition;
   }
 
-  private definitions(): ScheduledTaskActionDefinition[] {
-    return [
-      {
-        type: ScheduledTaskActionType.CleanOrphanedApkFiles,
-        label: 'Clean orphaned APK files',
-        description:
-          'Remove incomplete transfers and APK files without upload records.',
-        normalizePayload: () => null,
-        run: () => this.apks.cleanupOrphanedFiles(),
-      },
-      {
-        type: ScheduledTaskActionType.PruneImages,
-        label: 'Prune images',
-        description: 'Remove dangling or unused Docker images.',
-        normalizePayload: (payload) => ({
-          danglingOnly: booleanValue(payload, 'danglingOnly', true),
-        }),
-        run: (payload) =>
-          this.prune.pruneImages(Boolean(payload?.danglingOnly ?? true)),
-      },
-      {
-        type: ScheduledTaskActionType.PruneContainers,
-        label: 'Prune containers',
-        description: 'Remove stopped Docker containers.',
-        normalizePayload: () => null,
-        run: () => this.prune.pruneContainers(),
-      },
-      {
-        type: ScheduledTaskActionType.PruneNetworks,
-        label: 'Prune networks',
-        description: 'Remove unused Docker networks.',
-        normalizePayload: () => null,
-        run: () => this.prune.pruneNetworks(),
-      },
-      {
-        type: ScheduledTaskActionType.PruneVolumes,
-        label: 'Prune volumes',
-        description: 'Remove unused Docker volumes.',
-        normalizePayload: () => null,
-        run: () => this.prune.pruneVolumes(),
-      },
-      {
-        type: ScheduledTaskActionType.PruneAll,
-        label: 'Full cleanup',
-        description:
-          'Prune stopped containers, unused networks, dangling images, and unused volumes.',
-        normalizePayload: () => null,
-        run: () => this.prune.pruneAll(),
-      },
-      {
-        type: ScheduledTaskActionType.CleanRuntimeLogs,
-        label: 'Clean runtime logs',
-        description: 'Remove old orchestrator runtime log files.',
-        normalizePayload: (payload) => ({
-          retentionDays: integerValue(payload, 'retentionDays', 30, 1, 3650),
-        }),
-        run: (payload) =>
-          this.logs.cleanup(Number(payload?.retentionDays ?? 30)),
-      },
-      {
-        type: ScheduledTaskActionType.CleanWorkflowHistory,
-        label: 'Clean workflow history',
-        description:
-          'Remove finished workflow runs and their step results and events after the retention period.',
-        normalizePayload: (payload) => ({
-          retentionDays: integerValue(
-            payload,
-            'retentionDays',
-            defaultWorkflowHistoryRetentionDays,
-            1,
-            3650,
-          ),
-        }),
-        run: (payload) => {
-          const days = integerValue(
-            payload,
-            'retentionDays',
-            defaultWorkflowHistoryRetentionDays,
-            1,
-            3650,
-          );
-          return this.workflowHistory.pruneWorkflowHistory(
-            new Date(Date.now() - days * 86_400_000),
-          );
-        },
-      },
-      {
-        type: ScheduledTaskActionType.CleanInterruptedImageBuilds,
-        label: 'Clean interrupted image builds',
-        description:
-          'Remove GApps build staging files older than 24 hours when the build is no longer active.',
-        normalizePayload: () => null,
-        run: () => this.imageBuilds.cleanInterruptedBuilds(),
-      },
-      {
-        type: ScheduledTaskActionType.CleanImageBuildHistory,
-        label: 'Image build history retention',
-        description:
-          'Remove old completed image builds and their logs while keeping the latest completed build for each target image.',
-        normalizePayload: (payload) => ({
-          retentionDays: integerValue(payload, 'retentionDays', 30, 1, 3650),
-        }),
-        run: (payload) => {
-          const days = integerValue(payload, 'retentionDays', 30, 1, 3650);
-          return this.imageBuilds.pruneBuildHistory(
-            new Date(Date.now() - days * 86_400_000),
-          );
-        },
-      },
-    ];
-  }
+  private readonly definitions: ScheduledTaskActionDefinition[] = [
+    {
+      type: ScheduledTaskActionType.CleanOrphanedApkFiles,
+      label: 'Clean orphaned APK files',
+      description:
+        'Remove incomplete transfers and APK files without upload records.',
+      run: () => this.apks.cleanupOrphanedFiles(),
+    },
+    {
+      type: ScheduledTaskActionType.PruneImages,
+      label: 'Prune images',
+      description: 'Remove dangling or unused Docker images.',
+      normalizePayload: (payload) => ({ danglingOnly: danglingOnly(payload) }),
+      run: (payload) => this.prune.pruneImages(danglingOnly(payload)),
+    },
+    {
+      type: ScheduledTaskActionType.PruneContainers,
+      label: 'Prune containers',
+      description: 'Remove stopped Docker containers.',
+      run: () => this.prune.pruneContainers(),
+    },
+    {
+      type: ScheduledTaskActionType.PruneNetworks,
+      label: 'Prune networks',
+      description: 'Remove unused Docker networks.',
+      run: () => this.prune.pruneNetworks(),
+    },
+    {
+      type: ScheduledTaskActionType.PruneVolumes,
+      label: 'Prune volumes',
+      description: 'Remove unused Docker volumes.',
+      run: () => this.prune.pruneVolumes(),
+    },
+    {
+      type: ScheduledTaskActionType.PruneAll,
+      label: 'Full cleanup',
+      description:
+        'Prune stopped containers, unused networks, dangling images, and unused volumes.',
+      run: () => this.prune.pruneAll(),
+    },
+    {
+      type: ScheduledTaskActionType.CleanRuntimeLogs,
+      label: 'Clean runtime logs',
+      description: 'Remove old orchestrator runtime log files.',
+      ...withRetention(30, (days) => this.logs.cleanup(days)),
+    },
+    {
+      type: ScheduledTaskActionType.CleanWorkflowHistory,
+      label: 'Clean workflow history',
+      description:
+        'Remove finished workflow runs and their step results and events after the retention period.',
+      ...withRetention(defaultWorkflowHistoryRetentionDays, (days) =>
+        this.workflowHistory.pruneWorkflowHistory(cutoffDaysAgo(days)),
+      ),
+    },
+    {
+      type: ScheduledTaskActionType.CleanInterruptedImageBuilds,
+      label: 'Clean interrupted image builds',
+      description:
+        'Remove GApps build staging files older than 24 hours when the build is no longer active.',
+      run: () => this.imageBuilds.cleanInterruptedBuilds(),
+    },
+    {
+      type: ScheduledTaskActionType.CleanImageBuildHistory,
+      label: 'Image build history retention',
+      description:
+        'Remove old completed image builds and their logs while keeping the latest completed build for each target image.',
+      ...withRetention(30, (days) =>
+        this.imageBuilds.pruneBuildHistory(cutoffDaysAgo(days)),
+      ),
+    },
+  ];
 }
