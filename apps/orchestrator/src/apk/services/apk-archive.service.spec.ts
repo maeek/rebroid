@@ -14,11 +14,22 @@ const archiveFixture = Buffer.from(
   'base64',
 );
 
+// The first DEX contains a match straddling byte 16384. Two entries share a partial match.
+const dexFixture = Buffer.from(
+  'UEsDBBQAAAAIAAAAIQDS0S/+NwAAABFAAAALAAAAY2xhc3Nlcy5kZXjtwcEJgDAQALCJOlRBCwU5D71Cx3cMP0n2BgAAAAAAAAAA' +
+    'AAAAAAAAAP417hVHy151PvHmNat9UEsDBBQAAAAIAAAAIQAE1aBSFgAAABQAAAAMAAAAY2xhc3NlczIuZGV4S0wuyi8uzi/JSC3S' +
+    'TS3LTEnNS04FAFBLAwQUAAAACAAAACEATkHU1gkAAAAHAAAACQAAAG90aGVyLnR4dMtMz8svSk0BAFBLAQIUAxQAAAAIAAAAIQDS' +
+    '0S/+NwAAABFAAAALAAAAAAAAAAAAAACAAQAAAABjbGFzc2VzLmRleFBLAQIUAxQAAAAIAAAAIQAE1aBSFgAAABQAAAAMAAAAAAAA' +
+    'AAAAAACAAWAAAABjbGFzc2VzMi5kZXhQSwECFAMUAAAACAAAACEATkHU1gkAAAAHAAAACQAAAAAAAAAAAAAAgAGgAAAAb3RoZXIu' +
+    'dHh0UEsFBgAAAAADAAMAqgAAANAAAAAAAA==',
+  'base64',
+);
+
 describe('ApkArchiveService', () => {
   it('indexes once, reads the first duplicate, bounds reads, and closes the archive', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'rebroid-apk-test-'));
     const apk = join(directory, 'fixture.apk');
-    const open = jest.spyOn(yauzl, 'open');
+    const open = jest.spyOn(yauzl, 'openPromise');
     const close = jest.spyOn(yauzl.ZipFile.prototype, 'close');
     try {
       await writeFile(apk, archiveFixture);
@@ -45,6 +56,34 @@ describe('ApkArchiveService', () => {
     } finally {
       open.mockRestore();
       close.mockRestore();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+  it('scans streamed entries within a cumulative limit and never joins evidence across files', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'rebroid-apk-test-'));
+    const apk = join(directory, 'fixture.apk');
+    const service = new ApkArchiveService();
+    try {
+      await writeFile(apk, dexFixture);
+      const scan = (limit: number) =>
+        service.scanAsciiPatterns(
+          apk,
+          /^classes\d*\.dex$/,
+          ['found-pattern', 'other-evidence', 'split-across', 'ignored'],
+          limit,
+        );
+      const total = 16382 + 'found-patternsplit-acrossother-evidence'.length;
+      await expect(scan(total)).resolves.toEqual(
+        new Set(['found-pattern', 'other-evidence']),
+      );
+      await expect(scan(total - 1)).rejects.toThrow('DEX scan limit exceeded');
+      await expect(service.readEntry(apk, 'classes2.dex', 20)).resolves.toEqual(
+        Buffer.from('acrossother-evidence'),
+      );
+      await expect(
+        service.readEntry(apk, 'missing.dex', 0),
+      ).resolves.toBeNull();
+    } finally {
       await rm(directory, { recursive: true, force: true });
     }
   });
