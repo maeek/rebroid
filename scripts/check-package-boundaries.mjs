@@ -1,5 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
+import ts from "typescript";
 
 const root = resolve(import.meta.dirname, "..");
 const generatedContracts = new Set([
@@ -31,24 +32,51 @@ const readManifests = async (parent) => {
   return manifests;
 };
 
-const usesPackage = async (directory, packageName) => {
-  const sourceDirectory = resolve(directory, "src");
-  const files = await readdir(sourceDirectory, { recursive: true });
-  for (const file of files) {
-    if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
-    const source = await readFile(resolve(sourceDirectory, file), "utf8");
-    if (
-      source.includes(`'${packageName}`) ||
-      source.includes(`"${packageName}`)
-    ) {
-      return true;
-    }
-  }
-  return false;
-};
-
 const packageManifests = await readManifests("packages");
 const appManifests = await readManifests("apps");
+const consumers = new Map(
+  packageManifests
+    .filter(({ manifest }) => !generatedContracts.has(manifest.name))
+    .map(({ manifest }) => [manifest.name, new Set()]),
+);
+
+for (const { directory, manifest } of appManifests) {
+  const remaining = new Set(
+    Object.keys(manifest.dependencies ?? {}).filter((name) =>
+      consumers.has(name),
+    ),
+  );
+  if (!remaining.size) continue;
+  const src = resolve(directory, "src");
+  for (const file of await readdir(src, { recursive: true })) {
+    if (!/\.[cm]?[jt]sx?$/.test(file) || /\.(?:spec|test)\.[^.]+$/.test(file))
+      continue;
+    if (
+      file
+        .split(sep)
+        .some((part) =>
+          ["test", "tests", "__tests__", "__mocks__"].includes(part),
+        )
+    )
+      continue;
+    const source = await readFile(resolve(src, file), "utf8");
+    const candidates = [...remaining].filter((name) => source.includes(name));
+    if (!candidates.length) continue;
+    const { importedFiles } = ts.preProcessFile(source, true, true);
+    for (const name of candidates) {
+      if (
+        importedFiles.some(
+          ({ fileName }) =>
+            fileName === name || fileName.startsWith(name + "/"),
+        )
+      ) {
+        consumers.get(name).add(manifest.name);
+        remaining.delete(name);
+      }
+    }
+    if (!remaining.size) break;
+  }
+}
 
 const failures = [];
 for (const { manifest } of packageManifests) {
@@ -64,18 +92,10 @@ for (const { manifest } of packageManifests) {
     continue;
   }
 
-  const consumers = [];
-  for (const app of appManifests) {
-    if (
-      Object.hasOwn(app.manifest.dependencies ?? {}, manifest.name) &&
-      (await usesPackage(app.directory, manifest.name))
-    ) {
-      consumers.push(app.manifest.name);
-    }
-  }
-  if (consumers.length < 2) {
+  const count = consumers.get(manifest.name).size;
+  if (count < 2) {
     failures.push(
-      `${manifest.name} has ${consumers.length} runtime app consumer(s); handwritten packages require at least two.`,
+      `${manifest.name} has ${count} runtime app consumer(s); handwritten packages require at least two.`,
     );
   }
 }
