@@ -48,7 +48,8 @@ def main() -> None:
         kept = []
         with TemporaryDirectory(dir=record.parent.parent) as temporary:
             output = Path(temporary) / "library.so"
-            for name, digest, size in rows:
+            for row in rows:
+                name, _, size = row
                 path = distribution.locate_file(name)
                 if is_paddle and (name == OPENVINO_CPU_PLUGIN or name.startswith(PADDLE_HEADERS)):
                     path.unlink()
@@ -56,10 +57,10 @@ def main() -> None:
                 if ".so" in path.suffixes and size and int(size) >= 1024**2:
                     stripped_metadata = strip_library(path, output)
                     if stripped_metadata:
-                        digest, size = stripped_metadata
-                kept.append((name, digest, size))
+                        row = [name, *stripped_metadata]
+                kept.append(row)
 
-        if rows != [list(row) for row in kept]:
+        if rows != kept:
             with record.open("w", newline="", encoding="utf-8") as target:
                 csv.writer(target).writerows(kept)
 
