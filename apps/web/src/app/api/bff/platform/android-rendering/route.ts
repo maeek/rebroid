@@ -1,4 +1,5 @@
 import { runRouteHandler } from '@/server/http/route-handler'
+import { readRouteJson } from '@/server/http/route-input'
 import {
   readAndroidRenderingSettings,
   saveAndroidRenderingSettings
@@ -6,4 +7,4 @@ import {
 
 export const GET = () => runRouteHandler(readAndroidRenderingSettings)
 export const PATCH = (request: Request) =>
-  runRouteHandler(async () => saveAndroidRenderingSettings(await request.json()))
+  runRouteHandler(async () => saveAndroidRenderingSettings(await readRouteJson(request)))

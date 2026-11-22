@@ -17,6 +17,13 @@ vi.mock('@/server/orchestrator/request', async importOriginal => ({
 const request = new Request('https://example.test/api/bff/automations/runs/run/events?after=2')
 const context = { params: Promise.resolve({ runId: 'run' }) }
 
+it('returns a validation error for a blank run selector', async () => {
+  const response = await history(request, { params: Promise.resolve({ runId: '  ' }) })
+  expect(response.status).toBe(400)
+  expect(getCurrentUser).not.toHaveBeenCalled()
+  expect(emptyRequest).not.toHaveBeenCalled()
+})
+
 it.each([history, subscribe, cancel])('returns an API authentication failure before reading the run', async route => {
   vi.mocked(getCurrentUser).mockRejectedValue(
     new PublicActionError('Sign in', { code: 'unauthenticated', status: 401 })

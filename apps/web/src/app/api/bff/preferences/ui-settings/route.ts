@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { PublicActionError } from '@/server/errors/public-action-error'
 import { runRouteHandler } from '@/server/http/route-handler'
+import { parseRouteInput, readRouteJson } from '@/server/http/route-input'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import {
   resetGeneralUiSettings,
@@ -56,11 +56,11 @@ export const GET = () => runRouteHandler(getServerOrchestratorUiSettings)
 
 export const POST = (request: Request) =>
   runRouteHandler(async () => {
-    const parsed = updateSchema.safeParse(await request.json())
-    if (!parsed.success) {
-      throw new PublicActionError('Review the supplied settings and try again.', { code: 'validation', status: 400 })
-    }
-    const input = parsed.data
+    const input = parseRouteInput(
+      updateSchema,
+      await readRouteJson(request),
+      'Review the supplied settings and try again.'
+    )
     if (input.operation === 'save-general') return saveGeneralUiSettings(input.settings)
     if (input.operation === 'reset-general') return resetGeneralUiSettings()
     if (input.operation === 'save-ai') return saveAiUiSettings(input.settings)

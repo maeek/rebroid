@@ -100,6 +100,16 @@ describe('Browser settings reads', () => {
 })
 
 describe('Runtime settings BFF validation', () => {
+  it('returns a validation error and request reference for malformed JSON', async () => {
+    const response = await POST(new Request('https://example.test', { method: 'POST', body: '{' }))
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      requestId: 'test-request',
+      error: { code: 'validation' }
+    })
+    expect(saveRuntimeUiSettings).not.toHaveBeenCalled()
+  })
   it.each([
     { services: defaultOrchestratorUiSettings.services },
     { services: { ocr: defaultOrchestratorUiSettings.services.ocr } },

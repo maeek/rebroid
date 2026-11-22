@@ -1,5 +1,7 @@
 import { runRouteHandler } from '@/server/http/route-handler'
+import { readRouteJson } from '@/server/http/route-input'
 import { readDockerOperationLimits, saveDockerOperationLimits } from '@/server/platform/docker-operation-settings'
 
 export const GET = () => runRouteHandler(readDockerOperationLimits)
-export const PATCH = (request: Request) => runRouteHandler(async () => saveDockerOperationLimits(await request.json()))
+export const PATCH = (request: Request) =>
+  runRouteHandler(async () => saveDockerOperationLimits(await readRouteJson(request)))
