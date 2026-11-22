@@ -1,7 +1,4 @@
-import {
-  mapSettledWithConcurrency,
-  mapWithConcurrency,
-} from './map-with-concurrency';
+import { mapWithConcurrency } from './map-with-concurrency';
 
 describe('mapWithConcurrency', () => {
   it('never starts more than the configured number of tasks', async () => {
@@ -30,17 +27,5 @@ describe('mapWithConcurrency', () => {
 
     await expect(result).resolves.toEqual([2, 4, 6, 8, 10]);
     expect(maximumActive).toBe(2);
-  });
-
-  it('collects mapper failures without rejecting the batch', async () => {
-    await expect(
-      mapSettledWithConcurrency([1, 2], 1, async (value) => {
-        if (value === 2) throw new Error('failed');
-        return value * 2;
-      }),
-    ).resolves.toEqual([
-      { status: 'fulfilled', value: 2 },
-      { status: 'rejected', reason: new Error('failed') },
-    ]);
   });
 });

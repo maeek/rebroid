@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import pLimit from 'p-limit';
+import { mapWithConcurrency } from '../../../common/map-with-concurrency';
 import { getErrorMessage } from '../../../common/error-message';
 import {
   DOCKER_CONTAINER_LIFECYCLE,
@@ -69,9 +69,8 @@ export class AndroidAppsRuntimeStateReconciler {
 
   async reconcileManyWithResults(query: ListAndroidApplicationsDto) {
     const apps = await this.queries.listStoredEntities(query);
-    const limit = pLimit(MAX_RECONCILIATION_CONCURRENCY);
-    return Promise.all(
-      apps.map((app) => limit(() => this.reconcileOneWithResult(app))),
+    return mapWithConcurrency(apps, MAX_RECONCILIATION_CONCURRENCY, (app) =>
+      this.reconcileOneWithResult(app),
     );
   }
 

@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { AndroidAppsQueryService } from './android-apps-query.service';
 import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
 import { getErrorMessage } from '../../../common/error-message';
-import { mapSettledWithConcurrency } from '../../../common/map-with-concurrency';
+import { mapWithConcurrency } from '../../../common/map-with-concurrency';
 
 @Injectable()
 export class InactivityService {
@@ -25,7 +25,7 @@ export class InactivityService {
   })
   async stopInactiveApplications() {
     const candidates = await this.queries.findInactiveRunningApplications();
-    await mapSettledWithConcurrency(candidates, 4, async (candidate) => {
+    await mapWithConcurrency(candidates, 4, async (candidate) => {
       try {
         await this.lifecycle.stopIfInactive(candidate);
       } catch (error) {
