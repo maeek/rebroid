@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { DockerOverviewPageClient } from '@/features/platform/pages/docker-overview/page-client'
 import { serviceHealthState } from '@/shared/model/diagnostics/service-health'
-import { InfrastructureServicePage } from './infrastructure-service-page'
+import { OrchestratorServicePage } from './infrastructure-service-page'
 import { servicesPreviewHealth } from './services-preview'
 
 const { refresh, limits, metrics } = vi.hoisted(() => ({ refresh: vi.fn(), limits: vi.fn(), metrics: vi.fn() }))
@@ -22,8 +23,7 @@ vi.mock('@/features/platform/metrics/docker-metrics-dashboard', () => ({
 describe('infrastructure service availability', () => {
   it('links from the orchestrator connection to its container Logs tab', async () => {
     render(
-      <InfrastructureServicePage
-        serviceId='orchestrator'
+      <OrchestratorServicePage
         initialHealth={servicesPreviewHealth}
         apiUrl='http://orchestrator:4100'
         pendingContainers={Promise.resolve({ orchestrator: { id: 'orchestrator-id', name: 'rebroid-orchestrator' } })}
@@ -46,13 +46,7 @@ describe('infrastructure service availability', () => {
   })
 
   it('shows one warning without mounting dependent requests and recovers after refresh', () => {
-    const { rerender } = render(
-      <InfrastructureServicePage
-        serviceId='docker'
-        initialHealth={null}
-        apiUrl=''
-      />
-    )
+    const { rerender } = render(<DockerOverviewPageClient initialHealth={null} />)
     expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('DockerOverview')
     expect(screen.getByRole('status')).toHaveAttribute('data-tone', 'warning')
     expect(screen.getByRole('status')).toHaveTextContent('Unknown')
@@ -63,13 +57,7 @@ describe('infrastructure service availability', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
     expect(refresh).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled()
-    rerender(
-      <InfrastructureServicePage
-        serviceId='docker'
-        initialHealth={servicesPreviewHealth}
-        apiUrl=''
-      />
-    )
+    rerender(<DockerOverviewPageClient initialHealth={servicesPreviewHealth} />)
     expect(screen.getByText('Limits loaded')).toBeVisible()
     expect(screen.getByText('Metrics loaded')).toBeVisible()
     expect(within(screen.getByRole('banner')).getByRole('status')).toHaveTextContent('Healthy')
@@ -78,9 +66,7 @@ describe('infrastructure service availability', () => {
 
   it('suppresses downstream requests when the orchestrator is explicitly offline', () => {
     render(
-      <InfrastructureServicePage
-        serviceId='docker'
-        apiUrl=''
+      <DockerOverviewPageClient
         initialHealth={{
           ...servicesPreviewHealth,
           services: {
@@ -97,9 +83,7 @@ describe('infrastructure service availability', () => {
 
   it('keeps orchestrator-owned diagnostics available when only Docker is offline', () => {
     render(
-      <InfrastructureServicePage
-        serviceId='docker'
-        apiUrl=''
+      <DockerOverviewPageClient
         initialHealth={{
           ...servicesPreviewHealth,
           services: {

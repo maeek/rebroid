@@ -1,1 +1,1 @@
-export { DockerOverviewLoading as default } from '@/features/platform/services/infrastructure-service-skeleton'
+export { DockerOverviewLoading as default } from '@/features/platform/pages/docker-overview/page-loading'

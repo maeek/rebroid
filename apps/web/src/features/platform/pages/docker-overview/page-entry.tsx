@@ -1,17 +1,12 @@
 import { Suspense } from 'react'
-import { InfrastructureServicePage } from '@/features/platform/services/infrastructure-service-page'
-import { DockerOverviewLoading } from '@/features/platform/services/infrastructure-service-skeleton'
+import { DockerOverviewPageClient } from './page-client'
 import { loadDockerOverviewPageData } from './page-data.server'
+import { DockerOverviewLoading } from './page-loading'
 
 const DockerOverviewContent = async () => {
   const data = await loadDockerOverviewPageData()
 
-  return (
-    <InfrastructureServicePage
-      serviceId='docker'
-      {...data}
-    />
-  )
+  return <DockerOverviewPageClient {...data} />
 }
 
 export const DockerOverviewPageEntry = () => (

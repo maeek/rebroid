@@ -1,7 +1,8 @@
 import { FeaturesPage, FeaturesPageLoading } from '@/features/platform/features/features-page'
+import { DockerOverviewPageClient } from '@/features/platform/pages/docker-overview/page-client'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
-import { InfrastructureServicePage } from './infrastructure-service-page'
+import { OrchestratorServicePage } from './infrastructure-service-page'
 import { ServiceSettingsPage } from './service-settings-page'
 import { PlatformServicesPage } from './services-page'
 import { PlatformServicesPageSkeleton } from './services-page-skeleton'
@@ -94,18 +95,20 @@ export const InfrastructureServicePreview = ({
 }: {
   serviceId: 'orchestrator' | 'docker'
   unavailable?: boolean
-}) => (
-  <InfrastructureServicePage
-    serviceId={serviceId}
-    initialHealth={unavailable ? null : servicesPreviewHealth}
-    apiUrl='http://orchestrator:4100'
-    pendingContainers={
-      serviceId === 'orchestrator' && !unavailable
-        ? Promise.resolve({ orchestrator: { id: 'preview-orchestrator-container', name: 'rebroid-orchestrator' } })
-        : undefined
-    }
-  />
-)
+}) =>
+  serviceId === 'docker' ? (
+    <DockerOverviewPageClient initialHealth={unavailable ? null : servicesPreviewHealth} />
+  ) : (
+    <OrchestratorServicePage
+      initialHealth={unavailable ? null : servicesPreviewHealth}
+      apiUrl='http://orchestrator:4100'
+      pendingContainers={
+        !unavailable
+          ? Promise.resolve({ orchestrator: { id: 'preview-orchestrator-container', name: 'rebroid-orchestrator' } })
+          : undefined
+      }
+    />
+  )
 
 export const ServicesPreview = ({
   all = false,

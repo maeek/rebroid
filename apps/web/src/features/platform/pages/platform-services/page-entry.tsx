@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { permanentRedirect } from 'next/navigation'
-import { InfrastructureServicePage } from '@/features/platform/services/infrastructure-service-page'
-import { InfrastructureServiceSkeleton } from '@/features/platform/services/infrastructure-service-skeleton'
+import { OrchestratorServicePage } from '@/features/platform/services/infrastructure-service-page'
+import { OrchestratorServiceSkeleton } from '@/features/platform/services/infrastructure-service-skeleton'
 import { PlatformServicesPage } from '@/features/platform/services/services-page'
 import { ServicesInventorySkeleton } from '@/features/platform/services/services-page-skeleton'
 import { firstSearchParamValue } from '@/shared/model/search-params'
@@ -12,8 +12,7 @@ const PlatformServicesContent = async ({ searchParams }: { searchParams?: Promis
   const data = await loadPlatformServicesPageData(searchParams)
   if (data.requestedServiceId === 'orchestrator') {
     return (
-      <InfrastructureServicePage
-        serviceId={data.requestedServiceId}
+      <OrchestratorServicePage
         initialHealth={data.initialHealth}
         requestId={data.requestId}
         apiUrl={data.initialSettings.orchestratorApiUrl}
@@ -39,7 +38,7 @@ export const PlatformServicesPageEntry = async ({ searchParams }: { searchParams
   if (service === 'ocr') permanentRedirect('/platform/ocr')
 
   let fallback = <ServicesInventorySkeleton />
-  if (service === 'orchestrator') fallback = <InfrastructureServiceSkeleton serviceId={service} />
+  if (service === 'orchestrator') fallback = <OrchestratorServiceSkeleton />
   return (
     <Suspense
       key={service ?? 'connections'}

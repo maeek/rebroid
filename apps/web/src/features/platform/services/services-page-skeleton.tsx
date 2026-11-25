@@ -1,15 +1,20 @@
 'use client'
 
 import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { FirewallPageLoading } from '@/features/platform/pages/firewall/page-loading'
 import { OcrPageLoading } from '@/features/platform/pages/ocr/page-loading'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { DockerOverviewLoading, InfrastructureServiceSkeleton } from './infrastructure-service-skeleton'
+import { OrchestratorServiceSkeleton } from './infrastructure-service-skeleton'
 import { visibleOptionalServiceIds } from './service-definitions'
 import { ServicesGrid } from './services-grid'
 import { ServicesPageLayout } from './services-page-layout'
+
+const DockerOverviewLoading = dynamic(() =>
+  import('@/features/platform/pages/docker-overview/page-loading').then(module => module.DockerOverviewLoading)
+)
 
 export const PlatformServicesPageSkeleton = () => (
   <Suspense fallback={<ServicesInventorySkeleton />}>
@@ -20,7 +25,7 @@ export const PlatformServicesPageSkeleton = () => (
 const ServicesRouteSkeleton = () => {
   const service = useSearchParams().get('service')
   if (service === 'docker') return <DockerOverviewLoading />
-  if (service === 'orchestrator') return <InfrastructureServiceSkeleton serviceId={service} />
+  if (service === 'orchestrator') return <OrchestratorServiceSkeleton />
   if (service === 'firewall') return <FirewallPageLoading />
   if (service === 'ocr') return <OcrPageLoading />
   return <ServicesInventorySkeleton />
