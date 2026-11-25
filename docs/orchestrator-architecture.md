@@ -12,7 +12,7 @@ flowchart LR
   HTTP["Controllers and DTOs"] --> UseCases["Application services and facades"]
   UseCases --> Policy["Pure policies and domain helpers"]
   UseCases --> Ports["Capability contracts"]
-  Ports --> Adapters["Persistence and runtime adapters"]
+  Adapters["Persistence and runtime adapters"] -->|Implement| Ports
   Adapters --> Infra["SQLite, Docker, filesystem, sidecars"]
 ```
 
@@ -44,7 +44,8 @@ The `/api/v1/devices` contract identifies every managed device by its durable ID
 `managed` kind. Its runtime image kind can be `redroid` or `generic`. The operation list describes
 what the managed provider offers. Permissions, feature flags, and runtime health govern each request.
 Catalog reads use SQLite state. The viewer authorization projection includes the stored runtime ID
-only when the current managed runtime is marked running.
+only when the current managed runtime is marked running. External registrations live under
+`/api/v1/devices/external` and bind viewer access to a verified attachment.
 
 ## Application lifecycle
 
@@ -56,7 +57,7 @@ failures, and a failed log write cannot strand a reservation or reverse a commit
 
 - **Create and start** share runtime activation: resolve the image, prepare boundaries, create or start
   the container, apply network policy, and wait for Android readiness.
-  The owner's open-app limit is checked in the same database transaction that records the new app
+  The owner's open-device limit is checked in the same database transaction that records the new app
   or marks an existing one as starting. Clone, Recreate, and automation starts share that admission check.
   Restricted startup installs a temporary forwarding block on the managed IPv4 subnet before starting
   the container. The app's allowlist takes over after the firewall agent acknowledges it.
@@ -116,159 +117,34 @@ The owning lifecycle services and file-placement rules are listed in [AGENTS.md]
 
 ### Running application snapshots
 
-The orchestrator gives each minute's capture sweep a 45-second budget and admits up to four concurrent captures.
-It rotates through owned running apps, alternating apps with an authorized preview request in the last two minutes
-with a background pass ordered by the oldest capture attempt. Captures use the display sidecar's ADB screenshot command. It
-reuses prepared ADB transport for up to five minutes when the verified container start time and address, policy
-revision, and observed sidecar generation still match. A failed transport request invalidates readiness for the next
-capture. Each capture verifies the Docker runtime again before publishing. The orchestrator
-keeps one thumbnail per app as a WebP with a maximum edge of 480 pixels. Files are private and stored under
-`runtime-snapshots` beside the orchestrator database. Refresh and cleanup check the previous file's metadata with a
-bounded header read. A completed capture atomically replaces the previous file, and a failed capture preserves the
-last valid thumbnail for the current runtime.
-Stop clears the thumbnail when the app leaves the running state. Remove and runtime reconciliation also clear stale
-thumbnails. Cleanup checks the current application state or the observed snapshot record before deleting, so a delayed
-cleanup preserves a newer capture. Reads verify the current Docker container and start time. A separate cleanup pass
-prunes snapshots for apps that are no longer eligible and temporary
-files left by an interrupted write. An existing thumbnail remains available after an orchestrator restart if the same
-Android runtime is still running.
-
-`GET /api/bff/devices/{id}/runtime/snapshot` returns the WebP data URL and capture time in the standard operation
-result. The web backend requires a current account with the screenshot permission. The orchestrator compares the
-account ID from the authenticated web service against the app owner. A missing thumbnail or ownership mismatch
-returns 404. Responses use `Cache-Control: private, no-store`.
+Snapshots are private, owner-scoped thumbnails of running managed apps. The bounded capture
+sweep verifies the container and start time before publishing. Publish a replacement atomically
+and keep the previous good capture if refresh fails. Reads require screenshot permission and
+the same running runtime. Cleanup must preserve a newer capture.
+[Snapshot service and storage](../apps/orchestrator/src/android-apps/runtime/services/android-apps-runtime-snapshot.service.ts)
 
 ### Android startup and attachment timing
 
-After guarded container startup and network policy installation complete, Android
-boot observation and display-sidecar network attachment run concurrently. Activation
-joins both operations before starting remote ADB setup, including on failure or
-cancellation, so Stop and Remove cannot race an admitted attachment. A recent
-attachment is reusable only for the same reservation, runtime container, network,
-and sidecar generation. Post-boot runtime and ADB target observations remain fresh.
-Attachment observations older than three seconds are rechecked before ADB setup.
-Transient attachment failures fall back to the normal post-boot retry loop. Time
-waiting for attachment after boot consumes the existing remote-access deadline;
-parallel work during boot does not consume that budget.
+After guarded startup and network policy installation, Android boot observation and display
+sidecar attachment run concurrently. Join both before remote ADB setup or teardown, including
+on cancellation. Reuse an attachment only while its reservation, runtime, network and sidecar
+generation still match. Stop or Remove must drain a dispatched guest or Docker mutation.
 
-The application log records `Android network attachment completed` with the
-reservation and runtime identity. `networkAttachmentMs` covers the entire attachment
-including the sidecar FIFO. Its component fields separate `sidecarQueueMs`,
-`sidecarPreparationMs` (discovery and any sidecar startup), `networkInspectMs`,
-`dockerMutationQueueMs`, `networkConnectMs`, and `networkConvergenceMs` (verification
-after an uncertain connect result). `Prepared Android remote access` records only
-the work performed after boot; its nested `networkAttachment` timings capture any
-attachment rechecks or retries. The concurrent attachment time must not be added to
-boot time when calculating total startup latency.
-
-Attachment timings also carry the observed sidecar container ID and, when the
-existing inspection is available, its network count before attachment. When Docker
-returns port mappings, `sidecarPublishedPortCount` counts published container
-port/protocol entries and `sidecarPublishedBindingCount` counts their host bindings
-(including separate IPv4/IPv6 bindings). Unpublished exposed ports do not count;
-an absent port map leaves these fields absent. These observations reuse discovery's
-inspection. The bounded
-`networkConnect` observation describes the latest dispatched request: request ID,
-container/network identity, transport kind, dispatch/settlement UTC timestamps,
-and raw request outcome. A rejected request can still produce a verified successful
-attachment after membership reconciliation. No extra Docker reads collect this
-metadata. Debug events `docker_network_connect_dispatched` and
-`docker_network_connect_settled` carry the same identity. The elapsed request time
-includes client transport and daemon response; it is not a daemon-only measurement.
-
-The orchestrator emits `android_boot_observation_settled` as soon as the boot branch
-settles, before waiting for attachment to drain. Use its reservation, runtime and
-UTC timestamp to distinguish early boot failure from attachment wait. For a slow
-connect, correlate these records with Docker daemon logs/events for the same
-container and network. Compare cold/warm runs and sidecar endpoint counts before
-changing queue admission or caching. Never release a dispatched mutation early to
-improve its reported duration.
-
-Startup Docker work carries its remaining deadline and cancellation signal into
-queue admission. Expired or cancelled entries are removed before dispatch. A
-mutation already dispatched remains owned until it settles and any uncertain
-network result is verified. Sidecar attachment and repair retain their ordering;
-this does not increase Docker mutation concurrency.
-
-Boot observation uses a monotonic budget and bounds each observation by the
-remaining time, with a ten-second per-observation maximum. Unchanged properties
-retain the one-to-three-second cadence, while container liveness is observed on
-each iteration. Up to three consecutive transient observation failures are
-allowed, within that same budget; verified missing or stopped containers and
-permanent errors remain terminal. Readiness requires a successful current runtime
-observation alongside Android properties. Before any successful guest probe, the
-specific structured exit-255 `sh -lc` failure with stderr
-`exec /bin/sh: no such file or directory` is treated as initial guest unavailability.
-It retries within the full boot budget while checking fresh liveness, independently
-of the three-failure transport limit. Other command failures remain terminal, and
-this exception stops applying after a successful guest probe. The bounded
-`android_guest_shell_unavailable` and `android_guest_shell_available` events record
-the first unavailable and first subsequent successful observation, including elapsed
-time and failure count, without logging every poll. Timeout diagnostics share a separate
-five-second allowance and cancellation prevents further diagnostic work.
-
-Each property probe reads one Android property snapshot and filters it inside
-the guest to the readiness allowlist before returning output to Docker.
-Each boot observation also emits the structured orchestrator event
-`android_boot_probe`. It carries the application/container/reservation IDs, a
-`bootObservationId`, sequence number, UTC observation timestamp, and monotonic
-elapsed time. `properties` and `runtime` independently report their admission
-queue time, admitted execution time, total time, outcome, and offsets from the
-start of boot observation. Execution includes Docker client/daemon work and any
-adapter retry or cleanup; it is not a measurement of guest execution alone.
-An operation rejected before admission has `dispatched: false` and
-`executionMs: null`. Backoff-only iterations report
-`properties.outcome: skipped_backoff` while still measuring liveness.
-
-`waitSincePreviousObservationMs` separates time between observations from Docker
-work. `propertyReady`, `runtimeRunning`, `initialGuestShellUnavailable`, and
-`cancelled` distinguish readiness, missing guest shell, and failed observations
-without serializing commands, command output, or raw errors. The two operations
-overlap, so do not sum their durations to calculate wall time. A fast, successful
-probe with `propertyReady: false` establishes that Android had not reported ready
-at that observation; a slow probe only bounds when readiness was observed. Compare
-`properties.settledAfterMs` with the runtime settlement to identify liveness checks
-that delayed accepting already-ready properties. The existing `Android boot
-completed` entry records the last negative and first positive property sample
-for the same runtime, including their sequence and monotonic timing offsets.
-
-Set `REDROID_COLLECT_BOOT_EVENTS=true` on the orchestrator for a host timing run.
-After Android remote access succeeds, a best-effort read records up to 32
-allowlisted Android boot phase events as `android_boot_guest_events` in the
-orchestrator output. It uses the Docker start timestamp from the existing
-liveness read and the positive property sample's timestamp to filter the guest
-event window. Events identify Android phases and are independent of the readiness
-decision. Collection is off by default. It has one in-flight slot per orchestrator
-and a two-second Docker deadline, and the lifecycle does not wait for it. With
-collection enabled, the read can briefly occupy a shared Docker exec slot. Missing
-events can reflect an unavailable or truncated guest event buffer.
-
-Sidecar discovery remembers only the last observed container ID. Each use still
-inspects the container; a missing ID falls back to exact-name discovery, and a
-replacement or same-container restart invalidates the ADB generation. Running
-state and network membership are not accepted from an old cached inspection.
-
-Provisioning and recovered viewers share TCP-ADB guest preparation. It validates
-the port, leaves an already-correct running adbd alone, and performs bounded
-idempotent repair otherwise. Guest timeout is calculated after Docker queue
-admission. Once guest mutation starts, its owner drains the bounded execution
-before cancellation completes; cancelling a Docker stream alone cannot establish
-guest exit. Provisioning still fails on unsuccessful setup, while viewer recovery
-logs the setup failure and continues its existing ADB probe.
+Boot readiness requires both the guest properties and a running container in the same observation.
+Early guest-shell unavailability can be retried within the boot deadline. Confirmed exits are
+terminal. Remote ADB preparation has its own deadline. Provisioning propagates setup failures,
+while a recovered viewer can still probe an existing transport.
+[Boot observation](../apps/orchestrator/src/android-apps/provisioning/utils/android-boot-observation.ts) · [Diagnosing slow attachment](operations.md#slow-display-network-attachment)
 
 ## Workflow execution
-
-The Workflows grid reads summaries, nested step counts, and trigger target app IDs from
-`GET /automations/grid`. The trigger picker uses `GET /automations/options` for metadata and
-top-level step counts. The Run picker uses `GET /automations/runnable/options` for IDs and names.
-Workflow detail reads include the full definition and editable YAML.
 
 A queued run reserves its target before preparation. The runner owns enqueue, cancellation, dispatch,
 and abort controllers. The execution service prepares the target, runs steps, records metrics,
 conditionally finalizes the run, and cleans up.
 Target preparation authorizes either attaching or starting, then verifies the requested profile on the
-ready runtime. The workflow captures Docker's start timestamp when it attaches. Android checks that
-timestamp, the container ID, and the stored profile before admitting each device command and AI capture.
+ready runtime. For a managed target, the workflow captures Docker's start timestamp. Android checks it,
+the container ID and the stored profile before each device command or AI capture. External runs
+are bound to the verified attachment recorded at enqueue.
 Runtime changes fence new admissions and drain work in progress. Cancellation stops new workflow
 admissions and keeps the target reserved until admitted work settles, including in-flight ADB setup.
 The runner retries the guarded cancellation write after admitted work drains. If the request's
@@ -295,9 +171,6 @@ These are correctness guarantees:
 - Workflow run history reads summary rows with step counts. An open trace refreshes the selected run after committed
   step or status events, with a focused poll while event delivery reconnects.
 - Queued and running rows found at startup fail instead of resuming partially executed workflows.
-- The web app reads replay pages through `GET /api/v1/automations/runs/:runId/events/page`. Drafting
-  from an AI run reads the owner-scoped conversation through
-  `GET /api/v1/automations/runs/:runId/events/conversation`.
 - Workflow and trigger summaries use the newest queued run. Older runs can finish independently without replacing
   that summary. A trigger can also show a newer scheduled enqueue failure when the scheduler could not create a run.
   Next-run bookkeeping failures are reported independently of run admission. Cron registrations follow
@@ -305,33 +178,11 @@ These are correctness guarantees:
 
 ## AI decisions
 
-```mermaid
-flowchart LR
-  Observe["Capture current evidence"] --> Decide["Request a typed decision"]
-  Decide --> Validate["Validate snapshot, target, and capability"]
-  Validate --> Act["Execute action"]
-  Act --> Observe
-  Validate --> Finish["Verify completion evidence"]
-```
-
-The harness owns budgets and the observe/act loop. Decision services call the provider;
-the action executor validates grounded actions. Perception keeps screenshot capture, OCR,
-model descriptions, and deterministic evidence fusion separate.
-
-A controller turn exposes one decision schema or fallback tool. Mutations bind to the latest
-snapshot and target; taps require an observed candidate or normalized coordinates. Completion
-must cite known evidence. Compatibility normalization may repair provider envelopes, but cannot
-invent grounding.
-After dispatching a screen-changing action, require fresh evidence before the next decision, including
-when the command response fails. If observation fails, the run reports a blocked outcome.
-
-Raw ADB shell is not a default capability. Approved escalation validates an allowlisted read-only
-command for one follow-up run. Provider streaming adapters preserve public results and usage
-without storing hidden reasoning text. Provider reads enforce byte and frame limits through response
-consumption. OCR validates the success envelope and deployment language before reporting detections.
-
-The [AI automation README](../apps/orchestrator/src/automations/ai/README.md) covers usage,
-decision kinds, provider/perception boundaries, and the implementation map.
+AI device tasks run inside the workflow runner’s reservation and authorization boundaries.
+The controller proposes actions against the current snapshot. The executor checks grounding,
+permissions and target identity before dispatch, then refreshes evidence after a screen change.
+For decision budgets, completion evidence, provider roles and shell escalation, see
+[AI automation](../apps/orchestrator/src/automations/ai/README.md).
 
 ## Image builds and settings
 
@@ -363,5 +214,4 @@ The scheduler registers edits from the committed task snapshot, keeps an active 
 schedule is unchanged, ignores ticks from superseded registrations, and unregisters a removed task
 after its deletion commits.
 
-For local commands and verification, use the [contribution guide](../CONTRIBUTING.md).
-API changes require regenerated contracts through `pnpm openapi:generate`.
+For API changes, follow the [contract generation steps](../CONTRIBUTING.md#openapi-contracts).

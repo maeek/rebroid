@@ -93,7 +93,7 @@ AI steps that omit capabilities receive the permitted defaults from this fresh a
 Explicit capability lists are checked against the current account. Raw shell escalation requires
 its own permission. Deploy web and orchestrator together when updating the authorization exchange.
 
-Create, Clone, Start, and Recreate use the orchestrator's transactional open-app admission.
+Managed Create, Clone, Start and Recreate share the owner's transactional open-device limit with external attachment.
 The web service sends the account's configured limit and translates the quota denial.
 
 Administrative account and group commands recheck the actor when admitted to the mutation queue.
@@ -108,8 +108,8 @@ own access. Its viewer connections close at the next sidecar authorization check
 10 seconds. Viewers attached from other authorized browsers can stay connected.
 
 The sidecar authenticates viewer attachments and HTTP controls through the private web
-authorization route. Web checks the browser's current session, app ownership, and the stored
-running container ID. Pending revocation blocks grant creation and attachment. Active transports
+authorization route. Web checks the browser's current session, ownership, and the running container
+ID or verified external attachment. Pending revocation blocks grants and attachments for the affected provider. Active transports
 close on revocation or a failed authorization recheck. Attached transports with the same Display
 session and browser credentials share a live recheck. Each new transport authorizes independently.
 Viewer URLs contain the session ID and playback settings. nginx blocks the internal viewer authorization and display session management

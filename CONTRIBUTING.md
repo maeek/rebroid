@@ -113,26 +113,35 @@ package admission, dead code, and production builds:
 pnpm check
 ```
 
-Install the [OCR test dependencies](apps/ocr-sidecar/README.md#development) and use Docker Compose
-2.24.4 or later for the [test overlay](docs/deployment.md#start-the-stack). Then run
+Install the [OCR test dependencies](apps/ocr-sidecar/README.md#development) and use a Compose
+version supporting `volume.subpath` and `!override` for the [test overlay](docs/deployment.md#start-the-stack). Then run
 `pnpm test:backend-services` for OCR, resolved Compose wiring, and the GApps worker fixture.
 The checks are also available individually as `pnpm test:ocr`, `pnpm test:compose`, and
 `pnpm test:gapps-patcher`. Set `CONTAINER_ENGINE` to select the engine executable and
 `OCR_TEST_PYTHON` to select the Python interpreter from your OCR test environment.
-
-When an API changes, update its DTO/controller, run `pnpm openapi:generate`, and include generated
-contracts. Never edit generated `schema.ts` files by hand. Use `pnpm openapi:check` and
-`pnpm boundaries` to verify contracts and imports.
 
 Scrcpy startup/cleanup changes require the [manual Redroid matrix](docs/display-streaming.md#manual-verification).
 Model tests use recorded fixtures. While Rebroid is in prerelease, update the initial SQLite schema
 in the owning service. Follow the [state reset procedures](docs/operations.md#stored-state) to test
 schema changes against existing local state.
 
+### OpenAPI contracts
+
+After changing a DTO or controller, run the updated service locally with Swagger enabled (`ENABLE_API_DOCS=true`).
+Fetch its document and regenerate the TypeScript schema from the repository root. Choose the command for the service you changed.
+
+```bash
+pnpm openapi:generate --contract=orchestrator --fetch
+pnpm openapi:generate --contract=display-sidecar --fetch
+```
+
+Include both `openapi.json` and `src/schema.ts` in the change. Without `--fetch`, generation reads the committed JSON.
+`pnpm openapi:check` checks the generated types against that JSON offline. Run the owning service's contract tests for API behavior.
+
 ## Dependency updates
 
 Manage dependencies from the root workspace, shared `pnpm-workspace.yaml` catalog, and one lockfile.
-Keep `catalog:` and `workspace:` references; do not restore removed packages to resolve old PR conflicts.
+Keep `catalog:` and `workspace:` references.
 
 Dependabot's grouping and deferred upgrades are defined in
 [`.github/dependabot.yml`](.github/dependabot.yml). Current major-upgrade constraints are:

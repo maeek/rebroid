@@ -20,16 +20,21 @@ flowchart TB
     Orchestrator -->|Session management| Display
     Display -->|Viewer authorization| Web
     Display -->|ADB and scrcpy| Android
+    Edge -->|External viewer| Broker["External ADB broker"]
+    Orchestrator -->|Registration and attachment operations| Broker
+    Broker -->|Viewer authorization| Web
+    Broker -->|Verified ADB transport| External["External phone or VM"]
     Orchestrator -->|Private Unix socket| Firewall["Firewall agent"]
     Firewall --> Rules["Host firewall rules"]
     Orchestrator -->|Image recognition| OCR["OCR sidecar"]
   end
   Display -.->|WebRTC media over UDP| Browser
+  Broker -.->|WebRTC media over UDP| Browser
   Orchestrator -->|Optional model requests| AI["Local or remote AI provider"]
 ```
 
-The edge publishes HTTPS on port `3443` by default. The display sidecar publishes one shared WebRTC UDP port.
-Other service ports remain internal in the supplied [Compose deployment](../deploy/compose.yaml).
+The [Compose deployment](../deploy/compose.yaml) publishes edge HTTPS on port `3443` by default.
+The managed display sidecar and external ADB broker each publish a WebRTC UDP port. Other service ports are internal.
 The firewall agent shares the host network namespace and exposes only a Unix socket.
 
 ## Service responsibilities
@@ -97,7 +102,8 @@ The [orchestrator guide](orchestrator-architecture.md) covers lifecycle and auto
 | Running application thumbnails                               | Private files in `orchestrator-data/runtime-snapshots`. |
 | Uploaded APKs                                                | `orchestrator-uploads`.                              |
 | Android application data                                     | Managed runtime volumes.                             |
-| Internal credentials and TLS material                        | Shared secret volume and web data volume.            |
+| External ADB host keys                                       | Broker's private `external-adb-keys` volume.          |
+| Internal service credentials and TLS material                | Deployment environment, shared secret volume and web data volume. |
 | Viewer sessions and effective sidecar feature state          | Display-sidecar memory.                              |
 
 Each process owns its database and files. SQLite is configured for local use; there is no multi-host
@@ -112,24 +118,15 @@ Pre-release schemas have no in-place upgrade path. Use the documented
 The orchestrator persists feature intent and revision, then publishes an immutable runtime snapshot.
 Administrators manage feature flags under **Administration → Feature management**.
 The switch shows the requested setting. The status shows whether the owning service has applied it.
-The display sidecar receives only the virtual-display and WebRTC settings. Both require enabled,
-synchronized state before admitting new work.
+The managed display receives the virtual-display and WebRTC flags. The external broker also
+receives the external-devices flag. Each instance requires synchronized, enabled state for gated operations.
 
-| Feature          | Default | Behavior when disabled                                                                                                                   |
-| ---------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| AI               | Off     | Blocks new provider operations, device-agent tasks, AI workflow steps, and workflow drafting.                                            |
-| Workflows        | On      | Blocks workflow editing and new manual or scheduled runs. Active runs can finish.                                                        |
-| Resource quota   | On      | Suspends per-user open-app, CPU, memory, and session quota enforcement for subsequent operations. Saved quotas apply again when enabled. |
-| WebRTC streaming | On      | New viewer connections use WebSocket. Existing WebRTC connections can finish.                                                            |
-| Virtual displays | Off     | Blocks creation of new virtual displays. Active displays drain.                                                                          |
-| Image builder    | On      | Blocks new image builds. Active jobs can finish.                                                                                          |
-| OCR perception   | On when configured | Blocks new OCR requests.                                                                                                         |
-| Firewall         | On when configured | Blocks restricted operations and preserves installed host rules.                                                                  |
+The [feature registry](../apps/orchestrator/src/feature-flags/feature-flag.registry.ts) defines
+defaults, deployment prerequisites and what happens to active work when a feature is disabled.
+For example, workflow runs drain, external attachments retire, and new viewers can use WebSocket
+when WebRTC is off. Keep cancellation, revocation and cleanup available. Admission still requires
+a healthy service, an authenticated caller and the relevant permissions.
 
-OCR readiness and recognition responses must both report the configured deployment language.
-Disabling a feature blocks new work according to its policy. In-flight OCR and image builds can
-finish, existing virtual displays drain, and disabling the firewall feature does not remove
-existing host rules. Feature flags do not replace authentication, permissions, or health checks.
 Create app and the app's Network tab hide network access controls while the firewall feature is off. New apps
 use unrestricted access, which requires the corresponding permission. The orchestrator API can
 still save or reapply a disabled policy and start unrestricted apps. Restricted policy updates,

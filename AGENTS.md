@@ -1,324 +1,45 @@
-# Repository Instructions
+# Repository instructions
 
-## Local Codex Runtime
+## Development and verification
 
-- Prefix shell commands with `rtk`.
-- Use Node.js 24 and pnpm through Corepack.
-- Run repo-level checks from the root when practical: `pnpm check`.
-- Manage dependency updates from the root pnpm workspace and shared catalog. Keep Node types on the deployed Node 24 major; compiler, ESLint, and ESM-only dependency major upgrades need explicit compatibility verification. See `CONTRIBUTING.md#dependency-updates`.
-- For narrower verification, use the owning workspace script first, for example `pnpm --filter rebroid-web test`, `pnpm --filter rebroid-orchestrator typecheck`, or the package-specific `build`, `test`, and `typecheck` scripts.
+- Prefix shell commands with `rtk`. Use Node.js 24 and pnpm through Corepack.
+- Run the owning workspace's check for a local change. Use `pnpm check` from the root for cross-app changes. Report any relevant checks you could not run.
+- Follow [Contributing](CONTRIBUTING.md) for local setup, API contract generation and dependency updates. Use the root workspace and shared catalog for dependency changes.
+- During prerelease, edit the initial SQLite schemas directly. When testing against existing state, follow the [reset procedures](docs/operations.md#stored-state).
 
-## Agent skills
+## Where to look
 
-### Issue tracker
+| When changing | Read |
+| --- | --- |
+| Service ownership, request paths, state or feature flags | [Architecture](docs/architecture.md) |
+| Domain terminology or an architectural decision | [Domain docs](docs/agents/domain.md) |
+| Lifecycle, provisioning, firewall reconciliation, Docker operations or workflow execution | [Orchestrator architecture](docs/orchestrator-architecture.md) |
+| Device decisions, evidence, provider selection or AI shell escalation | [AI automation](apps/orchestrator/src/automations/ai/README.md) |
+| Viewer transport, media recovery, scrcpy or controls | [Display streaming](docs/display-streaming.md) |
+| External device enrollment, attachment or broker configuration | [Deployment](docs/deployment.md#external-android-devices) and [web security](docs/web-security.md) |
+| Web routes, server actions, BFF reads or browser/server imports | [Web contributor guide](docs/web-contributor-guide.md) |
+| Web UI, interaction or loading states | The relevant sections of the [design system](docs/web-design-system.md). [Operator console](docs/operator-console.md) describes the user-facing workflows. |
+| Permissions, sessions, audit scope, viewer grants or terminal access | [Web security](docs/web-security.md) |
+| Package placement, exports or generated contracts | [Workspace packages](packages/README.md) |
+| Reading, filing or updating GitHub issues | [Issue tracker](docs/agents/issue-tracker.md). Use the [triage labels](docs/agents/triage-labels.md) when mapping roles. |
 
-Read `docs/agents/issue-tracker.md` when reading, filing, or updating issues in GitHub Issues for `maeek/rebroid`.
+## Code placement
 
-### Triage labels
+- Runtime integrations belong in the owning app. New handwritten packages need two runtime app consumers. Generated API contracts are type-only. App code imports from the owning file. Packages expose explicit public entrypoints.
+- Keep transport translation in controllers, persistence in repositories, and pure policy independent of either. Use the owning module's folder conventions and co-locate focused tests.
+- Orchestrator modules consume each other's contracts, facades or module exports. Declare capability interfaces independently of their adapters and bind implementations to tokens with `useExisting`. Docker callers use `docker/contracts` and `DockerModule`. Automations use `ANDROID_APPS_AUTOMATION`.
+- Browser/server DTOs live in `apps/web/src/shared/contracts`. Client modules may import a server-owned module to invoke a Server Action if its first directive is `'use server'`. Ordinary browser requests use the BFF. The edge routes viewer media, authorized event subscriptions and terminal connections.
+- Keep TypeScript strict, validate untrusted values at boundaries, and avoid nested ternaries.
 
-Read `docs/agents/triage-labels.md` when mapping a triage role to a GitHub label.
+## Runtime invariants
 
-### Domain docs
+- Managed app list and detail reads use stored state. Reconcile Docker explicitly. Guard lifecycle claims, handoffs and writes by reservation and runtime identity. Drain admitted work before Stop or Remove. Preserve shared or untracked profile volumes during cleanup and all profiles during Recreate.
+- Enforce the trusted owner's open-device limit in the reservation transaction, including workflow startup and external attachment. Authorize attachment, startup and profile changes separately. Bind external operations to the current verified attachment.
+- Firewall changes share the per-app policy gate. Guard restricted startup before Docker starts. Preserve protection until policy installation succeeds or the runtime is confirmed stopped or removed. A bulk replacement requires complete inventory. Stage changes before applying host rules, commit the forwarding jump and chains atomically, and recover from the last committed rules after rollback failure.
+- Preserve the identity and ordering of workflow runs and events through cancellation, replay and restart. Reauthorize the account, commands and target before preparation. Bind mutating AI actions to fresh evidence. Raw AI shell access requires a separately authorized one-run allowlist.
+- Gate new work on the owning feature's effective state. Preserve the feature's disable policy, permission checks, revocation and cleanup paths. Account changes commit pending viewer revocation with the access change. Verify the initiating session and capabilities again after minting a viewer grant.
+- The display sidecar owns scrcpy sources. A consumer disconnect releases its own transport. Changes to ADB or scrcpy startup, socket acquisition, retry or cleanup ordering require the [manual Redroid verification](docs/display-streaming.md#protected-scrcpy-lifecycle).
+- Keep APK publication, owner records and orphan deletion serialized by content hash. The managed GApps worker runs without root, secrets or the Docker socket. Hold its operation slot through cancellation and cleanup.
+- Use `getCurrentUser()` for protected web operations. The protected routing shell and forced-password-change completion flow may use `getAuthenticatedUser()`. Keep secrets and raw upstream failures out of public results, client bundles and logs.
 
-Read `docs/agents/domain.md` before exploring domain terminology or architecture. Rebroid uses a single context.
-
-## High-Level Structure
-
-This is a pnpm/Turbo monorepo. Runtime applications live in `apps/*`; reusable contracts and domain libraries live in `packages/*`.
-
-- `apps/web`: Next.js UI and backend-for-frontend. Browser code lives under `src/app`, `src/features`, `src/components`, `src/hooks`, `src/lib`, and `src/utils`. Server-only code lives under `src/server`. Shared permission/runtime vocabulary that must be used by both client and server belongs under `src/shared`. Reusable UI/layout primitives that are not owned by one feature live under `src/shared/ui`.
-- `apps/orchestrator`: NestJS API that owns Android application lifecycle state, Docker operations, scheduled tasks, automations, APK handling, network policy coordination, metrics, settings, and system resources. Preserve the existing top-level module split in `src/*`; improve discoverability by splitting oversized files inside the owning module. Keep controllers, DTOs, services, facades, contracts, policies, mappers, repositories, entities, utils, and modules in the appropriate subfolders used by that domain.
-- `apps/display-sidecar`: NestJS sidecar for ADB, scrcpy, WebSocket, and WebRTC display sessions. Server modules live under `src/modules/*`. The embedded viewer client lives under `src/modules/display/viewer`.
-- `apps/firewall-agent`: host firewall reconciler. Keep host-network/firewall execution code here. Shared policy calculation belongs in `packages/firewall-policy-core`, not in this app.
-- `apps/ocr-sidecar`: FastAPI service for image validation, preprocessing, and bounded OCR inference.
-- `apps/gapps-patcher`: Containerized worker for the orchestrator's managed Google Play image builds.
-- `packages/*`: a deliberately small layer for code used by at least two runtime apps or generated cross-app contracts. Packages may expose explicit public entrypoints through `package.json` `exports` and small entrypoint files.
-- `deploy`: Docker Compose files and image transfer scripts.
-- `docs`: focused architecture, deployment, operations, and contributor guides indexed in `docs/README.md`. Update the relevant guide and index when behavior or deployment assumptions change; keep file-placement rules here and avoid feature-specific implementation diaries.
-- `scripts`: repository automation such as OpenAPI client generation.
-
-## Package Placement Rules
-
-Put code in `packages/*` only when it is genuinely reusable across apps or is a generated/shared contract.
-
-- `packages/automation-core`: automation definitions, metadata, condition/control vocabulary, YAML draft contracts, and public AI-text normalization shared by orchestrator and web.
-- `packages/android-application-core`: shared Redroid runtime vocabulary and viewer-control contracts used by web, orchestrator, and display sidecar. Keep container-image registry policy in the orchestrator and keep command-line parsing internal to the Redroid runtime entrypoint.
-- `packages/firewall-policy-core`: pure firewall policy types, validation, CIDR/access helpers, and chain naming logic shared by the firewall agent and other apps.
-- `packages/orchestrator-contracts`: generated, type-only OpenAPI contract for the orchestrator API. Regenerate with `pnpm openapi:generate`; never hand-edit `schema.ts`.
-- `packages/display-sidecar-contracts`: generated, type-only OpenAPI contract consumed by the orchestrator. Keep request execution, authentication, retry, timeout, and error translation in the owning app.
-
-AI provider normalization and persistence belong under `apps/orchestrator/src/settings`; provider request helpers are app-local under `apps/orchestrator/src/common`; device-agent policy and harness behavior belong under `apps/orchestrator/src/automations/ai`; provider form/catalog/recommendation and conversation presentation belong to the owning web feature or shared web model. Do not recreate a general AI package unless two applications require a concrete framework-neutral contract.
-
-New handwritten packages require dependencies from at least two runtime applications. Generated contract packages are the only standing exception; `pnpm packages:check` enforces this admission rule.
-
-Do not move runtime integrations, framework adapters, database access, HTTP controllers, React components, or environment parsing into a package unless multiple apps already need them and the code can remain framework-neutral.
-
-## Architecture Rules
-
-- Follow clean architecture boundaries: keep domain logic and pure policy decisions independent from framework, HTTP, database, Docker, filesystem, and process APIs.
-- Controllers and route handlers should be thin. They validate/translate input, call application services/actions, and return DTOs.
-- Application services orchestrate use cases. Push detailed parsing, mapping, validation, and policy decisions into focused helpers or domain services.
-- Repositories/entities own persistence details. Do not leak database-specific assumptions into UI, controllers, or shared packages.
-- In the orchestrator, cross-module imports should use the other module's `facades`, `contracts`, or module file when those surfaces exist. Do not import another module's low-level services, controllers, repositories, entities, or random utilities just to bypass its public surface.
-- Keep managed GApps patching in `container-images`: one queued patch job at a time, a non-root worker without the Docker socket or secrets, revision-addressed verified package caches, bounded safe extraction, payload APK/XML validation through the public APK inspection port, and final image-label validation. Interrupted running jobs fail instead of resuming.
-- Port contracts must be independently declared, capability-focused interfaces. Do not define a port as `Pick<ConcreteService, keyof ConcreteService>` or import a concrete adapter into a `.port.ts` file. Concrete adapters implement the port and remain wired to symbol tokens through `useExisting`.
-- Code outside `apps/orchestrator/src/docker` must consume Docker behavior through the tokenized ports in `docker/contracts` and import `DockerModule` for provider wiring. Do not inject concrete Docker implementation services across module boundaries.
-- Resolve the orchestrator's local hostname through the container engine and use the full container ID for app-network attachment. A missing self lookup is nonfatal. Surface failures attaching an identified orchestrator.
-- Normal Android application list/get operations read stored state and must not contact Docker. Use the explicit runtime-state reconciliation services or API endpoints when fresh Docker state is required.
-- Recreate is a last-resort lifecycle command for stopped or errored apps. Reserve the app before cleanup, replace only its runtime container and managed network, and preserve all profile volumes. Mark interrupted recreation as failed.
-- Keep persistent profile identities when temporary history rolls over. Check resolved volume names before admitting a new persistent profile. Preserve untracked volumes and storage shared by existing aliases.
-- Automations consume Android runtime behavior through the `ANDROID_APPS_AUTOMATION` token and types under `android-apps/contracts`; do not inject `AndroidAppsFacadeService` or import Android lifecycle, viewer, network, state, or persistence implementations directly.
-- In `apps/orchestrator/src/docker/sidecar`, keep sidecar orchestration, repair, network, and ADB coordination in `DockerSidecarService`; keep display sidecar image existence/build work in `DockerSidecarImageService`; keep pure parsing helpers in `utils`.
-- Run Docker image builds through the image runtime port. The Docker adapter owns progress stream interpretation and cancellation. Build callers own context, job state, and artifact validation.
-- Run the GApps worker through the Docker worker port. Hold its operation slot through cancellation and bounded cleanup. Keep APK publication, owner-record writes, and orphan deletion serialized by content hash.
-- In `apps/orchestrator/src/android-apps/lifecycle`, keep `AndroidAppsLifecycleService` as the thin request-facing facade, definition/profile/APK commands in `AndroidAppsConfigurationService`, start/stop commands in `AndroidAppsPowerService`, persisted-job startup recovery in `AndroidAppsLifecycleRecoveryService`, and bounded removal retries/cleanup in the removal services. Provision and start share `AndroidAppsRuntimeActivationService`; application/job transitions go through `AndroidAppsLifecycleTransitionService`, with one active job per application. Guard claim, handoff, progress, and completion by reservation ID. Stop and Remove drain admitted runtime work before replacing the reservation. Recreate keeps its reservation through APK installation.
-- In `apps/orchestrator/src/android-apps/runtime`, keep runtime download use-case routing and running-container media-scan orchestration in `RuntimeDownloadFilesService`; keep persistent volume lookup, listing, reads, and writes in `RuntimeDownloadVolumeService`.
-- In `apps/orchestrator/src/android-apps/provisioning`, keep provisioning orchestration in `AndroidAppsProvisioningService`, Android boot/remote-access preparation in `AndroidAppsProvisioningAndroidService`, APK install/launch orchestration in `AndroidAppsProvisioningApkService`, and pure APK shell/package-resolution plus Android boot diagnostic helpers under `provisioning/utils`.
-- In `apps/orchestrator/src/automations`, keep `AutomationsModule` as the composition root for internal commands, events, AI/vision, execution, definition, and scheduling modules, and keep `AutomationsService` as the controller-facing facade. Keep enqueue/cancel/dispatch/abort-controller ownership in `AutomationRunnerService`; keep target preparation, step execution, guarded terminalization, metrics, and cleanup in `AutomationRunExecutionService`. Keep the snapshot-grounded deadline/action loop in `AutomationAiHarnessService`, provider controller/planner calls in `AutomationAiDecisionService`, grounded action validation/execution in `AutomationAiActionExecutor`, and provider streaming normalization in `AutomationAiChatClientService`. Keep vision capture, provider description, OCR adapters, set-of-marks rendering, and deterministic evidence fusion separate behind `AutomationVisionService`.
-- Device-decision compatibility normalization may repair known provider envelopes, naming aliases, and omitted descriptive boilerplate, but it must not invent grounding. Mutating actions remain bound to the current snapshot, and taps require an observed candidate ID or normalized coordinates before execution.
-- AI controller turns expose one `DeviceDecision` schema or one fallback decision tool, never the full automation command registry. Bind actions to the latest snapshot and target fingerprint, observe after screen changes, and require known evidence IDs for successful completion.
-- Keep controller turns and action admission separately bounded. Allow terminal verification after the last action. Publish only accepted evidence citations and give the controller bounded command-specific facts.
-- Carry the task deadline through Android dispatch and perception. Preserve the current-profile precondition for ad hoc attachment and authorize profile changes separately.
-- Refresh evidence after dispatched screen mutations, including uncertain command failures. Block the turn if observation fails. Keep direct coordinate and live text tap commands out of AI capability routing.
-- Raw `android.adbShell` is never a default AI capability. AI escalation requires an explicit allowlisted policy and a validated read-only `{program,args}` command; human-authored automation commands remain separately permission checked.
-- A chat approval for AI shell escalation creates a new one-run follow-up with `rawShellPolicy: allowlisted`; the web server action must verify `automations:run-adb-shell`, keep `android.adbShell` hidden from routed capabilities, and never turn approval into a persistent provider or conversation setting.
-- Device agent chat preserves prompt submission order. Starting the oldest queued prompt requires an explicit action, and provider conversation history excludes queued prompts.
-- Automation targets are reserved by the queued row before preparation. All status updates must use guarded expected-status transitions; never save a stale run entity or overwrite a terminal status. Startup recovery fails queued/running rows instead of resuming them. Workflow and trigger summaries read the newest recorded run. Keep scheduler enqueue failures separate from run transitions.
-- Authorize workflow attachment and startup as distinct operations. Cancel unadmitted preparation and keep the run reservation through any dispatched Start admission. Check the requested profile again after Android reports readiness.
-- Allocate automation event sequences and insert events in one transaction backed by the unique `(runId, sequence)` index. Include the guarded terminal status change in its event transaction and publish after commit. Append step results in execution order.
-- Register WebSocket listeners before replay. Page to a fixed sequence, bound and deduplicate the live buffer, and release listeners when the connection closes.
-- Maintenance tasks reserve execution before asynchronous lookup and release admission after persistence failures. Persist outcomes and configuration through targeted updates, and calculate the next run from the current schedule with a guarded write.
-- In `apps/orchestrator/src/settings`, keep generic settings facade methods in `SettingsService`, persistence/default normalization in `OrchestratorSettingsStore`, AI-provider CRUD/execution lookup in `AiProviderSettingsService`, provider connectivity checks in `AiProviderHealthService`, and provider model downloads in `AiProviderModelDownloadService`.
-- Persist the ad hoc AI prompt before dispatch. Project terminal run events into conversation state before detaching the stream. Workflow drafting requires a completed AI task.
-- Keep the provider request scope open through response body consumption. Select Device control for `ai.run` and Planning for drafting and suggestions.
-- Keep configured AI transport (OpenAI Chat Completions or native Ollama) separate from detected server flavor. Official OpenAI workflow drafting uses the Responses API. Probe Lemonade before Ollama compatibility endpoints and preserve exact model IDs returned by the selected transport.
-- Browser UI must not call the orchestrator directly. It should go through the Next.js backend-for-frontend in `apps/web/src/server/orchestrator`.
-- Web client modules must not import server-owned types. Browser/server DTOs belong in `apps/web/src/shared/contracts`; the only allowed runtime import from `apps/web/src/server` is a module whose first directive is `'use server'`, used to invoke a Server Action.
-- Cross-cutting web reads should use validated `/api/bff/*` handlers backed by focused server query services. Feature-owned mutations may use Server Actions, but both transports must return the shared operation result with a request ID and stable error code.
-- Web upstream clients distinguish required JSON from void responses and translate failures through body consumption. Persist account and membership changes without deleting retained identities. Commit viewer revocation intent with account changes and block new grants until pending revocation completes.
-- Track web metadata cleanup before requesting app deletion. Confirm upstream absence before removing metadata, and retry pending cleanup from durable web state after restart.
-- Create app preserves the draft on failure and only navigates after receiving a valid app ID. Use the orchestrator's structured validation fields for inline corrections and stable service error codes for form-level notices with the request ID. Keep raw upstream error details server-side.
-- While Rebroid is in prerelease, update the initial SQLite schemas directly and use the [state reset procedures](docs/operations.md#stored-state) when testing schema changes against existing local state.
-- The orchestrator owns Android application lifecycle state. The display sidecar owns viewer session state. The firewall agent owns host firewall reconciliation.
-- `deploy/edge` nginx owns public HTTPS ingress. Keep Next.js internal and route
-  display viewer/media paths directly to the display sidecar; do not
-  reintroduce a Node media proxy. Viewer URLs carry session IDs without credentials.
-  Require the current web account, app ownership, runtime identity, and granted capabilities
-  for viewer attachment and control. Close active consumers on revocation or failed reauthorization.
-- The orchestrator `feature-flags` module owns the typed registry, persisted runtime intent, revision, and immutable hot-path snapshot. Sidecars receive only their owned effective subset through authenticated synchronization and never persist platform feature values. Gate coarse use-case boundaries; feature flags do not replace permissions, health, or authentication.
-- The orchestrator enforces `feature.ocr`, `feature.firewall`, `feature.image-builder`, `feature.ai`, `feature.workflows`, and transactional open-app admission for `feature.resource-quota`. Web applies per-user CPU, memory, and session quota checks using the manifest and counts queued target reservations for workflow startup. Workflows and AI are independently switchable. Preserve cancellation and event access for active runs.
-- The display sidecar receives `feature.display-virtual` and `feature.display-webrtc` in one revisioned snapshot. Fail closed for new virtual surfaces and WebRTC offers when their state is absent, stale, or disabled. Use WebSocket for new viewer connections when WebRTC is off.
-- Firewall feature checks must allow saving and applying disabled app policies and creating unrestricted apps. Gate restricted operations on the resulting policy state before persisting; preserve ownership and unrestricted-internet permissions. Disabling the feature leaves existing host rules unchanged.
-- Restricted runtime activation requires an acknowledged forwarding guard on the managed IPv4 subnet before Docker starts the container. Keep the guard through policy installation and do not clear it if stopping an unverified runtime fails.
-- Enforce owner open-app quotas inside the lifecycle reservation transaction for Create, Clone, Start, and Recreate, including automation-triggered starts. Take the limit from the trusted web service.
-- Runtime reconciliation clears a missing container with a guarded state update, then removes only the firewall policy that still targets that container.
-- Firewall reconciliation orders bulk snapshots, individual updates, and removals in the agent. Persist removal ordering across restarts and use the snapshot start time for bulk policy generations.
-  A guarded removal records ordering for the expected container even if its policy has yet to arrive.
-- Stage policy state before changing host rules and publish it only after the host accepts the change. Build later operations and startup recovery from committed state.
-- Report failed firewall rollback in health and restore committed rules before the next policy operation. The firewall and display sidecars load a generated shared secret when it becomes available and require it for internal commands.
-- Replace the iptables forwarding jump and all active Rebroid chains in a single no-flush filter-table commit. Preserve unrelated host rules and retire obsolete chains only after a successful replacement.
-- Orchestrator firewall startup recovery verifies every recorded restricted runtime regardless of stored application status. An incomplete inventory must not trigger a bulk replacement. Refresh verified live policies individually. Recheck uncertain runtimes at fallback and verify ownership, live state, and the saved policy revision before stopping.
-- Administrative firewall reconciliation uses the same inventory completeness check. Retain container-scoped protection until Docker confirms removal.
-- Viewer activity and policy observations use targeted writes scoped to the observed runtime. Never save a whole application snapshot to record a viewer observation.
-- Viewer firewall refresh shares the per-app policy gate with administrative updates and reloads policy after checking the runtime identity. Use the refresh-only agent operation for the same installed runtime and revision. Policy writes carry the saved revision, and agent removals retain that revision across restart.
-- OCR uses one deployment language through `OCR_LANGUAGE` and one request/response `language` value. Keep image validation, the quality-gated preprocessing cascade, and Paddle runtime ownership separated under `apps/ocr-sidecar/ocr_sidecar`.
-- Display recording has been removed. Do not reintroduce recording routes, state, generated contracts, or viewer controls without a new bounded-storage and lifecycle design.
-- Treat display sidecar scrcpy/server/socket startup ordering as a protected invariant. Do not reorder awaited ADB commands, socket listener registration, socket reads, process launch, retry, or cleanup without a dedicated manual Redroid verification pass. Refactoring without that pass is limited to pure SPS parsing, compatibility-probe parsing, retry classification, and stream-option selection.
-- The display media wire protocol is `RBD1`: preserve unsigned scrcpy PTS and
-  configuration/keyframe/discontinuity flags. Every consumer owns a bounded
-  live-edge queue; overflow discards the queued GOP and resumes with cached
-  configuration plus an IDR. Never pause the scrcpy source or continue after an
-  arbitrary delta-frame drop. WebRTC senders must continuously drain RTCP.
-- Display transports are consumers of a session/profile source supervisor.
-  Browser, decoder, WebSocket, bridge, and peer failures detach only that
-  consumer; they must not tear down ADB or the scrcpy source. Encoder recovery
-  uses the rate-limited scrcpy reset-video control message over the existing
-  control socket without changing socket startup order.
-- Scope WebRTC offer work and bridge events to their consumer attempt. Scope keyboard capture to the active viewer surface.
-  The Go bridge owns peer shutdown and joins its media workers. Keep audio-only failures local to audio and end
-  the attempt on shared timestamp regression. The sidecar test suite requires Go 1.24 and local UDP loopback.
-  Bind WebRTC negotiation and media attachment to the same source codec generation. Keep an outstanding
-  encoder reset on its original deadline. Route expired viewer session recovery through the authorized web viewer.
-  Correlate discrete control outcomes and choose fallback before dispatch. Fence MediaSource fragments and callbacks by recovery epoch.
-  Acknowledge reconnect-queued controls only after socket dispatch. Never replay live pointer phases after reconnect.
-  Reserve control queue capacity for releases of admitted pointer gestures. Require stream control for virtual surfaces.
-- Respect existing dependency-boundary checks in `.dependency-cruiser.cjs`; do not introduce circular dependencies.
-
-## File Organization
-
-- Split large files into smaller files when a file mixes responsibilities or becomes hard to scan. Use the local folder conventions before inventing new ones.
-- Put DTOs in `dto`, controllers in `controllers`, services in `services`, repositories/persistence code in `persistence` or existing repository folders, entities in `entities`, pure helpers in `utils`, event code in `events`, scheduler code in `scheduler`, and framework modules in `*.module.ts`.
-- In `apps/web`, keep feature UI under `src/features/<feature>`, reusable primitives under `src/components` or `src/shared/ui`, server actions/clients under `src/server`, route files under `src/app`, and app-agnostic client/server vocabulary under `src/shared`.
-- New or migrated feature pages should use `src/features/<feature>/pages/<page>/page-entry.tsx` as the route entry component. Put server loaders in `page-data.server.ts`, client boundaries in `page-client.tsx`, composed sections in `sections`, leaf UI in `ui`, page/domain state in `model`, and local hooks in `hooks`.
-- Co-locate focused tests with the code they verify using the existing `*.spec.ts` or `*.spec.tsx` patterns.
-- Avoid dumping new code into broad catch-all files such as `utils.ts`, `types.ts`, or `service.ts` when a narrower subfolder/file name would describe the responsibility better.
-
-## Exports and Imports
-
-- Do not add barrel files or broad re-export files in apps.
-- Do not re-export symbols just to shorten imports. Import from the owning file directly inside app code.
-- Packages are the exception: they may use explicit, small public entrypoints and `package.json` `exports` to define their API. Keep package entrypoints intentional and stable.
-- Prefer existing workspace package imports like `@rebroid/automation-core/...` when consuming shared package APIs.
-
-## TypeScript and Style
-
-- Keep TypeScript strict and explicit at module boundaries. Prefer precise types over `any`; validate untrusted runtime data with existing validation patterns.
-- Do not nest ternary operators. Use clear `if`, local variables, or small helper functions.
-- Avoid large functions/classes. Extract helpers when it improves naming, testability, or separation of concerns.
-- Prefer immutable data transformations and pure helpers for domain rules.
-- Keep comments sparse and useful. Explain non-obvious constraints, security decisions, or protocol ordering; do not narrate simple code.
-- Match existing formatting. Do not introduce unrelated formatting churn.
-- Follow `docs/web-design-system.md` for web UI work. Feature code must use semantic tokens, documented page families,
-  shared surfaces, `FormField`, and shared feedback components instead of feature-local visual recipes.
-- Neutral panels, editor sections, and summary cards share the `Surface` panel treatment (`surface-editor`, panel radius, no visible border/shadow/blur). Use `DetailFields` for resource metadata and reuse it during loading.
-- Keep canvas, panels, controls, and floating surfaces in the same neutral palette, independent of the selected accent. Reserve accent tints for actions, links, focus, and selection; do not reintroduce a global accent wash or transparent editor panels.
-- Treat `Surface` `data-tone` styling as authoritative across notices, service banners, and toasts; successful mutation
-  completion uses the success variant and must retain its visible semantic tint in light, dark, and OLED themes.
-- Use `Section.headingSpacing` and `Section.description` for heading rhythm and helper copy. Do not add ad-hoc title
-  padding in protected feature pages.
-- Use the Base UI-backed `MultiSelectCombobox` for searchable multiple relationships instead of rendering an expanded
-  checkbox list. Keep its removable chips, keyboard behavior, option descriptions, and empty state intact.
-- Use `MutationButton` for asynchronous actions so the pending label, spinner, disabled state, and `aria-busy` remain
-  visible and consistent.
-- Web UI changes do not retain deprecated design-system variants or token aliases; migrate all consumers and remove the
-  old API in the same change.
-- Web loading states must be implemented by the component that owns the ready-state geometry. Reuse the actual page
-  shell, responsive layout, `Section`, `DataGrid` column definitions, table markup, and scroll container; do not copy
-  widths or layout class strings into route loaders. Keep `loading.tsx` files as thin feature entrypoints, render known
-  page chrome immediately, and describe cell placeholders through the owning grid column metadata.
-- Scope index-page loading boundaries to leaf route groups when their URL also has nested pages. Platform overview,
-  provider-list, and services-inventory loaders must not wrap other platform destinations; retain shared authorization.
-- Loading content uses neutral surfaces and placeholders, including notice panels, health badges, metric markers,
-  and resource icons. Reserve semantic status colors for loaded content; use `Notice.loading` for notice skeletons.
-- Form loading may reuse real field groups through `FormLoadingBoundary`; keep controls inert and separately disable data fetching and mutations. Preserve query-selected resource views during loading instead of falling back to Overview or Models.
-- Compose every interactive `DataGrid` through the shared `DataGridWorkspace`. Grids use an unboxed toolbar,
-  a transparent body, quiet header fill with the shared control radius, and horizontal separators; do not add feature-specific
-  rounded table frames. Use filter sheets only for
-  page-level datasets with meaningful structured facets; embedded related-resource grids and small fixed datasets use
-  its search-only mode. Keep enabled filter chrome real during loading, and keep feature-specific filter controls and
-  validated state in the owning feature. Filter sheets start closed and never reduce table width; preserve the filter button, active
-  count/chips, reset behavior, and keyboard focus restoration. Do not add separate search buttons, filter popovers, or column-header
-  filtering.
-- Grid selection swaps search and bulk-action toolbar modes in the same reserved space. Keep inactive
-  controls inert and hidden from assistive technology; selecting rows must not move the table.
-- Grid selection uses softly rounded background emphasis without accent stripes. Bulk toolbars swap immediately, with ghost actions and `danger-ghost` for destructive actions. Sheet transitions use Base UI starting/ending states and keep the backdrop transparent through unmount.
-- Query-selected nested service loaders must retain the Docker/Orchestrator detail layout; profile route and inner Suspense loaders must both retain the profile list and device pane. Feature loaders may show stable shell-manifest metadata, but must mask availability and enabled values.
-- Connection panels link to the administrator-only Docker container Logs tab for matched containers. Keep logs out of health responses and caches, decode Docker log frames before rendering, and bound both Docker reads and returned tails.
-- Give every renderable protected route a thin feature-owned loader. Explicit Suspense boundaries reuse the same
-  feature loading component as the route loader.
-
-## Security and Performance
-
-- Consider security implications for every change touching auth, permissions, secrets, uploads, filesystem paths, network access, Docker/container operations, ADB/scrcpy control, firewall rules, database queries, server actions, or generated contracts.
-- Never trust browser input, uploaded files, container names, image names, host paths, URLs, or network policy values without validation and normalization.
-- Do not expose secrets in logs, errors, OpenAPI responses, client bundles, or generated artifacts.
-- Preserve authorization checks in web server actions before calling orchestrator operations that expose backend details or change runtime behavior.
-- Use `getCurrentUser()` for authenticated web operations so auth epoch, session version, disabled state, and required password changes are enforced. Only the protected routing shell and forced-password-change completion flow may use `getAuthenticatedUser()`.
-- Automation command permissions fail closed: reject unknown required permissions and revalidate stored definitions, targets, and profile permissions when triggers are updated or run.
-- Keep TOTP secrets encrypted with `MFA_ENCRYPTION_KEY`, store only hashed recovery codes, and invalidate sessions when MFA state changes.
-- Be cautious with privileged host/container operations. Prefer allowlists, bounded inputs, explicit timeouts, and safe defaults.
-- Consider performance costs before adding polling, broad scans, synchronous filesystem work, large bundle dependencies, unbounded concurrency, or repeated Docker/API/database calls.
-- For long-running or concurrent work, use bounded concurrency, cancellation/timeout-aware APIs where available, and clear error handling.
-
-## API Contracts and Generated Code
-
-- When the orchestrator API changes, update DTOs/controllers first, then run `pnpm openapi:generate` and include generated contract/schema changes.
-- Keep generated contract packages type-only. Put runtime HTTP clients, feature-specific mapping, and UI behavior in the consuming app.
-- Add or update contract tests when changing OpenAPI-visible behavior.
-
-## Verification Expectations
-
-- Run the smallest meaningful checks for the changed area, then broader checks when touching shared packages, API contracts, or cross-app behavior.
-- For the approved pre-release state reset, use `pnpm reset:orchestrator-state` as a dry run and add `-- --execute` only after stopping the orchestrator. This targeted reset preserves web data, shared secrets, and orchestrator settings.
-- Use `pnpm check` before finishing large or cross-cutting work when time permits.
-- If you cannot run a relevant check, state exactly what was not run and why.
-- Review AGENTS.md file and update it if the change affects any agent's behavior, capabilities, or assumptions.
-
-## Standard editor composition
-
-- Text inputs and selection controls fill their assigned field column consistently; size columns in the form layout, not through control-specific width caps. Keep numeric inputs compact and toolbar/table controls explicitly sized.
-- Ordinary create/edit and settings pages use `EditorPage`, a full-width canvas with a normal page header, rounded semantic section panels, and labels above compact controls. Keep workspace and list pages on their existing page family.
-- Use compact Select or SingleSelectCombobox choices, FileUploadField uploads, and exact numeric inputs; reserve sliders for streaming settings. Keep section headings inside panels and remove row dividers. Collapse optional advanced groups through unboxed Section expanders, retaining drafts and revealing validation errors.
-- Keep editable runtime defaults separate from read-only deployment details and immediate maintenance actions. Preserve drafts during maintenance refreshes, and explain the scope of cleanup and restore operations before running them.
-- FormField places descriptions directly beneath labels, before controls; use its shared spacing rather than per-feature label margins. Validation errors remain associated with their controls.
-- Reuse feature-owned editor geometry in loading states and keep dialog actions in their footer. Use ConfirmMutationDialog for action confirmations. State the target and impact clearly, and reserve typed confirmation for broad irreversible operations.
-- Empty/error feedback uses scope-sized `StateView`; grids use `DataGridEmptyState` outside table scrolling. Distinguish no data, filtered results, unavailable data, and not-applicable role rules; recovery never removes fixed authorization or app scope.
-- Page failures use shared, theme-aware local illustrations; section/grid failures stay compact. Overview hides metric/operation cards and sampling hints when initial reads fail, but retains real snapshots with stale-data notices after refresh failures. Outage recovery links to Overview rather than assuming another runtime-backed page can load. Classify orchestrator page-read failures in the shared server module and preserve framework and authorization errors.
-- Small administrative policies and operation limits use a saved-value summary with an explicit Edit action and a focused single-column dialog. Save applies the draft; Cancel discards it. Keep failed drafts and restore trigger focus on close.
-- User/group editors use retained-draft tabs through `AccessEditorLayout`. Membership and permission catalogs use
-  shared paginated DataGridWorkspace/DataGrid; membership dialogs use MultiSelectCombobox with a bounded chip area.
-  Reorder using the full membership order, not searched/page positions. Keep quotas in their own tab and section,
-  explain unlimited quotas there, and block user Save while a profile photo is being prepared. Profile photos remain local drafts until explicit Save, including in the current-user profile dialog. Editor dialogs provide their own containment; keep their sections flat without nested panels or outer section padding.
-- Use the shared effective-access resolver for authorization and account previews. Persist ordered memberships,
-  protect the last enabled Administrators member, and display effective permissions and quotas read-only for users.
-  Group Not set removes the decision. Preserve membership picker chips and keyboard behavior.
-  Read [Web security](docs/web-security.md#authorization) when changing group or operation authorization.
-
-- Image builders remain workspaces with shared feature-owned ready/loading layouts, rounded resource panels, one header Build action, explicit template application, grouped validation, and stable-height build logs. Keep uploaded context selection searchable, preserve upload/validation bounds, and use the shared active-build module for start, cancel, polling, and guarded job updates.
-
-## Operator console navigation
-
-- Device-agent workspaces constrain desktop height at the resource layout, not in the transcript. Keep conversation scrolling independent, preserve draft access while stopped, and share composer/loading geometry.
-- Device-agent composers keep setup/device guidance inside the composer, suggestions on the left, and direct model selection beside send. Group model choices by provider; optional vision and time limits belong in More options. Preserve provider/model pairs and existing capability checks.
-
-- Preserve readable resource identity: shared page titles and breadcrumbs wrap; header actions remain reachable.
-  Keep the sidebar bounded to the viewport, give the page its width back when collapsed, and preserve the shell
-  skip-to-content destination. Gate sidebar creation shortcuts with the same access and feature checks as their destinations.
-- Keep decorative icons on shared tabs and resource navigation. In the app workspace, Files opens in Downloads,
-  the clipboard belongs in the live viewer toolbar, and the desktop mini player reuses the mounted display as a
-  read-only preview. Let the chat transcript pass scroll through to the page at its boundaries.
-- Filters must remove explicitly cleared URL fields. Use resource names in filter chips, label each filter control,
-  and keep whole-dataset actions available without row selection. Pending mutations prevent conflicting actions;
-  partial bulk failures retain failed items for retry.
-- Routed inventory and audit grids accumulate pending query edits separately from committed results. Use committed search to classify empty results and preserve feature-owned filters and fixed audit scope.
-
-- Settings mutations send only fields owned by the editing workflow. Services saves connections, Runtime defaults saves runtime fields, and image-builder default actions save only the image; never resend hidden settings snapshots.
-- Runtime Restore resets the runtime defaults and optional service connections. Preserve unrelated settings and return authoritative saved values for the editing workflow.
-- App power and clone actions return the accepted command result. Gallery and detail refreshes track eventual lifecycle state. Clean up icons and recent-app metadata only after confirmed deletion and keep that work separate from command acceptance.
-- AI providers use Models and Connection resource views. Keep model purposes and per-provider defaults explicit, preserving planning-to-controller compatibility and first-enabled default fallback. Registration/download save immediately; other model and connection changes remain a page draft. Block registration/download and saved-connection checks while that draft is dirty. Provider discovery, manual model ID registration, and Ollama download are distinct actions; preserve exact IDs and existing permission checks.
-- Place Services under System and Feature management under Administration in navigation and breadcrumbs. The Services inventory shows enabled services, including during outages. Manage optional service availability on Feature management with separate requested and effective states. Feature toggles save immediately and connection edits require Save.
-
-- Runtime Maintenance and overview Infrastructure diagnostics remain visible as regular sections, without collapse controls.
-- Infrastructure service pages suppress Docker limits/metrics sections and requests when orchestrator health is missing or offline, using one service warning; unknown health uses warning tone. Keep orchestrator-owned diagnostics available for Docker-only failures. Runtime defaults checks dependencies before reading settings/images, uses the shared illustrated page failure on initial outages, and retains mounted drafts with disabled mutations on refresh failures.
-- Runtime-backed server pages use `OrchestratorPageBoundary` before dependent loaders and feature checks. Render one shared page failure for unavailable dependencies; never substitute empty datasets, editable defaults, or not-found responses for service failures. Preserve independent host/sidecar diagnostics during partial outages and retain mounted connection drafts with unavailable mutations disabled.
-
-- Device resource URLs open Overview at `/devices/[id]`. Use `?view=<section>` for resource destinations and `/viewer/devices/[id]` for the standalone viewer. Reuse the feature-owned resource layout in ready and loading states.
-- The Viewer layout menu moves the same mounted device pane above the full-width resource content while keeping breadcrumbs first. Apply the browser preference on the first render and expose it in Preferences → General. Redirect old Viewer tab URLs to Overview and retain the separate viewer window route. Preserve vertical scroll when switching app resource tabs.
-- Keep the shared device pane mounted across app resource views in AppDeviceLayout. On narrow screens, open the selected section first and use the Device switch to show the display. Size the display from observed stream dimensions and the loading skeleton from saved dimensions. Keep streaming settings in the display chrome and device controls on its outer right edge. App Configuration shows Runtime settings. Keep technical Details and Logs in Diagnostics. Use one resource navigation row of links with aria-current and preserve permission and foreign-owner checks.
-- App diagnostics infrastructure references link to container/image/network pages only when the viewer has administrator access; backend-detail permission alone must not enable infrastructure links. Destination server authorization remains authoritative.
-- Use shared `ResourceLink` for navigable resource names/references in grid cells and details; show accent color at rest, hover/focus underline, and visible keyboard focus. Keep descriptive metadata muted. Application references use `ApplicationReference` with resolved names above IDs; resolve names in authorized server reads through one application-summary lookup per dataset.
-- Runtime container, image, and network actions belong in the resource page header, including loading geometry; Overview sections hold information. Preserve mutation confirmation and disabled states.
-- Use shared `ResourceNavigation` for resource section switchers (including app and container views), keeping visual states, overflow handling, and focus styles in one place.
-- Workflow workspaces place details above the sequence/inspector, expose Visual editor and YAML modes, and share Editor / Run history navigation. Mobile step inspectors open only on explicit selection and restore focus on dismissal. Trigger dialogs group identity, target, and schedule without nested panels; grids show a single last-run result and contextual resource links. Loading states reuse those same compositions.
-- Workflow run history uses `?run=` selection and must verify owner and workflow membership for runs outside the recent page. Historical replay must preserve known terminal state.
-- App Activity reuses the audit grid with server-enforced application resource scope and existing administrator authorization; embedded search/reset/sort/pagination and export must retain that scope. Global audit maintenance actions stay on the audit page.
-- Platform Operations groups totals and bounded previews (at most five rows per group); avoid per-app error banners. Directory/resource links use shared link styling, and failed refreshes retain a warning instead of suggesting zero failures.
-- Platform operations snapshots use the admin-only BFF query, bounded previews, and explicit refresh semantics. Do not imply the lifecycle timestamp summary is a complete audit log.
-
-## Audit activity presentation
-
-- Audit log and embedded app activity share the time-first grid, compact summary, and event inspector. Keep raw IDs/actions, exact timestamps, request data, and JSON in the inspector instead of duplicating them in every row. Use readable attempt labels, shared DetailFields/JsonViewer, and labeled searchable actor/action filters.
-- Preserve admin authorization and server-enforced app scope through filtering, reset, pagination, sorting, and CSV export. Retention and purge remain global audit actions. Ready/loading states reuse the same feature-owned shell and grid columns.
-- Use the same validated URL filters for controls, queries, navigation, and export. Date-only filters use inclusive UTC boundaries. Export follows the current sort with an explicit 5,000-event cap; readable operation labels remain searchable through the shared audit presentation model. Show app Activity navigation only to administrators.
-
-- Services uses the shell health snapshot for Orchestrator, Docker/runtime, Display, Firewall, and OCR. Docker diagnostics and persisted operation limits belong to the Docker service resource view; preserve active and queued operations during limit changes. Runtime-default resets must not reset separately managed Docker limits.
-- Keep dialog payloads mounted until `onOpenChangeComplete(false)` before clearing them; closing animation must never render an empty/header-only form. Combobox empty-state live regions remain mounted, with padding on their message content only.
-- Trigger dialogs use searchable resource choices with descriptions/IDs and selected context. Reuse owner-scoped tag facets and workflow tags through the shared MultiSelectCombobox with explicit creation; never commit typed tag searches on blur. Trigger descriptions persist through the API and participate in grid search.
-
-- App discovery retains the icon gallery, shared search/selection toolbar, and visible app action menus. Scope bulk actions to selected visible results. Overview recent shortcuts use authenticated per-user visit order, excluding deleted/inaccessible apps; do not reuse the sidebar’s running-first ordering.
-
-- Automation execution must reauthorize current account state, command permissions, target ownership,
-  and startup permissions/quotas through the secret-authenticated web internal authorization endpoint
-  before target preparation. Resolve omitted AI capabilities from the shared defaults and current group
-  permissions. Require that grant at dispatch and validate explicit capabilities separately.
-  Configure `WEB_INTERNAL_URL` for non-Compose deployments. Fail closed if authorization is unavailable.
-- Runtime image name detection is not a publisher trust policy. Keep Redroid-only authorization scoped
-  to the official repository, and never log query strings containing viewer or event-stream tokens.
-
-- Nest development Swagger UI must retain explicit compatible `@fastify/static` runtime dependencies
-  in both services; bootstrap tests must exercise Swagger assets as well as guarded API routes.
-- Validate viewer control payloads at the shared dispatch boundary, bound WebSocket input, and retain
-  server-owned HTTP action types. Administrative account and group commands own viewer revocation.
-  Recheck the administrator inside the mutation queue and validate changes before revoking affected owners.
-  Commit pending revocation with the access change.
-  Recheck the initiating web session and capabilities after minting main or virtual viewer grants.
+Update the owning guide when a contract, deployment step or operator workflow changes. Link to the defining code or test for defaults, option lists and component details. Keep a comment when it explains a constraint a maintainer could otherwise miss. [Documentation index](docs/README.md)

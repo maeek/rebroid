@@ -75,7 +75,7 @@ with no registry tag or digest cannot be pulled again.
   disabled feature flag, and a failed broker readiness check. Administrators can grant
   **Enroll external devices** and **Use external devices** separately in group permissions.
   Both are off for standard users. Registration opens the device's **Connection** view.
-- External device details include **Overview**, **Connection**, and permission-aware **Activity**,
+- External device details at `/devices/external/[id]` include **Overview**, **Connection**, and permission-aware **Activity**,
   **Diagnostics**, **Workflows**, and **AI agent** views. Viewer and device tooling require an
   eligible verified attachment.
 - **Casting** shows the managed display connection and external ADB broker availability separately.
@@ -84,11 +84,9 @@ with no registry tag or digest cannot be pulled again.
   and relevant destinations. The embedded viewer requests its own display session for running apps
   while the browser tab is visible.
 - Resource destinations share `/apps/[id]?view=<section>`, including `configuration`, `network`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/devices/[id]`.
-- The resource navigation is one row, with permission-based destinations kept consistent across views.
 - In **Configuration**, choose an image or select **Remove icon**, then click **Save** to apply the icon change.
 - The RAM and CPU fields in **Configuration**, **Create app**, and group quotas show the Docker host's
   total RAM and logical CPU count. Account quotas still apply when setting app limits.
-  The orchestrator caches the totals after the first successful read and refreshes them after restart.
 - **Create app** checks the editable timeout, RAM, and CPU fields before provisioning.
   **Configuration** saves only changed settings. Clear a saved RAM or CPU limit to restore its default.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
@@ -120,8 +118,9 @@ to an approved port on the Rebroid host. USB access belongs to the administrator
 After registration, select **Connect** from the device’s **Connection** view. Connecting and
 using the device require **Use external devices** permission.
 
-For TCP, select **Check connection** in the registration dialog to see whether the broker can
-reach the approved port. A reachable port still needs ADB verification after registration.
+TCP enrollment requires an existing ADB listener at an approved address and port. Android wireless
+pairing codes are unsupported. Use **Check connection** to test reachability, then verify the device
+after registration.
 
 For USB, approve debugging on the handset. If it already trusts the broker, unplug it and use
 **Check connection** before plugging it back into the same port. Check again and confirm the
@@ -318,55 +317,22 @@ time, keeping the latest completed build for each target image. The task leaves 
 
 ## Platform overview
 
-Recently opened comes first on the administrator overview. The app operation cards show counts and
-links to the filtered inventory. The workflow card links up to three active runs and the full active
-run inventory. The snapshot timestamp identifies the data shown, including after a refresh failure.
-`GET /api/bff/platform/operations` returns the timestamp, counts, and active run links through the standard
-operation result. It requires administrator access, sanitizes app data, and queries active workflow runs
-only when both run and management permissions are present. The snapshot refreshes on request.
-App operations opens the In progress app inventory. Active workflow runs opens
-`/automations/runs/active`, which lists the current account's queued and running workflow executions
-and links to each trace. Authorized operators can still open active runs and their traces while
-the workflow catalog is disabled. The catalog link appears only when the catalog is available,
-and accounts without active-run access do not see a zero count.
+**App operations** opens the filtered inventory. **Active workflow runs** lists the current
+account’s queued and running executions and links to their traces. Authorized operators can
+inspect active runs even while the workflow catalog is disabled. Check the snapshot timestamp
+after a failed refresh.
 
-Health popovers identify which
-capability an unavailable service can affect and link to the relevant diagnostic destination.
+Health popovers link to the affected service. In Docker metrics, compare queued and in-flight
+operations with errors and timeouts for the same interval. A gap in event counts can indicate
+the first sample or a counter reset.
 
-Docker metrics lead with recent errors, timeouts, and slow operations. The charts show in-flight
-and queued operations at each sample and event counts between samples. The first sample and counter
-resets leave gaps in the event chart. Errors and timeouts are counted separately throughout.
-A failed refresh keeps the last successful snapshot and its timestamp visible.
+## App diagnostics
 
-## Layout and verification
+On a narrow screen, select **Device** to see the display and select the section name to return.
+Open **Streaming settings** in the device pane for transport, audio and per-display metrics.
+[Display diagnostics](display-streaming.md#diagnostics)
 
-On narrow screens, the app opens to the selected section. Choose **Device** to see the display,
-then choose the section name to return to your work. The display session stays mounted while
-switching.
-
-Resource pages share the feature-owned AppResourceLayout and overview grid with their route loader.
-Page headers remain in normal document flow. Lists and technical workspaces use available width;
-configuration forms use the bounded editor canvas. Query-selected app sections use ordinary links
-with aria-current; they are navigable destinations rather than local ARIA tab panels.
-
-The gated skeleton-contract-test route includes real app-resource and failed-run fixtures for
-responsive/theme checks without provisioning containers or running workflows.
-
-App Activity reuses the administrative audit grid with a fixed application resource ID and type. Search, sorting, pagination, event inspection, and CSV export preserve that scope; resets stay in the app. Global retention and purge actions remain on the administrative audit page, and audit access remains administrator-only.
-
-Diagnostics shows grouped, left-aligned technical details before Application logs. Preserve full identifiers and argument text, wrapping long values and exposing labeled copy actions beside each field label on field hover or keyboard focus (always visible on touch). Failure messaging stays in the page status notice.
-
-Application logs use the same editor section surface and heading spacing as Details. The source is labeled above its selector. Application log output uses a stable viewport with a 20rem minimum, scrolling long output so changing sources does not resize the console.
-
-The log viewer renders ANSI colors and text styles in application, container, and build logs. Copy returns plain text without terminal escape sequences.
-
-Startup timings appears below Application logs. The list shows recorded milestones in chronological order with elapsed time from startup when available. Each milestone retains a copy action for its exact timestamp.
-
-Streaming quality, transport, and audio open from the device pane in a focused sheet. The metrics
-selector identifies the display and defaults to the display named in the latest issue when available.
-The sheet shows when it is collecting the first sample and labels samples stale after five seconds.
-Diagnostic logs load on entry and source changes. Live controls ongoing refresh.
-
-Completed Device agent tasks show the result before routine activity. Verified observation links
-open screen observations accepted by the task's completion check. Older runs can show the result
-without observation links when their saved events lack correlation IDs.
+In **Diagnostics**, select a log source and enable **Live** for ongoing refresh. Copied log
+output is plain text. **Startup timings** shows recorded milestones with copyable timestamps.
+Administrators can search and export app-scoped events in **Activity**. Retention and purge
+actions are on the global audit page.

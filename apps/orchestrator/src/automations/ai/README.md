@@ -148,23 +148,9 @@ language check for both health and recognition. Workflow steps buffer bounded OC
 and publish them in order before recording the step outcome. Cancellation discards exchanges
 that have yet to be published.
 
-## Code map
-
-| Area                                                      | Start here                                                                                                            |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Budgets, planning policy, and main loop                   | [Harness](automation-ai-harness.service.ts).                                                                          |
-| Controller/planner requests and decision retries          | [Decision service](automation-ai-decision.service.ts).                                                                |
-| Action validation, execution, and post-action observation | [Action executor](automation-ai-action-executor.service.ts).                                                          |
-| Run state, action evidence, and budgets                   | [Run state](automation-device-agent-run-state.ts).                                                                    |
-| Target identity                                           | [Target session](automation-device-target-session.ts).                                                                |
-| Command mapping and screen refresh                        | [Action policy](automation-ai-action-policy.ts).                                                                      |
-| Capability routing and shell allowlist                    | [Capability policy](automation-ai-capability-policy.ts).                                                              |
-| Typed decisions and controller/planner prompts            | [Decision contract](core/device-decision.ts), [messages](core/device-messages.ts).                                    |
-| Terminal evidence checks                                  | [Finish verifier](automation-ai-finish-verifier.ts).                                                                  |
-| Provider streaming                                        | [Chat client](automation-ai-chat-client.service.ts), [stream parser](../../common/ai-provider-stream.ts).             |
-| Drafting and suggestions                                  | [YAML drafts](automation-ai-yaml-draft.service.ts), [suggestions](automation-ai-suggestions.service.ts).              |
-| Observation orchestration and fusion                      | [Perception](../vision/automation-perception.service.ts), [vision facade](../vision/automation-vision.service.ts).    |
-| Command registration and ad-hoc run definitions           | [`ai.run`](../commands/ai-automation-commands.service.ts), [definition factory](automation-ai-definition.factory.ts). |
+The [harness](automation-ai-harness.service.ts) coordinates each turn.
+[Decision validation](core/device-decision.ts) and [action execution](automation-ai-action-executor.service.ts)
+are the entry points for changes to the controller contract or dispatch.
 
 ## Verification
 
