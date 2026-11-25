@@ -25,7 +25,7 @@ import type { ViewerSettings } from '@/features/applications/viewer/settings/vie
 import type { ApplicationDetailRefresh } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
-import type { ViewerStreamMetricsV4, ViewerFrameObservation } from '@rebroid/android-application-core/viewer-stream'
+import type { ViewerFrameObservation } from '@rebroid/android-application-core/viewer-stream'
 
 type ApplicationViewerContextValue = {
   app?: AppDefinition
@@ -42,17 +42,9 @@ type ApplicationViewerContextValue = {
   isForeignOwnedApp: boolean
   permissions: PermissionMap
   setApp: Dispatch<SetStateAction<AppDefinition | undefined>>
-  setViewerStreamMetrics: Dispatch<SetStateAction<Record<string, ViewerStreamSample | undefined>>>
   setViewerSettings: Dispatch<SetStateAction<ViewerSettings>>
-  viewerStreamMetrics: Record<string, ViewerStreamSample | undefined>
   viewerSettings: ViewerSettings
   viewerSettingsHydrated?: boolean
-}
-
-export type ViewerStreamSample = {
-  sessionId: string
-  runtimeId: string | null
-  metrics: ViewerStreamMetricsV4
 }
 
 export const ApplicationViewerContext = createContext<ApplicationViewerContextValue | null>(null)
@@ -90,7 +82,6 @@ export const ApplicationViewerProvider = ({
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(initialSettings))
-  const [viewerStreamMetrics, setViewerStreamMetrics] = useState<Record<string, ViewerStreamSample | undefined>>({})
   const [viewerSettingsHydrated, setViewerSettingsHydrated] = useState(false)
   const {
     firstFrameAt: startupFirstFrameAt,
@@ -110,10 +101,6 @@ export const ApplicationViewerProvider = ({
       return app
     })
   }, [app])
-
-  useEffect(() => {
-    setViewerStreamMetrics({})
-  }, [currentApp?.id, currentApp?.containerId])
 
   useEffect(() => {
     const hasStoredSettings = window.localStorage.getItem(viewerSettingsStorageKey) !== null
@@ -218,8 +205,6 @@ export const ApplicationViewerProvider = ({
         isForeignOwnedApp,
         permissions,
         setApp: setCurrentApp,
-        setViewerStreamMetrics,
-        viewerStreamMetrics,
         setViewerSettings,
         viewerSettingsHydrated,
         viewerSettings

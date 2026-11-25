@@ -4,6 +4,18 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StateIllustration } from '@/shared/ui/state-illustration'
 import styles from './app-display-preview.module.css'
 
+const deviceFrame = '/illustrations/device-frame.webp'
+
+function revealDeviceFrame(screen: HTMLDivElement | null) {
+  if (!screen) return
+  const image = new Image()
+  image.decoding = 'sync'
+  image.onload = () => {
+    screen.dataset.loaded = 'true'
+  }
+  image.src = deviceFrame
+}
+
 export const AppDisplayPreview = ({ display }: { display: { width: number; height: number; dpi?: number } | null }) => {
   const loading = useContext(FormLoadingContext)
   const ratio = display ? display.width / display.height : 0
@@ -25,9 +37,16 @@ export const AppDisplayPreview = ({ display }: { display: { width: number; heigh
             <Skeleton className='h-full w-12 rounded-control @min-[42rem]/runtime:w-20' />
           ) : display ? (
             <div
+              ref={revealDeviceFrame}
               data-slot='device-preview-screen'
               className={styles.screen}
-              style={{ '--screen-width': screenWidth, '--screen-height': screenHeight } as CSSProperties}
+              style={
+                {
+                  '--device-frame': `url("${deviceFrame}")`,
+                  '--screen-width': screenWidth,
+                  '--screen-height': screenHeight
+                } as CSSProperties
+              }
             >
               {showScreenDetails ? <span className={styles.androidMark} /> : null}
             </div>

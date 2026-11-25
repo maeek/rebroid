@@ -1,6 +1,6 @@
 'use client'
 
-import { useContext, useEffect, useEffectEvent, useState } from 'react'
+import { useContext, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react'
 import { IconAdjustments } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
@@ -17,9 +17,12 @@ import { StreamingToolsSection } from '@/features/applications/viewer/tools/runt
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { useApplicationViewerApp } from './application-viewer-context'
 import { ViewerStreamIssue, type ObservedStreamIssue } from './viewer-stream-issue'
+import type { ViewerStreamMetrics } from './viewer-stream-metrics'
 
 const bitrateDebounceMs = 400
 const streamSampleStaleMs = 5_000
+const emptySample = () => undefined
+const skipSubscription = () => () => undefined
 
 const parseBitrateDraft = (value: string | null) => {
   if (!value?.trim()) return undefined
@@ -27,12 +30,18 @@ const parseBitrateDraft = (value: string | null) => {
   return Number.isFinite(bitrate) ? bitrate : undefined
 }
 
-export const AppViewerStreamingSettings = ({ streamIssue }: { streamIssue?: ObservedStreamIssue }) => {
+export const AppViewerStreamingSettings = ({
+  streamIssue,
+  streamMetrics
+}: {
+  streamIssue?: ObservedStreamIssue
+  streamMetrics: ViewerStreamMetrics
+}) => {
   const [open, setOpen] = useState(false)
   const [bitrateDraft, setBitrateDraft] = useState<string | null>(null)
   const [selectedSurfaceId, setSelectedSurfaceId] = useState<string | null>(null)
   const [staleSampleTime, setStaleSampleTime] = useState<number | null>(null)
-  const { app, viewerSettings, setViewerSettings, viewerStreamMetrics } = useApplicationViewerApp()
+  const { app, viewerSettings, setViewerSettings } = useApplicationViewerApp()
   const surfaces = useStreamingDiagnosticSurfaces() ?? []
   const mobileRow = useContext(MobileViewerActionRows)
   const showLabel = mobileRow || app.status !== 'running'
@@ -44,11 +53,15 @@ export const AppViewerStreamingSettings = ({ streamIssue }: { streamIssue?: Obse
   }
   const issueSurface = surfaces.find(surface => surface.id === streamIssue?.surfaceId)
   const selectedSurface = surfaces.find(surface => surface.id === selectedSurfaceId) ?? issueSurface ?? surfaces[0]
-  const sample = selectedSurface ? viewerStreamMetrics[selectedSurface.id] : undefined
-  const metrics =
-    sample && sample.sessionId === selectedSurface?.sessionId && sample.runtimeId === app.containerId
-      ? sample.metrics
-      : undefined
+  const metrics = useSyncExternalStore(
+    open && selectedSurface ? streamMetrics.subscribe : skipSubscription,
+    () => {
+      if (!open || !selectedSurface) return undefined
+      const sample = streamMetrics.read(selectedSurface.id)
+      if (sample?.sessionId === selectedSurface.sessionId && sample.runtimeId === app.containerId) return sample.metrics
+    },
+    emptySample
+  )
   const collectedAt = metrics?.collectedAt
   const capturedAt = collectedAt === undefined ? null : new Date(collectedAt)
   const captureTimestamp = capturedAt && Number.isFinite(capturedAt.getTime()) ? capturedAt.toISOString() : null

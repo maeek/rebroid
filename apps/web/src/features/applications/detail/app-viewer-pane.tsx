@@ -17,6 +17,7 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { StateView } from '@/shared/ui/state-view'
 import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
+import { createViewerStreamMetrics } from './viewer-stream-metrics'
 import type { ObservedStreamIssue } from './viewer-stream-issue'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 
@@ -30,12 +31,12 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
     isForeignOwnedApp,
     permissions,
     setApp,
-    setViewerStreamMetrics,
     recordStartupFirstFrame,
     setViewerSettings,
     viewerSettingsHydrated,
     viewerSettings
   } = useApplicationViewerApp()
+  const [streamMetrics] = useState(createViewerStreamMetrics)
   const [orientation, setOrientation] = useState<ViewerOrientation>(() => {
     const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
     return display.width >= display.height ? 'landscape' : 'portrait'
@@ -47,6 +48,8 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
   const runtimeAvailable = app.status === 'running'
   const useDisplayWorkspace = canAttach && runtimeAvailable
   const canCopyApp = isForeignOwnedApp && hasPermission(permissions, 'applications:create')
+
+  useEffect(() => streamMetrics.clear(), [app.containerId, app.id, streamMetrics])
 
   useEffect(() => {
     const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
@@ -87,7 +90,12 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             app={app}
             viewerSettings={viewerSettings}
             viewerSettingsHydrated={viewerSettingsHydrated}
-            streamingSettings={<AppViewerStreamingSettings streamIssue={currentIssue} />}
+            streamingSettings={
+              <AppViewerStreamingSettings
+                streamIssue={currentIssue}
+                streamMetrics={streamMetrics}
+              />
+            }
             clipboard={
               !isForeignOwnedApp && hasPermission(permissions, 'applications:sync-clipboard') ? (
                 <ViewerClipboard appId={app.id} />
@@ -101,10 +109,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
               setStreamIssue({ appId: app.id, runtimeId: app.containerId, surfaceId, status, observedAt: Date.now() })
             }
             onStreamMetrics={(surface, metrics) =>
-              setViewerStreamMetrics(current => ({
-                ...current,
-                [surface.id]: { sessionId: surface.sessionId, runtimeId: app.containerId, metrics }
-              }))
+              streamMetrics.record(surface.id, { sessionId: surface.sessionId, runtimeId: app.containerId, metrics })
             }
           />
         </Visible>
@@ -113,7 +118,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             app={app}
             fullscreen={false}
             orientation={orientation}
-            chrome={<AppViewerStreamingSettings />}
+            chrome={<AppViewerStreamingSettings streamMetrics={streamMetrics} />}
             viewerSettings={viewerSettings}
             unavailableContent={
               canAttach ? undefined : (

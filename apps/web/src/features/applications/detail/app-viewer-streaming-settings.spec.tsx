@@ -6,7 +6,7 @@ import { useStreamingDiagnosticSurfaces } from '@/features/applications/viewer/d
 import { defaultViewerSettings, type ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
-import type { ViewerStreamSample } from './application-viewer-context'
+import { createViewerStreamMetrics, type ViewerStreamSample } from './viewer-stream-metrics'
 import type { ObservedStreamIssue } from './viewer-stream-issue'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import type { ViewerStreamMetricsV4 } from '@rebroid/android-application-core/viewer-stream'
@@ -26,13 +26,14 @@ const renderSettings = (
   surfaces?: DisplayViewerSurface[]
 ) => {
   const apply = vi.fn<Dispatch<SetStateAction<ViewerSettings>>>()
+  const streamMetrics = createViewerStreamMetrics()
+  for (const [surfaceId, sample] of Object.entries(samples)) streamMetrics.record(surfaceId, sample)
   vi.mocked(useStreamingDiagnosticSurfaces).mockReturnValue(surfaces)
   vi.mocked(useApplicationViewerApp).mockImplementation(() => {
     const [viewerSettings, setViewerSettings] = useState(defaultViewerSettings)
     return {
       app: { status, containerId: 'runtime' },
       viewerSettings,
-      viewerStreamMetrics: samples,
       setViewerSettings: next => {
         apply(next)
         setViewerSettings(next)
@@ -41,10 +42,13 @@ const renderSettings = (
   })
   render(
     <TooltipProvider>
-      <AppViewerStreamingSettings streamIssue={streamIssue} />
+      <AppViewerStreamingSettings
+        streamIssue={streamIssue}
+        streamMetrics={streamMetrics}
+      />
     </TooltipProvider>
   )
-  return { apply }
+  return { apply, streamMetrics }
 }
 
 const openSettings = (streamIssue?: ObservedStreamIssue) => {
@@ -189,7 +193,7 @@ it('defaults to the display with the issue and tracks first, fresh, and stale sa
     popoutUrl: '/',
     displaySize: { width: 1080, height: 720 }
   })
-  renderSettings(
+  const { streamMetrics } = renderSettings(
     {
       surfaceId: 'virtual',
       observedAt: now,
@@ -202,17 +206,31 @@ it('defaults to the display with the issue and tracks first, fresh, and stale sa
     },
     [display('main', 'Main display', 'main'), display('virtual', 'Inspection display', 'virtual')]
   )
+  const closedRenderCount = vi.mocked(useApplicationViewerApp).mock.calls.length
+  act(() => streamMetrics.record('main', { sessionId: 'main', runtimeId: 'runtime', metrics: sample }))
+  expect(vi.mocked(useApplicationViewerApp)).toHaveBeenCalledTimes(closedRenderCount)
   fireEvent.click(screen.getByRole('button', { name: 'Streaming settings' }))
   const selector = screen.getByRole('combobox', { name: 'Metrics display' })
   expect(selector).toHaveTextContent('Inspection display')
   expect(screen.getByText('Collecting the first sample for this display…')).toBeVisible()
   expect(screen.queryByText('Presented FPS')).toBeNull()
+  const virtualRenderCount = vi.mocked(useApplicationViewerApp).mock.calls.length
+  act(() =>
+    streamMetrics.record('main', {
+      sessionId: 'main',
+      runtimeId: 'runtime',
+      metrics: { ...sample, presentedFps: 45 }
+    })
+  )
+  expect(vi.mocked(useApplicationViewerApp)).toHaveBeenCalledTimes(virtualRenderCount)
   fireEvent.click(selector)
   const main = screen.getByRole('option', { name: 'Main display' })
   fireEvent.pointerDown(main, { pointerType: 'mouse' })
   fireEvent.click(main)
   expect(selector).toHaveTextContent('Main display')
   expect(screen.getByText('Sample taken')).toBeVisible()
+  expect(screen.getByText('45')).toBeVisible()
+  act(() => streamMetrics.record('main', { sessionId: 'main', runtimeId: 'runtime', metrics: sample }))
   expect(screen.getByText('42')).toBeVisible()
   advance(5001)
   expect(screen.getByText('Stale sample from')).toBeVisible()
