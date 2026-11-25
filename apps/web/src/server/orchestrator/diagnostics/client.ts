@@ -17,8 +17,8 @@ const withoutEmbeddedLogs = (health: ServiceHealth): ServiceHealth => {
 }
 
 export const orchestratorDiagnosticsClient = {
-  healthSummary() {
-    return emptyRequest<OrchestratorHealth>('/diagnostics/summary')
+  healthSummary(signal?: AbortSignal) {
+    return emptyRequest<OrchestratorHealth>('/diagnostics/summary', { signal })
   },
 
   dockerMetrics() {

@@ -16,7 +16,7 @@ export const pollingQueryKey = (key: PollingQueryKey) => ['polling-query', key |
 
 export const usePollingQuery = <Data, Error = unknown>(
   key: PollingQueryKey,
-  fetcher: () => Promise<Data>,
+  fetcher: (context: { signal: AbortSignal }) => Promise<Data>,
   { enabled = true, intervalMs = null, onError, revalidateOnMount = true }: UsePollingQueryOptions<Error> = {}
 ) => {
   const queryClient = useQueryClient()

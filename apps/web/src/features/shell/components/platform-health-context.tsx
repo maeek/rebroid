@@ -2,7 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
+import { getBff } from '@/lib/http/bff'
 import {
   dockerRuntimeHealth,
   serviceHealthState,
@@ -41,7 +41,7 @@ const PlatformHealthContext = createContext<Partial<Record<NavigationHealthId, N
 export const PlatformHealthProvider = ({ polling, children }: { polling: boolean; children: ReactNode }) => {
   const { data, error } = usePollingQuery<OrchestratorHealth>(
     'orchestrator:health',
-    () => getOrchestratorHealthSummaryAction(),
+    ({ signal }) => getBff<OrchestratorHealth>('/api/bff/platform/health', signal),
     { enabled: polling, intervalMs: 10_000 }
   )
   const health = error ? undefined : data

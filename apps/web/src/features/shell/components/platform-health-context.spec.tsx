@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
+import { getBff } from '@/lib/http/bff'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { PlatformHealthProvider } from './platform-health-context'
 import { ProtectedNavigation } from './protected-navigation'
@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => navigation.pathname
 }))
 vi.mock('@/hooks/use-polling-query', () => ({ usePollingQuery: vi.fn() }))
-vi.mock('@/server/orchestrator/diagnostics/actions', () => ({ getOrchestratorHealthSummaryAction: vi.fn() }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 
 const healthy = { ok: true, status: 'healthy', message: 'Ready' } satisfies ServiceHealth
 const summary: OrchestratorHealth = {
@@ -146,7 +146,7 @@ describe('platform health navigation', () => {
 
   it('polls one summary and shows separate statuses on the service links', async () => {
     mockPoll()
-    vi.mocked(getOrchestratorHealthSummaryAction).mockResolvedValue(summary)
+    vi.mocked(getBff).mockResolvedValue(summary)
     const { rerender } = render(sidebar())
     expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('Checking')
 
@@ -155,8 +155,9 @@ describe('platform health navigation', () => {
       intervalMs: 10_000
     })
     const pollHealth = vi.mocked(usePollingQuery).mock.calls.find(([key]) => key === 'orchestrator:health')?.[1]
-    await expect(pollHealth?.()).resolves.toBe(summary)
-    expect(getOrchestratorHealthSummaryAction).toHaveBeenCalledOnce()
+    const { signal } = new AbortController()
+    await expect(pollHealth?.({ signal })).resolves.toBe(summary)
+    expect(getBff).toHaveBeenCalledWith('/api/bff/platform/health', signal)
 
     mockPoll(summary)
     rerender(sidebar())
