@@ -12,7 +12,7 @@ type TriggerConfigurationPatch = Partial<
     | 'name'
     | 'description'
     | 'automationId'
-    | 'targetApplicationId'
+    | 'targetDeviceId'
     | 'profileMode'
     | 'profileName'
     | 'enabled'
@@ -63,7 +63,7 @@ export class AutomationTriggersRepository {
       ownerUserId: trigger.ownerUserId,
       enabled: trigger.enabled,
       automationId: trigger.automationId,
-      targetApplicationId: trigger.targetApplicationId,
+      targetDeviceId: trigger.targetDeviceId,
       profileMode: trigger.profileMode ?? IsNull(),
       profileName: trigger.profileName ?? IsNull(),
       triggerConfigJson: trigger.triggerConfigJson,

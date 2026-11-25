@@ -25,7 +25,7 @@ under **Administration → AI**. Use the application's **AI agent**
 workspace or add an `ai.run` step to a workflow:
 
 ```yaml
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Inspect Android settings

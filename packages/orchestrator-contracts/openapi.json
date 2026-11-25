@@ -935,6 +935,59 @@
         ]
       }
     },
+    "/api/v1/apk-uploads/library": {
+      "get": {
+        "operationId": "ApkController_listLibrary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApkLibraryEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apk-uploads"
+        ]
+      },
+      "post": {
+        "operationId": "ApkController_mutateLibrary",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApkLibraryMutationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApkLibraryMutationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apk-uploads"
+        ]
+      }
+    },
     "/api/v1/apk-uploads": {
       "post": {
         "operationId": "ApkController_upload",
@@ -1058,6 +1111,45 @@
         ]
       }
     },
+    "/api/v1/apk-uploads/selection/{id}": {
+      "get": {
+        "operationId": "ApkController_selection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "admin",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedApkResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apk-uploads"
+        ]
+      }
+    },
     "/api/v1/apk-uploads/{id}": {
       "delete": {
         "operationId": "ApkController_remove",
@@ -1088,7 +1180,7 @@
         ]
       }
     },
-    "/api/v1/apps": {
+    "/api/v1/devices": {
       "post": {
         "operationId": "AndroidAppsController_create",
         "parameters": [
@@ -1124,44 +1216,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "name"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "example": "Signal Android"
-                  },
-                  "ownerUserId": {
-                    "type": "string",
-                    "example": "user_123"
-                  },
-                  "containerImage": {
-                    "type": "string",
-                    "example": "redroid/redroid:14.0.0-latest"
-                  },
-                  "inactivityTimeoutSeconds": {
-                    "type": "integer",
-                    "example": 900
-                  },
-                  "memoryLimitMb": {
-                    "type": "integer",
-                    "example": 2048
-                  },
-                  "cpuLimitCpus": {
-                    "type": "number",
-                    "example": 2
-                  },
-                  "containerArgs": {
-                    "type": "string",
-                    "example": "sleep infinity"
-                  },
-                  "uploadedApkId": {
-                    "type": "string",
-                    "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
-                  }
-                }
+                "$ref": "#/components/schemas/CreateManagedAndroidDeviceDto"
               }
             }
           }
@@ -1275,9 +1330,9 @@
             }
           }
         },
-        "summary": "Provision an isolated application container.",
+        "summary": "Provision a managed Android device.",
         "tags": [
-          "apps"
+          "devices"
         ]
       },
       "get": {
@@ -1309,11 +1364,11 @@
           }
         },
         "tags": [
-          "apps"
+          "devices"
         ]
       }
     },
-    "/api/v1/apps/{id}/clone": {
+    "/api/v1/devices/{id}/clone": {
       "post": {
         "operationId": "AndroidAppsController_clone",
         "parameters": [
@@ -1376,11 +1431,79 @@
         },
         "summary": "Create a separate owner-scoped application from an existing app definition.",
         "tags": [
-          "apps"
+          "devices"
         ]
       }
     },
-    "/api/v1/apps/summaries": {
+    "/api/v1/devices/gallery": {
+      "get": {
+        "operationId": "AndroidAppsController_listGallery",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AndroidApplicationGalleryRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/navigation": {
+      "post": {
+        "operationId": "AndroidAppsController_listNavigation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListAndroidApplicationNavigationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AndroidApplicationNavigationRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/summaries": {
       "get": {
         "operationId": "AndroidAppsController_listSummaries",
         "parameters": [
@@ -1435,11 +1558,11 @@
         },
         "summary": "List lightweight app state for navigation and polling without Docker reconciliation.",
         "tags": [
-          "apps"
+          "devices"
         ]
       }
     },
-    "/api/v1/apps/runtime-state/reconcile": {
+    "/api/v1/devices/runtime-state/reconcile": {
       "post": {
         "operationId": "AndroidAppsController_reconcileMany",
         "parameters": [],
@@ -1470,11 +1593,11 @@
         },
         "summary": "Refresh stored application state from managed containers.",
         "tags": [
-          "apps"
+          "devices"
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime-state/reconcile": {
+    "/api/v1/devices/{id}/runtime-state/reconcile": {
       "post": {
         "operationId": "AndroidAppsController_reconcileOne",
         "parameters": [
@@ -1501,11 +1624,11 @@
         },
         "summary": "Refresh one application state from Docker.",
         "tags": [
-          "apps"
+          "devices"
         ]
       }
     },
-    "/api/v1/apps/{id}/viewer-runtime": {
+    "/api/v1/devices/{id}/viewer-runtime": {
       "get": {
         "operationId": "AndroidAppsController_getViewerRuntime",
         "parameters": [
@@ -1524,18 +1647,56 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationViewerRuntimeDto"
+                  "$ref": "#/components/schemas/AndroidDeviceViewerTargetDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "apps"
+          "devices"
         ]
       }
     },
-    "/api/v1/apps/{id}": {
+    "/api/v1/devices/{id}/detail": {
+      "get": {
+        "operationId": "AndroidAppsController_refreshDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revision",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidApplicationDetailRefreshDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/{id}": {
       "get": {
         "operationId": "AndroidAppsController_get",
         "parameters": [
@@ -1561,7 +1722,7 @@
           }
         },
         "tags": [
-          "apps"
+          "devices"
         ]
       },
       "patch": {
@@ -1599,7 +1760,7 @@
           }
         },
         "tags": [
-          "apps"
+          "devices"
         ]
       },
       "delete": {
@@ -1637,11 +1798,11 @@
           }
         },
         "tags": [
-          "apps"
+          "devices"
         ]
       }
     },
-    "/api/v1/apps/{id}/viewer/session": {
+    "/api/v1/devices/{id}/viewer/session": {
       "get": {
         "operationId": "AndroidAppsViewerController_scrcpySession",
         "parameters": [
@@ -1695,7 +1856,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/viewer/activity": {
+    "/api/v1/devices/{id}/viewer/activity": {
       "post": {
         "operationId": "AndroidAppsViewerController_viewerActivity",
         "parameters": [
@@ -1749,7 +1910,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/viewer/control": {
+    "/api/v1/devices/{id}/viewer/control": {
       "post": {
         "operationId": "AndroidAppsViewerController_viewerControl",
         "parameters": [
@@ -1790,7 +1951,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/viewer/displays": {
+    "/api/v1/devices/{id}/viewer/displays": {
       "post": {
         "operationId": "AndroidAppsViewerController_createVirtualDisplay",
         "parameters": [
@@ -1845,7 +2006,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
+    "/api/v1/devices/{id}/viewer/displays/{surfaceId}/release": {
       "post": {
         "operationId": "AndroidAppsViewerController_releaseVirtualDisplay",
         "parameters": [
@@ -1899,7 +2060,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/network-policy": {
+    "/api/v1/devices/{id}/network-policy": {
       "patch": {
         "operationId": "AndroidAppsNetworkController_updateNetworkPolicy",
         "parameters": [
@@ -1954,7 +2115,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/network-policy/apply": {
+    "/api/v1/devices/{id}/network-policy/apply": {
       "post": {
         "operationId": "AndroidAppsNetworkController_applyNetworkPolicy",
         "parameters": [
@@ -1985,7 +2146,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/lifecycle/profile": {
+    "/api/v1/devices/{id}/lifecycle/profile": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_switchProfile",
         "parameters": [
@@ -2026,7 +2187,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/lifecycle/profiles/{profileName}": {
+    "/api/v1/devices/{id}/lifecycle/profiles/{profileName}": {
       "delete": {
         "operationId": "AndroidAppsLifecycleController_deleteSavedProfile",
         "parameters": [
@@ -2065,7 +2226,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/lifecycle/start": {
+    "/api/v1/devices/{id}/lifecycle/start": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_start",
         "parameters": [
@@ -2116,7 +2277,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/lifecycle/stop": {
+    "/api/v1/devices/{id}/lifecycle/stop": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_stop",
         "parameters": [
@@ -2146,7 +2307,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/lifecycle/recreate": {
+    "/api/v1/devices/{id}/lifecycle/recreate": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_recreate",
         "parameters": [
@@ -2190,7 +2351,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/lifecycle/apk": {
+    "/api/v1/devices/{id}/lifecycle/apk": {
       "put": {
         "operationId": "AndroidAppsLifecycleController_updateApk",
         "parameters": [
@@ -2239,7 +2400,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/data-files": {
+    "/api/v1/devices/{id}/runtime/data-files": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_listFiles",
         "parameters": [
@@ -2498,7 +2659,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/data-directories": {
+    "/api/v1/devices/{id}/runtime/data-directories": {
       "post": {
         "operationId": "AndroidAppsRuntimeController_createDirectory",
         "parameters": [
@@ -2539,7 +2700,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/data-files/preview": {
+    "/api/v1/devices/{id}/runtime/data-files/preview": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_previewFile",
         "parameters": [
@@ -2604,7 +2765,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/data-files/download": {
+    "/api/v1/devices/{id}/runtime/data-files/download": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_downloadRuntimeFile",
         "parameters": [
@@ -2668,7 +2829,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/download-files": {
+    "/api/v1/devices/{id}/runtime/download-files": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_listDownloadFiles",
         "parameters": [
@@ -2816,7 +2977,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/download-files/{fileName}": {
+    "/api/v1/devices/{id}/runtime/download-files/{fileName}": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_downloadFile",
         "parameters": [
@@ -2888,7 +3049,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/clipboard": {
+    "/api/v1/devices/{id}/runtime/clipboard": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_getClipboard",
         "parameters": [
@@ -2958,7 +3119,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/screenshot": {
+    "/api/v1/devices/{id}/runtime/screenshot": {
       "post": {
         "operationId": "AndroidAppsRuntimeController_screenshot",
         "parameters": [
@@ -2989,7 +3150,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/logs/container": {
+    "/api/v1/devices/{id}/runtime/logs/container": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_containerLogs",
         "parameters": [
@@ -3028,7 +3189,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/logs/orchestrator": {
+    "/api/v1/devices/{id}/runtime/logs/orchestrator": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_orchestratorLogs",
         "parameters": [
@@ -3067,7 +3228,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/logs/adb": {
+    "/api/v1/devices/{id}/runtime/logs/adb": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_adbLogs",
         "parameters": [
@@ -3106,7 +3267,7 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/snapshot": {
+    "/api/v1/devices/{id}/runtime/snapshot": {
       "get": {
         "operationId": "AndroidAppsRuntimeSnapshotController_read",
         "parameters": [
@@ -3146,6 +3307,1199 @@
         "summary": "Read the latest thumbnail for an owned running application.",
         "tags": [
           "app-runtime"
+        ]
+      }
+    },
+    "/api/v1/devices/external/viewer-sessions": {
+      "get": {
+        "operationId": "ExternalViewerAdministrationController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalAdminSessionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/viewer-sessions/{id}": {
+      "delete": {
+        "operationId": "ExternalViewerAdministrationController_release",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAdminSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/viewer-sessions/revoke": {
+      "post": {
+        "operationId": "ExternalViewerAdministrationController_revoke",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalViewerOwnersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalViewerRevocationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/availability": {
+      "get": {
+        "operationId": "ExternalAndroidDevicesController_availability",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalDeviceAvailabilityDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external": {
+      "get": {
+        "operationId": "ExternalAndroidDevicesController_list",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalAndroidDeviceDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      },
+      "post": {
+        "operationId": "ExternalAndroidDevicesController_register",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterExternalAndroidDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAndroidDeviceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/usb-candidates": {
+      "get": {
+        "operationId": "ExternalAndroidDevicesController_candidates",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalDeviceCandidateDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/tcp-check": {
+      "post": {
+        "operationId": "ExternalAndroidDevicesController_checkTcp",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalTcpEndpointDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalDeviceTcpCheckDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}": {
+      "get": {
+        "operationId": "ExternalAndroidDevicesController_get",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAndroidDeviceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      },
+      "delete": {
+        "operationId": "ExternalAndroidDevicesController_forget",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgottenExternalDeviceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/connect": {
+      "post": {
+        "operationId": "ExternalAndroidDevicesController_connect",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-max-session-seconds",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-max-open-apps",
+            "in": "header",
+            "description": "Open application limit supplied by the trusted web service.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAndroidDeviceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/refresh": {
+      "post": {
+        "operationId": "ExternalAndroidDevicesController_refresh",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAndroidDeviceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/verification": {
+      "get": {
+        "operationId": "ExternalAndroidDevicesController_instructions",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalDeviceVerificationInstructionsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/verify": {
+      "post": {
+        "operationId": "ExternalAndroidDevicesController_verify",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyExternalAndroidDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAndroidDeviceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/disconnect": {
+      "post": {
+        "operationId": "ExternalAndroidDevicesController_disconnect",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-enroll",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAndroidDeviceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/attachments/{attachmentId}": {
+      "get": {
+        "operationId": "ExternalDeviceViewerController_target",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalViewerTargetDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/viewer": {
+      "post": {
+        "operationId": "ExternalDeviceViewerController_open",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalViewerInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalViewerSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/attachments/{attachmentId}/screenshot": {
+      "get": {
+        "operationId": "ExternalDeviceViewerController_screenshot",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalViewerScreenshotDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
+        ]
+      }
+    },
+    "/api/v1/devices/external/{id}/attachments/{attachmentId}/logcat": {
+      "get": {
+        "operationId": "ExternalDeviceViewerController_logcat",
+        "parameters": [
+          {
+            "name": "x-rebroid-device-admin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-user",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-use",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-device-admin",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalViewerLogcatDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "external-devices"
         ]
       }
     },
@@ -3270,7 +4624,7 @@
             }
           },
           {
-            "name": "targetApplicationId",
+            "name": "targetDeviceId",
             "required": true,
             "in": "query",
             "schema": {
@@ -3317,8 +4671,16 @@
             }
           },
           {
-            "name": "targetApplicationId",
+            "name": "targetDeviceId",
             "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"
@@ -3379,7 +4741,7 @@
             }
           },
           {
-            "name": "targetApplicationId",
+            "name": "targetDeviceId",
             "required": true,
             "in": "query",
             "schema": {
@@ -3388,6 +4750,14 @@
           },
           {
             "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
             "required": false,
             "in": "query",
             "schema": {
@@ -3530,7 +4900,7 @@
             }
           },
           {
-            "name": "targetApplicationId",
+            "name": "targetDeviceId",
             "required": false,
             "in": "query",
             "schema": {
@@ -3708,7 +5078,7 @@
             }
           },
           {
-            "name": "targetApplicationId",
+            "name": "targetDeviceId",
             "required": true,
             "in": "query",
             "schema": {
@@ -3776,7 +5146,7 @@
             }
           },
           {
-            "name": "targetApplicationId",
+            "name": "targetDeviceId",
             "required": true,
             "in": "query",
             "schema": {
@@ -4117,7 +5487,7 @@
             }
           },
           {
-            "name": "targetApplicationId",
+            "name": "targetDeviceId",
             "required": false,
             "in": "query",
             "schema": {
@@ -4553,6 +5923,59 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/AutomationRunDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/{id}/run-history": {
+      "get": {
+        "operationId": "AutomationsController_listRunHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "example": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationRunHistoryRowDto"
                   }
                 }
               }
@@ -5902,268 +7325,17 @@
           "health"
         ]
       }
-    },
-    "/api/v1/apk-uploads/library": {
-      "get": {
-        "operationId": "ApkController_listLibrary",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ApkLibraryEntryDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apk-uploads"
-        ]
-      },
-      "post": {
-        "operationId": "ApkController_mutateLibrary",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApkLibraryMutationDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApkLibraryMutationResultDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apk-uploads"
-        ]
-      }
-    },
-    "/api/v1/apk-uploads/selection/{id}": {
-      "get": {
-        "operationId": "ApkController_selection",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "ownerUserId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "example": "admin",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UploadedApkResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apk-uploads"
-        ]
-      }
-    },
-    "/api/v1/apps/gallery": {
-      "get": {
-        "operationId": "AndroidAppsController_listGallery",
-        "parameters": [
-          {
-            "name": "ownerUserId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "example": "user_123",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AndroidApplicationGalleryRowDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/navigation": {
-      "post": {
-        "operationId": "AndroidAppsController_listNavigation",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ListAndroidApplicationNavigationDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AndroidApplicationNavigationRowDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/apps/{id}/detail": {
-      "get": {
-        "operationId": "AndroidAppsController_refreshDetail",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "revision",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationDetailRefreshDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/automations/{id}/run-history": {
-      "get": {
-        "operationId": "AutomationsController_listRunHistory",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "example": "user_123",
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "example": 50,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AutomationRunHistoryRowDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
     }
   },
   "info": {
     "title": "Rebroid Orchestrator",
-    "description": "Internal API for isolated app container orchestration.",
+    "description": "Internal API for Android devices and runtime orchestration.",
     "version": "0.1.0",
     "contact": {}
   },
   "tags": [
     {
-      "name": "apps",
+      "name": "devices",
       "description": ""
     },
     {
@@ -7520,6 +8692,7 @@
               "feature.ai",
               "feature.workflows",
               "feature.resource-quota",
+              "feature.external-devices",
               "feature.display-webrtc"
             ],
             "example": "feature.ocr"
@@ -7607,6 +8780,7 @@
                 "feature.ai",
                 "feature.workflows",
                 "feature.resource-quota",
+                "feature.external-devices",
                 "feature.display-webrtc"
               ]
             }
@@ -7623,6 +8797,7 @@
                 "feature.ai",
                 "feature.workflows",
                 "feature.resource-quota",
+                "feature.external-devices",
                 "feature.display-webrtc"
               ]
             }
@@ -7679,6 +8854,7 @@
               "feature.ai",
               "feature.workflows",
               "feature.resource-quota",
+              "feature.external-devices",
               "feature.display-webrtc"
             ],
             "example": "feature.ocr"
@@ -7726,6 +8902,191 @@
         },
         "required": [
           "revision"
+        ]
+      },
+      "ApkLibraryAppDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ApkLibraryRuleDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "sha256",
+              "package"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "value",
+          "reason"
+        ]
+      },
+      "ApkLibraryEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeBytes": {
+            "type": "number",
+            "nullable": true
+          },
+          "ownerUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "uploads": {
+            "type": "number"
+          },
+          "apps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApkLibraryAppDto"
+            }
+          },
+          "googlePlayServices": {
+            "type": "string",
+            "nullable": true
+          },
+          "inspectionEvidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApkLibraryRuleDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "originalName",
+          "displayName",
+          "sha256",
+          "packageName",
+          "sizeBytes",
+          "ownerUserIds",
+          "uploads",
+          "apps",
+          "googlePlayServices",
+          "inspectionEvidence",
+          "rules"
+        ]
+      },
+      "ApkLibraryMutationDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "block",
+              "unblock",
+              "delete"
+            ]
+          },
+          "ids": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "sha256",
+              "package"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "action",
+          "ids"
+        ]
+      },
+      "ApkLibrarySkippedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reason"
+        ]
+      },
+      "ApkLibraryMutationResultDto": {
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApkLibrarySkippedDto"
+            }
+          },
+          "bytesFreed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "changed",
+          "skipped",
+          "bytesFreed"
         ]
       },
       "GooglePlayServicesAnalysisDto": {
@@ -7824,6 +9185,79 @@
           "googlePlayServices",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "CreateManagedAndroidDeviceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Signal Android"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "description": "Owner user ID supplied by the trusted web service.",
+            "example": "user_123"
+          },
+          "containerImage": {
+            "type": "string",
+            "example": "redroid/redroid:14.0.0-latest"
+          },
+          "inactivityTimeoutSeconds": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 86400,
+            "description": "Use -1 to keep the session running until manually stopped.",
+            "default": 900
+          },
+          "memoryLimitMb": {
+            "type": "number",
+            "minimum": 128,
+            "maximum": 262144,
+            "example": 2048
+          },
+          "cpuLimitCpus": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 128,
+            "example": 2
+          },
+          "containerArgs": {
+            "type": "string",
+            "description": "Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.",
+            "example": "sleep infinity"
+          },
+          "uploadedApkId": {
+            "type": "string",
+            "description": "Previously uploaded APK id to install into this Android application.",
+            "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
+          },
+          "networkPolicyEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether app outbound traffic is restricted to API/default destinations plus the explicit allowlist."
+          },
+          "networkPolicyAllowCidrs": {
+            "description": "Additional app-specific destination CIDRs the Android container may reach. Backend default destinations such as API_IP are applied automatically and are not stored here.",
+            "example": [
+              "10.20.0.0/16",
+              "203.0.113.10/32"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "managed"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "kind"
         ]
       },
       "ApplicationCommandNetworkPolicyDto": {
@@ -8475,6 +9909,31 @@
       "AndroidApplicationResponseDto": {
         "type": "object",
         "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "managed"
+            ]
+          },
+          "operations": {
+            "type": "array",
+            "description": "Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "configure",
+                "clone",
+                "start",
+                "stop",
+                "recreate",
+                "remove",
+                "profiles",
+                "viewer",
+                "files",
+                "network-policy"
+              ]
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -8515,6 +9974,8 @@
           }
         },
         "required": [
+          "kind",
+          "operations",
           "id",
           "name",
           "ownerUserId",
@@ -8528,9 +9989,249 @@
           "updatedAt"
         ]
       },
+      "AndroidApplicationGalleryRowDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "managed"
+            ]
+          },
+          "operations": {
+            "type": "array",
+            "description": "Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "configure",
+                "clone",
+                "start",
+                "stop",
+                "recreate",
+                "remove",
+                "profiles",
+                "viewer",
+                "files",
+                "network-policy"
+              ]
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "stopped",
+              "error",
+              "removing",
+              "removed"
+            ]
+          },
+          "lifecycleStage": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "image_checking",
+              "image_pulling",
+              "volume_creating",
+              "network_creating",
+              "orchestrator_network_connecting",
+              "container_creating",
+              "container_starting",
+              "android_booting",
+              "apk_installing",
+              "ready",
+              "stopping",
+              "stopped",
+              "removing",
+              "removed",
+              "error"
+            ]
+          },
+          "containerImage": {
+            "type": "string"
+          },
+          "apkPackageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "kind",
+          "operations",
+          "id",
+          "name",
+          "ownerUserId",
+          "status",
+          "lifecycleStage",
+          "containerImage",
+          "apkPackageName",
+          "updatedAt"
+        ]
+      },
+      "ListAndroidApplicationNavigationDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "example": "user_123"
+          },
+          "applicationIds": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "includeRunning": {
+            "type": "boolean"
+          },
+          "excludeIds": {
+            "maxItems": 512,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "runningLimit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale for the natural name ordering."
+          }
+        },
+        "required": [
+          "applicationIds",
+          "includeRunning"
+        ]
+      },
+      "AndroidApplicationNavigationRowDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "managed"
+            ]
+          },
+          "operations": {
+            "type": "array",
+            "description": "Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "configure",
+                "clone",
+                "start",
+                "stop",
+                "recreate",
+                "remove",
+                "profiles",
+                "viewer",
+                "files",
+                "network-policy"
+              ]
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "stopped",
+              "error",
+              "removing",
+              "removed"
+            ]
+          },
+          "lifecycleStage": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "image_checking",
+              "image_pulling",
+              "volume_creating",
+              "network_creating",
+              "orchestrator_network_connecting",
+              "container_creating",
+              "container_starting",
+              "android_booting",
+              "apk_installing",
+              "ready",
+              "stopping",
+              "stopped",
+              "removing",
+              "removed",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "operations",
+          "id",
+          "name",
+          "ownerUserId",
+          "status",
+          "lifecycleStage"
+        ]
+      },
       "AndroidApplicationSummaryResponseDto": {
         "type": "object",
         "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "managed"
+            ]
+          },
+          "operations": {
+            "type": "array",
+            "description": "Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "configure",
+                "clone",
+                "start",
+                "stop",
+                "recreate",
+                "remove",
+                "profiles",
+                "viewer",
+                "files",
+                "network-policy"
+              ]
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -8588,6 +10289,8 @@
           }
         },
         "required": [
+          "kind",
+          "operations",
           "id",
           "name",
           "ownerUserId",
@@ -8629,33 +10332,85 @@
           "outcome"
         ]
       },
-      "AndroidApplicationViewerRuntimeDto": {
+      "AndroidDeviceViewerTargetDto": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "managed"
+            ]
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "runtimeId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Identity of the current runtime recorded for viewer authorization."
+          }
+        },
+        "required": [
+          "deviceId",
+          "kind",
+          "ownerUserId",
+          "runtimeId"
+        ]
+      },
+      "AndroidApplicationDetailStateDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AndroidApplicationStatusResponseDto"
+          },
+          "errors": {
+            "$ref": "#/components/schemas/AndroidApplicationErrorResponseDto"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "errors",
+          "updatedAt"
+        ]
+      },
+      "AndroidApplicationDetailRefreshDto": {
         "type": "object",
         "properties": {
           "ownerUserId": {
             "type": "string",
             "nullable": true
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "provisioning",
-              "running",
-              "stopped",
-              "error",
-              "removing",
-              "removed"
+          "state": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AndroidApplicationDetailStateDto"
+              }
             ]
           },
-          "containerId": {
-            "type": "string",
-            "nullable": true
+          "app": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+              }
+            ]
           }
         },
         "required": [
           "ownerUserId",
-          "status",
-          "containerId"
+          "state",
+          "app"
         ]
       },
       "UpdateAndroidApplicationDto": {
@@ -8673,16 +10428,16 @@
           },
           "memoryLimitMb": {
             "type": "number",
-            "example": 2048,
             "minimum": 128,
             "maximum": 262144,
+            "example": 2048,
             "nullable": true
           },
           "cpuLimitCpus": {
             "type": "number",
-            "example": 2,
             "minimum": 0.1,
             "maximum": 128,
+            "example": 2,
             "nullable": true
           },
           "containerArgs": {
@@ -9017,6 +10772,21 @@
           "adbHost",
           "adbPort",
           "displaySession"
+        ]
+      },
+      "ApplicationViewerActivityDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string"
+          },
+          "runtimeKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ownerUserId",
+          "runtimeKey"
         ]
       },
       "ApplicationViewerControlDto": {
@@ -9419,6 +11189,429 @@
           "capturedAt"
         ]
       },
+      "ExternalAdminSessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "external"
+            ]
+          },
+          "applicationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "deviceName": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "active",
+              "released",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastActivityAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "applicationId",
+          "deviceName",
+          "ownerUserId",
+          "status",
+          "createdAt",
+          "lastActivityAt",
+          "expiresAt",
+          "capabilities"
+        ]
+      },
+      "ExternalViewerOwnersDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ownerUserIds"
+        ]
+      },
+      "ExternalViewerRevocationDto": {
+        "type": "object",
+        "properties": {
+          "released": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "released"
+        ]
+      },
+      "ExternalDeviceAvailabilityDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_configured",
+              "feature_disabled",
+              "broker_unavailable",
+              "available"
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "status"
+        ]
+      },
+      "ExternalDeviceConnectionDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "disconnected",
+              "connecting",
+              "awaiting_android_approval",
+              "awaiting_usb_replug",
+              "awaiting_verification",
+              "ready",
+              "offline"
+            ]
+          },
+          "failure": {
+            "type": "string",
+            "enum": [
+              "transport_unavailable",
+              "verification_required",
+              "attempt_expired",
+              "broker_unavailable"
+            ],
+            "nullable": true
+          },
+          "attemptId": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachmentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "observedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "state",
+          "failure",
+          "attemptId",
+          "attachmentId",
+          "observedAt"
+        ]
+      },
+      "ExternalAndroidDeviceDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "external"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "usb",
+              "tcp"
+            ]
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ExternalDeviceConnectionDto"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name",
+          "ownerUserId",
+          "transport",
+          "connection",
+          "createdAt"
+        ]
+      },
+      "ExternalDeviceCandidateDto": {
+        "type": "object",
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidateId",
+          "label",
+          "state"
+        ]
+      },
+      "ExternalTcpEndpointDto": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 21
+          }
+        },
+        "required": [
+          "endpoint"
+        ]
+      },
+      "ExternalDeviceTcpCheckDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "reachable",
+              "not_allowed",
+              "refused",
+              "timed_out",
+              "unreachable"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "RegisterExternalAndroidDeviceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "usb",
+              "tcp"
+            ]
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Allowlisted IPv4 address and port for TCP."
+          },
+          "candidateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Current USB discovery candidate."
+          }
+        },
+        "required": [
+          "name",
+          "transport"
+        ]
+      },
+      "ExternalDeviceVerificationInstructionsDto": {
+        "type": "object",
+        "properties": {
+          "androidPromptObserved": {
+            "type": "boolean"
+          },
+          "challenge": {
+            "type": "string",
+            "nullable": true
+          },
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "androidPromptObserved",
+          "challenge",
+          "fingerprint"
+        ]
+      },
+      "VerifyExternalAndroidDeviceDto": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proof": {
+            "type": "string",
+            "enum": [
+              "physical",
+              "challenge",
+              "android_prompt"
+            ]
+          }
+        },
+        "required": [
+          "attemptId",
+          "proof"
+        ]
+      },
+      "ForgottenExternalDeviceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ExternalViewerTargetDto": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "deviceId",
+          "ownerUserId",
+          "attachmentId"
+        ]
+      },
+      "ExternalViewerInputDto": {
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "control",
+                "clipboard",
+                "screenshot"
+              ]
+            }
+          }
+        },
+        "required": [
+          "attachmentId",
+          "grants"
+        ]
+      },
+      "ExternalViewerSessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "viewerPath": {
+            "type": "string"
+          },
+          "audioSupported": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "viewerPath",
+          "audioSupported"
+        ]
+      },
+      "ExternalViewerScreenshotDto": {
+        "type": "object",
+        "properties": {
+          "pngBase64": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pngBase64"
+        ]
+      },
+      "ExternalViewerLogcatDto": {
+        "type": "object",
+        "properties": {
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "output": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collectedAt",
+          "output"
+        ]
+      },
       "AutomationCommandDto": {
         "type": "object",
         "properties": {
@@ -9468,7 +11661,7 @@
         "properties": {
           "yaml": {
             "type": "string",
-            "example": "apiVersion: rebroid.io/automation/v1\n..."
+            "example": "apiVersion: rebroid.io/automation/v2\n..."
           }
         },
         "required": [
@@ -9543,7 +11736,7 @@
         "properties": {
           "apiVersion": {
             "type": "string",
-            "example": "rebroid.io/automation/v1"
+            "example": "rebroid.io/automation/v2"
           },
           "kind": {
             "type": "string",
@@ -9617,10 +11810,6 @@
       "DraftAutomationYamlDto": {
         "type": "object",
         "properties": {
-          "prompt": {
-            "type": "string",
-            "example": "Log in to the app and verify the home screen opens."
-          },
           "providerId": {
             "type": "string",
             "example": "local-ollama"
@@ -9636,6 +11825,10 @@
           "visionModelId": {
             "type": "string",
             "example": "qwen2.5vl:7b"
+          },
+          "prompt": {
+            "type": "string",
+            "example": "Log in to the app and verify the home screen opens."
           },
           "allowedTools": {
             "example": [
@@ -9685,10 +11878,6 @@
             "type": "string",
             "example": "user_123"
           },
-          "targetApplicationId": {
-            "type": "string",
-            "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
-          },
           "profileMode": {
             "type": "string",
             "enum": [
@@ -9710,16 +11899,6 @@
             ],
             "default": "require-running"
           },
-          "prompt": {
-            "type": "string",
-            "example": "Open settings and verify Wi-Fi is visible."
-          },
-          "conversation": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RunAdHocAiConversationMessageDto"
-            }
-          },
           "providerId": {
             "type": "string",
             "example": "local-ollama"
@@ -9735,6 +11914,24 @@
           "visionModelId": {
             "type": "string",
             "example": "qwen2.5vl:7b"
+          },
+          "targetDeviceId": {
+            "type": "string",
+            "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
+          },
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prompt": {
+            "type": "string",
+            "example": "Open settings and verify Wi-Fi is visible."
+          },
+          "conversation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunAdHocAiConversationMessageDto"
+            }
           },
           "clientMessageId": {
             "type": "string",
@@ -9775,7 +11972,7 @@
         },
         "required": [
           "ownerUserId",
-          "targetApplicationId",
+          "targetDeviceId",
           "prompt"
         ]
       },
@@ -9845,8 +12042,19 @@
           "ownerUserId": {
             "type": "string"
           },
-          "targetApplicationId": {
+          "targetDeviceId": {
             "type": "string"
+          },
+          "targetKind": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "external"
+            ]
+          },
+          "targetAttachmentId": {
+            "type": "string",
+            "nullable": true
           },
           "targetProfileMode": {
             "type": "string",
@@ -9911,7 +12119,7 @@
           "automationId",
           "automationTriggerId",
           "ownerUserId",
-          "targetApplicationId",
+          "targetDeviceId",
           "targetProfileMode",
           "targetProfileName",
           "trigger",
@@ -9948,14 +12156,6 @@
             "type": "string",
             "example": "user_123"
           },
-          "targetApplicationId": {
-            "type": "string",
-            "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
-          },
-          "appName": {
-            "type": "string",
-            "example": "Android 14"
-          },
           "profileMode": {
             "type": "string",
             "enum": [
@@ -9968,6 +12168,26 @@
             "type": "string",
             "example": "default",
             "nullable": true
+          },
+          "providerId": {
+            "type": "string",
+            "example": "local-ollama"
+          },
+          "modelId": {
+            "type": "string",
+            "example": "qwen2.5vl:7b"
+          },
+          "targetDeviceId": {
+            "type": "string",
+            "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
+          },
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "appName": {
+            "type": "string",
+            "example": "Android 14"
           },
           "currentPrompt": {
             "type": "string",
@@ -9985,14 +12205,6 @@
               "$ref": "#/components/schemas/AiPromptSuggestionContextEventDto"
             }
           },
-          "providerId": {
-            "type": "string",
-            "example": "local-ollama"
-          },
-          "modelId": {
-            "type": "string",
-            "example": "qwen2.5vl:7b"
-          },
           "allowedTools": {
             "type": "array",
             "items": {
@@ -10002,7 +12214,7 @@
         },
         "required": [
           "ownerUserId",
-          "targetApplicationId",
+          "targetDeviceId",
           "appName"
         ]
       },
@@ -10263,7 +12475,7 @@
             "type": "integer",
             "minimum": 0
           },
-          "targetApplicationIds": {
+          "targetDeviceIds": {
             "type": "array",
             "items": {
               "type": "string"
@@ -10283,7 +12495,7 @@
           "createdAt",
           "updatedAt",
           "stepCount",
-          "targetApplicationIds"
+          "targetDeviceIds"
         ]
       },
       "AutomationsGridFacetsDto": {
@@ -10295,7 +12507,7 @@
               "type": "string"
             }
           },
-          "targetApplicationIds": {
+          "targetDeviceIds": {
             "type": "array",
             "items": {
               "type": "string"
@@ -10304,7 +12516,7 @@
         },
         "required": [
           "tags",
-          "targetApplicationIds"
+          "targetDeviceIds"
         ]
       },
       "AutomationsGridPageDto": {
@@ -10412,8 +12624,15 @@
           "automationId": {
             "type": "string"
           },
-          "targetApplicationId": {
+          "targetDeviceId": {
             "type": "string"
+          },
+          "targetKind": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "external"
+            ]
           },
           "status": {
             "type": "string",
@@ -10433,7 +12652,7 @@
         "required": [
           "id",
           "automationId",
-          "targetApplicationId",
+          "targetDeviceId",
           "status",
           "createdAt",
           "workflowName"
@@ -10530,8 +12749,19 @@
           "ownerUserId": {
             "type": "string"
           },
-          "targetApplicationId": {
+          "targetDeviceId": {
             "type": "string"
+          },
+          "targetKind": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "external"
+            ]
+          },
+          "targetAttachmentId": {
+            "type": "string",
+            "nullable": true
           },
           "targetProfileMode": {
             "type": "string",
@@ -10600,7 +12830,7 @@
           "automationId",
           "automationTriggerId",
           "ownerUserId",
-          "targetApplicationId",
+          "targetDeviceId",
           "targetProfileMode",
           "targetProfileName",
           "trigger",
@@ -10667,7 +12897,7 @@
           "automationId": {
             "type": "string"
           },
-          "targetApplicationId": {
+          "targetDeviceId": {
             "type": "string"
           },
           "profileMode": {
@@ -10734,7 +12964,7 @@
           "name",
           "description",
           "automationId",
-          "targetApplicationId",
+          "targetDeviceId",
           "profileMode",
           "profileName",
           "enabled",
@@ -10759,7 +12989,7 @@
               "type": "string"
             }
           },
-          "targetApplicationIds": {
+          "targetDeviceIds": {
             "type": "array",
             "items": {
               "type": "string"
@@ -10768,7 +12998,7 @@
         },
         "required": [
           "tags",
-          "targetApplicationIds"
+          "targetDeviceIds"
         ]
       },
       "AutomationTriggersGridPageDto": {
@@ -10828,21 +13058,6 @@
             "type": "string",
             "example": "user_123"
           },
-          "name": {
-            "type": "string",
-            "example": "Daily setup"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 2000
-          },
-          "automationId": {
-            "type": "string"
-          },
-          "targetApplicationId": {
-            "type": "string"
-          },
           "profileMode": {
             "type": "string",
             "enum": [
@@ -10855,6 +13070,21 @@
             "type": "string",
             "example": "default",
             "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "example": "Daily setup"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "targetDeviceId": {
+            "type": "string"
           },
           "enabled": {
             "type": "boolean",
@@ -10880,7 +13110,7 @@
           "ownerUserId",
           "name",
           "automationId",
-          "targetApplicationId",
+          "targetDeviceId",
           "triggerType",
           "triggerConfig"
         ]
@@ -10908,21 +13138,6 @@
             "type": "string",
             "example": "user_123"
           },
-          "name": {
-            "type": "string",
-            "example": "Daily setup"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 2000
-          },
-          "automationId": {
-            "type": "string"
-          },
-          "targetApplicationId": {
-            "type": "string"
-          },
           "profileMode": {
             "type": "string",
             "enum": [
@@ -10935,6 +13150,21 @@
             "type": "string",
             "example": "default",
             "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "example": "Daily setup"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "targetDeviceId": {
+            "type": "string"
           },
           "enabled": {
             "type": "boolean",
@@ -10969,11 +13199,6 @@
             "type": "string",
             "example": "user_123"
           },
-          "targetApplicationId": {
-            "type": "string",
-            "example": "98a530d6-a45d-466a-9cb4-c023067c4971",
-            "nullable": true
-          },
           "profileMode": {
             "type": "string",
             "enum": [
@@ -10994,6 +13219,15 @@
               "start-if-needed"
             ],
             "default": "require-running"
+          },
+          "targetDeviceId": {
+            "type": "string",
+            "example": "98a530d6-a45d-466a-9cb4-c023067c4971",
+            "nullable": true
+          },
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
@@ -11015,6 +13249,92 @@
             "$ref": "#/components/schemas/AutomationDefinitionDto"
           }
         }
+      },
+      "AutomationRunHistoryRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "targetDeviceId": {
+            "type": "string"
+          },
+          "targetKind": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "external"
+            ]
+          },
+          "targetProfileMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetProfileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "schedule"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "failed",
+              "canceled"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "stepCount": {
+            "type": "number"
+          },
+          "completedSteps": {
+            "type": "number"
+          },
+          "failedSteps": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "automationId",
+          "targetDeviceId",
+          "targetProfileMode",
+          "targetProfileName",
+          "trigger",
+          "status",
+          "startedAt",
+          "completedAt",
+          "error",
+          "createdAt",
+          "stepCount",
+          "completedSteps",
+          "failedSteps"
+        ]
       },
       "PullContainerImageDto": {
         "type": "object",
@@ -11100,10 +13420,6 @@
           "id": {
             "type": "string"
           },
-          "name": {
-            "type": "string",
-            "example": "Redroid 14 microG overlay"
-          },
           "targetImage": {
             "type": "string",
             "example": "local/redroid-microg:14"
@@ -11159,6 +13475,10 @@
           "updatedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Redroid 14 microG overlay"
           }
         },
         "required": [
@@ -11250,10 +13570,6 @@
           "id": {
             "type": "string"
           },
-          "recipeId": {
-            "type": "string",
-            "nullable": true
-          },
           "targetImage": {
             "type": "string",
             "example": "local/redroid-microg:14"
@@ -11261,36 +13577,6 @@
           "baseImage": {
             "type": "string",
             "example": "redroid/redroid:14.0.0-latest"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running",
-              "succeeded",
-              "failed",
-              "cancelled"
-            ]
-          },
-          "buildKind": {
-            "type": "string",
-            "enum": [
-              "dockerfile_overlay",
-              "redroid_gapps_patch"
-            ]
-          },
-          "phase": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "pulling_base",
-              "resolving_sources",
-              "building_gapps",
-              "validating_payload",
-              "building_image",
-              "validating_image",
-              "complete"
-            ]
           },
           "runtimeKind": {
             "type": "string",
@@ -11326,6 +13612,54 @@
               "verified"
             ]
           },
+          "dockerfile": {
+            "type": "string"
+          },
+          "contextFileIdsJson": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "recipeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "buildKind": {
+            "type": "string",
+            "enum": [
+              "dockerfile_overlay",
+              "redroid_gapps_patch"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "pulling_base",
+              "resolving_sources",
+              "building_gapps",
+              "validating_payload",
+              "building_image",
+              "validating_image",
+              "complete"
+            ]
+          },
           "resolvedBaseDigest": {
             "type": "string",
             "nullable": true
@@ -11351,12 +13685,6 @@
             "type": "object",
             "additionalProperties": true
           },
-          "dockerfile": {
-            "type": "string"
-          },
-          "contextFileIdsJson": {
-            "type": "string"
-          },
           "logTail": {
             "type": "string",
             "example": "Step 1/4 : FROM redroid/redroid:14.0.0-latest"
@@ -11378,14 +13706,6 @@
             "format": "date-time",
             "type": "string",
             "nullable": true
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
-            "type": "string"
           }
         },
         "required": [
@@ -12223,6 +14543,23 @@
           "description"
         ]
       },
+      "ScheduledTaskPayloadDto": {
+        "type": "object",
+        "properties": {
+          "danglingOnly": {
+            "type": "boolean",
+            "description": "Only for prune_images. Defaults to true.",
+            "example": true
+          },
+          "retentionDays": {
+            "type": "number",
+            "description": "Retention period in days for runtime logs and build or workflow history.",
+            "example": 30,
+            "minimum": 1,
+            "maximum": 3650
+          }
+        }
+      },
       "ScheduledTaskDto": {
         "type": "object",
         "properties": {
@@ -12265,8 +14602,8 @@
             ]
           },
           "payload": {
-            "type": "object",
             "nullable": true,
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ScheduledTaskPayloadDto"
@@ -12316,23 +14653,6 @@
           "createdAt",
           "updatedAt"
         ]
-      },
-      "ScheduledTaskPayloadDto": {
-        "type": "object",
-        "properties": {
-          "danglingOnly": {
-            "type": "boolean",
-            "description": "Only for prune_images. Defaults to true.",
-            "example": true
-          },
-          "retentionDays": {
-            "type": "number",
-            "description": "Retention period in days for runtime logs and build or workflow history.",
-            "example": 30,
-            "minimum": 1,
-            "maximum": 3650
-          }
-        }
       },
       "CreateScheduledTaskDto": {
         "type": "object",
@@ -12586,497 +14906,6 @@
           "firewall",
           "ocr",
           "services"
-        ]
-      },
-      "ApkLibraryAppDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ]
-      },
-      "ApkLibraryRuleDto": {
-        "type": "object",
-        "properties": {
-          "scope": {
-            "type": "string",
-            "enum": [
-              "sha256",
-              "package"
-            ]
-          },
-          "value": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "scope",
-          "value",
-          "reason"
-        ]
-      },
-      "ApkLibraryEntryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "originalName": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string",
-            "nullable": true
-          },
-          "sha256": {
-            "type": "string",
-            "nullable": true
-          },
-          "packageName": {
-            "type": "string",
-            "nullable": true
-          },
-          "sizeBytes": {
-            "type": "number",
-            "nullable": true
-          },
-          "ownerUserIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "uploads": {
-            "type": "number"
-          },
-          "apps": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ApkLibraryAppDto"
-            }
-          },
-          "googlePlayServices": {
-            "type": "string",
-            "nullable": true
-          },
-          "inspectionEvidence": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "rules": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ApkLibraryRuleDto"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "originalName",
-          "displayName",
-          "sha256",
-          "packageName",
-          "sizeBytes",
-          "ownerUserIds",
-          "uploads",
-          "apps",
-          "googlePlayServices",
-          "inspectionEvidence",
-          "rules"
-        ]
-      },
-      "ApkLibraryMutationDto": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": [
-              "block",
-              "unblock",
-              "delete"
-            ]
-          },
-          "ids": {
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "sha256",
-              "package"
-            ]
-          },
-          "reason": {
-            "type": "string",
-            "maxLength": 500
-          }
-        },
-        "required": [
-          "action",
-          "ids"
-        ]
-      },
-      "ApkLibrarySkippedDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "reason"
-        ]
-      },
-      "ApkLibraryMutationResultDto": {
-        "type": "object",
-        "properties": {
-          "changed": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "skipped": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ApkLibrarySkippedDto"
-            }
-          },
-          "bytesFreed": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "changed",
-          "skipped",
-          "bytesFreed"
-        ]
-      },
-      "AndroidApplicationGalleryRowDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "ownerUserId": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "provisioning",
-              "running",
-              "stopped",
-              "error",
-              "removing",
-              "removed"
-            ]
-          },
-          "lifecycleStage": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "image_checking",
-              "image_pulling",
-              "volume_creating",
-              "network_creating",
-              "orchestrator_network_connecting",
-              "container_creating",
-              "container_starting",
-              "android_booting",
-              "apk_installing",
-              "ready",
-              "stopping",
-              "stopped",
-              "removing",
-              "removed",
-              "error"
-            ]
-          },
-          "containerImage": {
-            "type": "string"
-          },
-          "apkPackageName": {
-            "type": "string",
-            "nullable": true
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "ownerUserId",
-          "status",
-          "lifecycleStage",
-          "containerImage",
-          "apkPackageName",
-          "updatedAt"
-        ]
-      },
-      "AndroidApplicationNavigationRowDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "ownerUserId": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "provisioning",
-              "running",
-              "stopped",
-              "error",
-              "removing",
-              "removed"
-            ]
-          },
-          "lifecycleStage": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "image_checking",
-              "image_pulling",
-              "volume_creating",
-              "network_creating",
-              "orchestrator_network_connecting",
-              "container_creating",
-              "container_starting",
-              "android_booting",
-              "apk_installing",
-              "ready",
-              "stopping",
-              "stopped",
-              "removing",
-              "removed",
-              "error"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "ownerUserId",
-          "status",
-          "lifecycleStage"
-        ]
-      },
-      "ListAndroidApplicationNavigationDto": {
-        "type": "object",
-        "properties": {
-          "ownerUserId": {
-            "type": "string",
-            "example": "user_123"
-          },
-          "applicationIds": {
-            "maxItems": 5,
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "includeRunning": {
-            "type": "boolean"
-          },
-          "excludeIds": {
-            "maxItems": 512,
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "runningLimit": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 5
-          },
-          "locale": {
-            "type": "string",
-            "description": "Locale for the natural name ordering."
-          }
-        },
-        "required": [
-          "applicationIds",
-          "includeRunning"
-        ]
-      },
-      "ApplicationViewerActivityDto": {
-        "type": "object",
-        "properties": {
-          "ownerUserId": {
-            "type": "string"
-          },
-          "runtimeKey": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "ownerUserId",
-          "runtimeKey"
-        ]
-      },
-      "AndroidApplicationDetailRefreshDto": {
-        "type": "object",
-        "properties": {
-          "ownerUserId": {
-            "type": "string",
-            "nullable": true
-          },
-          "state": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AndroidApplicationDetailStateDto"
-              }
-            ]
-          },
-          "app": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AndroidApplicationResponseDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "ownerUserId",
-          "state",
-          "app"
-        ]
-      },
-      "AndroidApplicationDetailStateDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "$ref": "#/components/schemas/AndroidApplicationStatusResponseDto"
-          },
-          "errors": {
-            "$ref": "#/components/schemas/AndroidApplicationErrorResponseDto"
-          },
-          "updatedAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "status",
-          "errors",
-          "updatedAt"
-        ]
-      },
-      "AutomationRunHistoryRowDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "automationId": {
-            "type": "string"
-          },
-          "targetApplicationId": {
-            "type": "string"
-          },
-          "targetProfileMode": {
-            "type": "string",
-            "nullable": true
-          },
-          "targetProfileName": {
-            "type": "string",
-            "nullable": true
-          },
-          "trigger": {
-            "type": "string",
-            "enum": [
-              "manual",
-              "schedule"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running",
-              "success",
-              "failed",
-              "canceled"
-            ]
-          },
-          "startedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "completedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "error": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "stepCount": {
-            "type": "number"
-          },
-          "completedSteps": {
-            "type": "number"
-          },
-          "failedSteps": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "automationId",
-          "targetApplicationId",
-          "targetProfileMode",
-          "targetProfileName",
-          "trigger",
-          "status",
-          "startedAt",
-          "completedAt",
-          "error",
-          "createdAt",
-          "stepCount",
-          "completedSteps",
-          "failedSteps"
         ]
       }
     }

@@ -10,6 +10,9 @@ import { AndroidAppsProvisioningModule } from './provisioning/android-apps-provi
 import { AndroidAppsRuntimeModule } from './runtime/android-apps-runtime.module';
 import { AndroidAppsViewerModule } from './viewer/android-apps-viewer.module';
 import { ANDROID_APPS_AUTOMATION } from './contracts/android-apps-automation.port';
+import { EXTERNAL_ATTACHMENT_RESERVATION } from './contracts/external-attachment-reservation.port';
+import { ExternalAndroidDevicesService } from './external/devices/external-android-devices.service';
+import { ExternalAndroidDevicesModule } from './external/external-android-devices.module';
 
 const androidAppsServiceProvider = {
   provide: AndroidAppsService,
@@ -27,18 +30,24 @@ const androidAppsAutomationProvider = {
     AndroidAppsProvisioningModule,
     AndroidAppsLifecycleModule,
     AndroidAppsRuntimeModule,
+    ExternalAndroidDevicesModule,
   ],
   controllers: [AndroidAppsController],
   providers: [
     AndroidAppsFacadeService,
     androidAppsServiceProvider,
     androidAppsAutomationProvider,
+    {
+      provide: EXTERNAL_ATTACHMENT_RESERVATION,
+      useExisting: ExternalAndroidDevicesService,
+    },
     InactivityService,
   ],
   exports: [
     AndroidAppsService,
     AndroidAppsFacadeService,
     ANDROID_APPS_AUTOMATION,
+    EXTERNAL_ATTACHMENT_RESERVATION,
   ],
 })
 export class AndroidAppsModule {}

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { externalAutomationCapability } from '@rebroid/automation-core/device-capabilities';
 import type { ChatMessage } from '../../common/ai-provider-request';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
@@ -18,8 +19,22 @@ export class AutomationAiSuggestionsService {
     private readonly chatClient: AutomationAiChatClientService,
   ) {}
 
-  async suggest(dto: SuggestAdHocAiPromptsDto) {
-    const fallback = fallbackSuggestions(dto);
+  async suggest(dto: SuggestAdHocAiPromptsDto, external = false) {
+    dto = external
+      ? {
+          ...dto,
+          allowedTools: dto.allowedTools?.filter(externalAutomationCapability),
+        }
+      : dto;
+    const fallback = external
+      ? [
+          {
+            id: 'inspect-screen',
+            label: 'Inspect screen',
+            prompt: 'Describe the visible screen and accessible controls.',
+          },
+        ]
+      : fallbackSuggestions(dto);
     try {
       const { provider, model } = await this.providers.getProvider(
         dto.providerId,
@@ -30,7 +45,7 @@ export class AutomationAiSuggestionsService {
         role: 'planner',
         provider,
         model,
-        messages: suggestionMessages(dto),
+        messages: suggestionMessages(dto, external),
         tools: [],
         deadline: Date.now() + 20_000,
       });
@@ -48,7 +63,10 @@ export class AutomationAiSuggestionsService {
   }
 }
 
-const suggestionMessages = (dto: SuggestAdHocAiPromptsDto): ChatMessage[] => [
+const suggestionMessages = (
+  dto: SuggestAdHocAiPromptsDto,
+  external: boolean,
+): ChatMessage[] => [
   {
     role: 'system',
     content: [
@@ -59,13 +77,18 @@ const suggestionMessages = (dto: SuggestAdHocAiPromptsDto): ChatMessage[] => [
       'Use concrete Android actions. Avoid vague QA labels such as "smoke test", "verify login", or "capture flow" unless the current app context specifically asks for that.',
       'Use the current app, recent conversation, recent run events, and allowed tools. Do not invent device state.',
       'If the context mentions a device/system/platform task, suggest Android system routes before asking for a custom app.',
+      ...(external
+        ? [
+            'This is an external device. Suggest only visible UI operations and the supplied typed capabilities.',
+          ]
+        : []),
     ].join('\n'),
   },
   {
     role: 'user',
     content: JSON.stringify({
       app: {
-        id: dto.targetApplicationId,
+        id: dto.targetDeviceId,
         name: dto.appName,
         profileMode: dto.profileMode ?? null,
         profileName: dto.profileName ?? null,

@@ -126,6 +126,26 @@ export class DisplayController {
   @ApiOkResponse({ type: DisplaySessionResponseDto })
   async createSession(@Body() body: CreateDisplaySessionDto) {
     await this.adb.ensureViewerConnected(body.udid);
+    if (
+      this.features.isExternalAdbEnabled() &&
+      body.capabilities?.includes("audio")
+    ) {
+      const sdk = await this.adb
+        .shell(body.udid, ["getprop", "ro.build.version.sdk"], 2_000)
+        .then(
+          ({ stdout }) => Number(stdout.trim()),
+          () => 0,
+        );
+      // Android 11 capture can require a foreground UI. External viewers stay passive.
+      if (!Number.isInteger(sdk) || sdk < 31) {
+        body = {
+          ...body,
+          capabilities: body.capabilities.filter(
+            (capability) => capability !== "audio",
+          ),
+        };
+      }
+    }
     return {
       session: this.sessions.create(body),
     };

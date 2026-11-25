@@ -19,7 +19,7 @@ export class ApplicationWorkflowScopeDto extends ListActiveAutomationRunsQueryDt
   @IsString()
   @MinLength(1)
   @MaxLength(128)
-  targetApplicationId!: string;
+  targetDeviceId!: string;
 }
 
 export class ListApplicationWorkflowRunsDto extends ApplicationWorkflowScopeDto {

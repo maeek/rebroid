@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
-import { AdbModule } from "../adb/adb.module";
+import { DisplayAdbModule } from "../adb/display-adb.module";
+import { ExternalAdbModule } from "../external-adb/external-adb.module";
 import { ScrcpyModule } from "../scrcpy/scrcpy.module";
 import { DisplayControlGateway } from "./display-control.gateway";
 import { DisplayControlService } from "./display-control.service";
@@ -11,13 +12,17 @@ import { DisplaySessionService } from "./display-session.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
 import { DisplaySessionLifecycleService } from "./display-session-lifecycle.service";
 import { DisplayViewerAccessService } from "./display-viewer-access.service";
+import { ExternalDisplayToolsController } from "./external-display-tools.controller";
+import { ExternalAutomationController } from "./external-automation.controller";
 
 @Module({
-  imports: [AdbModule, ScrcpyModule],
+  imports: [DisplayAdbModule, ScrcpyModule, ExternalAdbModule],
   controllers: [
     DisplayController,
     DisplayPublicController,
     DisplayViewerAssetsController,
+    ExternalDisplayToolsController,
+    ExternalAutomationController,
   ],
   providers: [
     DisplayControlGateway,

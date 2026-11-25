@@ -40,7 +40,7 @@ import { ApplicationScreenshotDto } from '../dto/application-screenshot.dto';
 import { AndroidAppsRuntimeAccessService } from '../services/android-apps-runtime-access.service';
 
 @ApiTags('app-runtime')
-@Controller('apps')
+@Controller('devices')
 export class AndroidAppsRuntimeController {
   constructor(private readonly runtime: AndroidAppsRuntimeAccessService) {}
 

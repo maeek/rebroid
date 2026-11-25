@@ -1,3 +1,4 @@
+import { managedAndroidDeviceKind } from '@rebroid/android-application-core/android-device';
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 import {
   createdAtColumn,
@@ -9,11 +10,12 @@ import {
   dropRuntimeImageSchema,
 } from '../create-runtime-image-schema';
 
-export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
-  name = 'InitializeSqliteSchema1800000005000';
+export class InitializeSqliteSchema1800000008000 implements MigrationInterface {
+  name = 'InitializeSqliteSchema1800000008000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     if (
+      (await queryRunner.hasTable('android_devices')) ||
       (await queryRunner.hasTable('android_applications')) ||
       (await queryRunner.hasTable('uploaded_apks'))
     ) {
@@ -24,11 +26,57 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
 
     await queryRunner.createTable(
       new Table({
-        name: 'android_applications',
+        name: 'external_android_devices',
+        columns: [
+          idColumn,
+          { name: 'ownerUserId', type: 'varchar' },
+          { name: 'name', type: 'varchar' },
+          { name: 'transport', type: 'varchar' },
+          { name: 'selector', type: 'varchar' },
+          { name: 'attemptId', type: 'varchar', isNullable: true },
+          { name: 'connection', type: 'text' },
+          { name: 'lastActivityAt', type: 'datetime', isNullable: true },
+          { name: 'maxSessionSeconds', type: 'integer', isNullable: true },
+          createdAtColumn,
+        ],
+        checks: [
+          {
+            name: 'external_devices_transport_check',
+            expression: "transport IN ('usb', 'tcp')",
+          },
+        ],
+        indices: [
+          {
+            name: 'external_android_devices_owner_attempt',
+            columnNames: ['ownerUserId', 'attemptId'],
+          },
+          {
+            name: 'external_android_devices_transport_selector_unique',
+            columnNames: ['transport', 'selector'],
+            isUnique: true,
+          },
+        ],
+      }),
+    );
+
+    await queryRunner.createTable(
+      new Table({
+        name: 'android_devices',
+        checks: [
+          {
+            name: 'android_devices_managed_kind',
+            expression: `kind = '${managedAndroidDeviceKind}'`,
+          },
+        ],
         columns: [
           idColumn,
           { name: 'name', type: 'varchar' },
           { name: 'ownerUserId', type: 'text', isNullable: true },
+          {
+            name: 'kind',
+            type: 'varchar',
+            default: `'${managedAndroidDeviceKind}'`,
+          },
           { name: 'status', type: 'varchar', default: "'provisioning'" },
           { name: 'lifecycleStage', type: 'varchar', default: "'queued'" },
           { name: 'statusMessage', type: 'text', isNullable: true },
@@ -131,10 +179,10 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
 
     await queryRunner.createTable(
       new Table({
-        name: 'android_app_lifecycle_jobs',
+        name: 'android_device_lifecycle_jobs',
         columns: [
           idColumn,
-          { name: 'applicationId', type: 'varchar' },
+          { name: 'deviceId', type: 'varchar' },
           { name: 'kind', type: 'varchar' },
           { name: 'status', type: 'varchar', default: "'pending'" },
           { name: 'attempts', type: 'integer', default: '0' },
@@ -144,8 +192,8 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
         ],
         uniques: [
           {
-            name: 'android_app_lifecycle_jobs_application_unique',
-            columnNames: ['applicationId'],
+            name: 'android_device_lifecycle_jobs_device_unique',
+            columnNames: ['deviceId'],
           },
         ],
       }),
@@ -194,7 +242,9 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
           { name: 'automationId', type: 'varchar' },
           { name: 'automationTriggerId', type: 'varchar', isNullable: true },
           { name: 'ownerUserId', type: 'text' },
-          { name: 'targetApplicationId', type: 'varchar' },
+          { name: 'targetDeviceId', type: 'varchar' },
+          { name: 'targetKind', type: 'varchar', default: "'managed'" },
+          { name: 'targetAttachmentId', type: 'varchar', isNullable: true },
           { name: 'targetProfileMode', type: 'varchar', isNullable: true },
           { name: 'targetProfileName', type: 'varchar', isNullable: true },
           { name: 'trigger', type: 'varchar' },
@@ -244,7 +294,7 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
           { name: 'name', type: 'varchar' },
           { name: 'description', type: 'text', isNullable: true },
           { name: 'automationId', type: 'varchar' },
-          { name: 'targetApplicationId', type: 'varchar' },
+          { name: 'targetDeviceId', type: 'varchar' },
           { name: 'profileMode', type: 'varchar', isNullable: true },
           { name: 'profileName', type: 'varchar', isNullable: true },
           { name: 'enabled', type: 'boolean', default: '1' },
@@ -275,23 +325,23 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
   private async createIndexes(queryRunner: QueryRunner) {
     const indexes: Array<[string, TableIndex]> = [
       [
-        'android_applications',
+        'android_devices',
         new TableIndex({
-          name: 'android_applications_owner_created_idx',
+          name: 'android_devices_owner_created_idx',
           columnNames: ['ownerUserId', 'createdAt'],
         }),
       ],
       [
-        'android_applications',
+        'android_devices',
         new TableIndex({
-          name: 'android_applications_status_network_policy_idx',
+          name: 'android_devices_status_network_policy_idx',
           columnNames: ['status', 'networkPolicyEnabled'],
         }),
       ],
       [
-        'android_applications',
+        'android_devices',
         new TableIndex({
-          name: 'android_applications_uploaded_apk_idx',
+          name: 'android_devices_uploaded_apk_idx',
           columnNames: ['uploadedApkId'],
         }),
       ],
@@ -335,7 +385,7 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
         'automation_runs',
         new TableIndex({
           name: 'automation_runs_owner_target_created_idx',
-          columnNames: ['ownerUserId', 'targetApplicationId', 'createdAt'],
+          columnNames: ['ownerUserId', 'targetDeviceId', 'createdAt'],
         }),
       ],
       [
@@ -349,14 +399,14 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
         'automation_runs',
         new TableIndex({
           name: 'automation_runs_target_status_created_idx',
-          columnNames: ['targetApplicationId', 'status', 'createdAt'],
+          columnNames: ['targetDeviceId', 'status', 'createdAt'],
         }),
       ],
       [
         'automation_runs',
         new TableIndex({
           name: 'automation_runs_active_target_unique',
-          columnNames: ['targetApplicationId'],
+          columnNames: ['targetDeviceId'],
           isUnique: true,
           where: `status IN ('queued', 'running')`,
         }),
@@ -405,9 +455,10 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
     await queryRunner.dropTable('automation_runs');
     await queryRunner.dropTable('automations');
     await queryRunner.dropTable('scheduled_tasks');
-    await queryRunner.dropTable('android_app_lifecycle_jobs');
+    await queryRunner.dropTable('android_device_lifecycle_jobs');
     await queryRunner.dropTable('uploaded_apks');
     await queryRunner.dropTable('apk_block_rules');
-    await queryRunner.dropTable('android_applications');
+    await queryRunner.dropTable('android_devices');
+    await queryRunner.dropTable('external_android_devices');
   }
 }

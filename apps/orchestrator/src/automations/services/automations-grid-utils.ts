@@ -17,7 +17,7 @@ const sortedUnique = (values: string[]) =>
 const gridPage = <T extends { tags: { name: string }[] }>(
   sorted: T[],
   allRows: T[],
-  targetApplicationIds: string[],
+  targetDeviceIds: string[],
   query: { page?: number; pageSize?: number },
 ) => {
   const page = Math.max(Math.trunc(query.page ?? 1), 1);
@@ -30,7 +30,7 @@ const gridPage = <T extends { tags: { name: string }[] }>(
     pageSize,
     facets: {
       tags: sortedUnique(allRows.flatMap(tagNames)),
-      targetApplicationIds: sortedUnique(targetApplicationIds),
+      targetDeviceIds: sortedUnique(targetDeviceIds),
     },
   };
 };
@@ -38,7 +38,7 @@ const gridPage = <T extends { tags: { name: string }[] }>(
 export const buildAutomationGridPage = <T extends AutomationSummaryDto>(
   automations: T[],
   query: ListAutomationsGridQueryDto,
-  targetApplicationIdsByAutomation: Map<string, Set<string>>,
+  targetDeviceIdsByAutomation: Map<string, Set<string>>,
 ) => {
   const search = query.q?.trim().toLowerCase();
   const tag = query.tag?.trim();
@@ -57,17 +57,17 @@ export const buildAutomationGridPage = <T extends AutomationSummaryDto>(
           .includes(search)) &&
       (!tag || tagNames(automation).includes(tag)) &&
       (!query.status || automation.lastStatus === query.status) &&
-      (!query.targetApplicationId ||
-        targetApplicationIdsByAutomation
+      (!query.targetDeviceId ||
+        targetDeviceIdsByAutomation
           .get(automation.id)
-          ?.has(query.targetApplicationId)) &&
+          ?.has(query.targetDeviceId)) &&
       matchesLastRun(automation.lastRunAt, query.lastRun)
     );
   });
   return gridPage(
     sortAutomationGridItems(filtered, query.sort),
     automations,
-    [...targetApplicationIdsByAutomation.values()].flatMap((ids) => [...ids]),
+    [...targetDeviceIdsByAutomation.values()].flatMap((ids) => [...ids]),
     query,
   );
 };
@@ -86,7 +86,7 @@ export const buildAutomationTriggerGridPage = (
         [
           trigger.name,
           trigger.description,
-          trigger.targetApplicationId,
+          trigger.targetDeviceId,
           trigger.profileName,
           trigger.lastStatus,
           automationName,
@@ -97,8 +97,8 @@ export const buildAutomationTriggerGridPage = (
           .toLowerCase()
           .includes(search)) &&
       (!tag || tagNames(trigger).includes(tag)) &&
-      (!query.targetApplicationId ||
-        trigger.targetApplicationId === query.targetApplicationId) &&
+      (!query.targetDeviceId ||
+        trigger.targetDeviceId === query.targetDeviceId) &&
       (!query.enabled || String(trigger.enabled) === query.enabled) &&
       (!query.status || trigger.lastStatus === query.status) &&
       matchesLastRun(trigger.lastRunAt, query.lastRun)
@@ -107,7 +107,7 @@ export const buildAutomationTriggerGridPage = (
   return gridPage(
     sortAutomationTriggerGridItems(filtered, query.sort),
     triggers,
-    triggers.map((trigger) => trigger.targetApplicationId),
+    triggers.map((trigger) => trigger.targetDeviceId),
     query,
   );
 };

@@ -5,6 +5,12 @@ export const keyboardEventMessageType = "rebroid-viewer-keyboard-event";
 export const keyboardCaptureMessageType = "rebroid-viewer-keyboard-capture";
 export const viewerControlMessageType = "rebroid-viewer-control-event";
 
+export const displayRequestPath = (path: string) =>
+  typeof location !== "undefined" &&
+  location.pathname?.startsWith("/external-display/")
+    ? `/external-display${path}`
+    : path;
+
 export function readViewerConfig(): ViewerConfig {
   const params = new URLSearchParams(location.search);
   const sessionId = params.get("sessionId");

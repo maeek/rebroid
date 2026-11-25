@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  Equals,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
+import {
+  managedAndroidDeviceKind,
+  type ManagedAndroidDeviceKind,
+} from '@rebroid/android-application-core/android-device';
 import {
   InactivityTimeout,
   MemoryLimit,
@@ -60,4 +70,10 @@ export class CreateAndroidApplicationDto {
 
   @OptionalNetworkPolicyAllowCidrs()
   networkPolicyAllowCidrs?: string[];
+}
+
+export class CreateManagedAndroidDeviceDto extends CreateAndroidApplicationDto {
+  @ApiProperty({ enum: [managedAndroidDeviceKind] })
+  @Equals(managedAndroidDeviceKind)
+  kind!: ManagedAndroidDeviceKind;
 }

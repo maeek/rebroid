@@ -6,9 +6,10 @@ import { join } from 'node:path';
 import { AppModule } from './app.module';
 import { DataSource } from 'typeorm';
 import { randomUUID } from 'node:crypto';
+import { AndroidApplication } from './android-apps/android-application.entity';
 import { AutomationRunEventsRepository } from './automations/persistence/automation-run-events.repository';
 import { AutomationRunsRepository } from './automations/persistence/automation-runs.repository';
-import { InitializeSqliteSchema1800000005000 } from './database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from './database/migrations/1800000008000-initialize-sqlite-schema';
 import {
   configureFastifyPlatform,
   createFastifyAdapter,
@@ -65,13 +66,13 @@ describe('AppModule', () => {
     const database = await new DataSource({
       type: 'better-sqlite3',
       database: join(temporaryDirectory, 'orchestrator.sqlite'),
-      migrations: [InitializeSqliteSchema1800000005000],
+      migrations: [InitializeSqliteSchema1800000008000],
       migrationsRun: true,
     }).initialize();
     try {
       await database.query(
         `INSERT INTO automation_runs
-           (id, automationId, ownerUserId, targetApplicationId, trigger, status,
+           (id, automationId, ownerUserId, targetDeviceId, trigger, status,
             lastEventSequence)
          VALUES ('run', 'workflow', 'owner', 'app', 'manual', 'running', 1)`,
       );
@@ -165,7 +166,7 @@ describe('AppModule', () => {
     const database = app.get(DataSource);
     await database.query(
       `INSERT INTO automation_runs
-         (id, automationId, ownerUserId, targetApplicationId, trigger, status, completedAt)
+         (id, automationId, ownerUserId, targetDeviceId, trigger, status, completedAt)
        VALUES
          ('expired', 'workflow', 'owner', 'app', 'manual', 'success', datetime('now', '-15 days')),
          ('retained', 'workflow', 'owner', 'app', 'manual', 'success', datetime('now', '-10 days'))`,
@@ -263,7 +264,7 @@ describe('AppModule', () => {
     `);
     await database.query(`
       INSERT INTO automation_runs
-        (id, automationId, ownerUserId, targetApplicationId, trigger, status, createdAt)
+        (id, automationId, ownerUserId, targetDeviceId, trigger, status, createdAt)
       VALUES ('queued', 'named', 'owner-1', 'app-1', 'manual', 'queued', '2026-01-04'),
              ('ad-hoc', 'ephemeral-ai-1', 'owner-1', 'app-2', 'manual', 'running', '2026-01-03'),
              ('unknown', 'foreign', 'owner-1', 'app-3', 'manual', 'running', '2026-01-02'),
@@ -280,7 +281,7 @@ describe('AppModule', () => {
     const activeRun = {
       id: 'queued',
       automationId: 'named',
-      targetApplicationId: 'app-1',
+      targetDeviceId: 'app-1',
       status: 'queued',
       createdAt: '2026-01-04T00:00:00.000Z',
       workflowName: 'Visible workflow',
@@ -291,7 +292,7 @@ describe('AppModule', () => {
         ...activeRun,
         id: 'ad-hoc',
         automationId: 'ephemeral-ai-1',
-        targetApplicationId: 'app-2',
+        targetDeviceId: 'app-2',
         status: 'running',
         createdAt: '2026-01-03T00:00:00.000Z',
         workflowName: null,
@@ -300,7 +301,7 @@ describe('AppModule', () => {
         ...activeRun,
         id: 'unknown',
         automationId: 'foreign',
-        targetApplicationId: 'app-3',
+        targetDeviceId: 'app-3',
         status: 'running',
         createdAt: '2026-01-02T00:00:00.000Z',
         workflowName: null,
@@ -352,6 +353,42 @@ describe('AppModule', () => {
     ]);
 
     const dataSource = app.get(DataSource);
+    const deviceId = randomUUID();
+    await dataSource.getRepository(AndroidApplication).insert({
+      id: deviceId,
+      name: 'Managed utility runtime',
+      ownerUserId: 'owner-1',
+      containerImage: 'utility:local',
+      containerName: 'test-runtime',
+      networkName: 'test-network',
+      volumeName: 'test-volume',
+    });
+    for (const path of ['/devices', '/devices/gallery']) {
+      const response = await app.inject({
+        url: `/api/v1${path}?ownerUserId=owner-1`,
+        headers,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual([
+        expect.objectContaining({ id: deviceId, kind: 'managed' }),
+      ]);
+    }
+    const device = await app.inject({
+      url: `/api/v1/devices/${deviceId}`,
+      headers,
+    });
+    expect(device.json()).toMatchObject({
+      id: deviceId,
+      kind: 'managed',
+      runtime: { kind: 'generic', containerId: null },
+    });
+    await expect(
+      dataSource.query('UPDATE android_devices SET kind = ? WHERE id = ?', [
+        'external',
+        deviceId,
+      ]),
+    ).rejects.toThrow('CHECK constraint failed');
+
     const schemaQueryRunner = dataSource.createQueryRunner();
     try {
       for (const entity of dataSource.entityMetadatas) {
@@ -385,7 +422,7 @@ describe('AppModule', () => {
     )) as Array<{ name: string; sql: string | null }>;
     expect(indexes.map((index) => index.name)).toEqual(
       expect.arrayContaining([
-        'android_applications_owner_created_idx',
+        'android_devices_owner_created_idx',
         'automation_runs_active_target_unique',
         'automation_run_events_run_sequence_unique',
       ]),
@@ -414,7 +451,7 @@ describe('AppModule', () => {
       [randomUUID(), randomUUID()].map((id) =>
         dataSource.query(
           `INSERT INTO automation_runs
-           (id, automationId, ownerUserId, targetApplicationId, trigger, status)
+           (id, automationId, ownerUserId, targetDeviceId, trigger, status)
            VALUES (?, ?, ?, ?, 'manual', 'queued')`,
           [id, randomUUID(), 'owner-1', reservedTargetId],
         ),
@@ -430,8 +467,8 @@ describe('AppModule', () => {
     const lifecycleReservations = await Promise.allSettled(
       [randomUUID(), randomUUID()].map((id) =>
         dataSource.query(
-          `INSERT INTO android_app_lifecycle_jobs
-           (id, applicationId, kind, status)
+          `INSERT INTO android_device_lifecycle_jobs
+           (id, deviceId, kind, status)
            VALUES (?, ?, 'start', 'pending')`,
           [id, 'app-with-reserved-lifecycle'],
         ),
@@ -447,7 +484,7 @@ describe('AppModule', () => {
     const runId = randomUUID();
     await dataSource.query(
       `INSERT INTO automation_runs
-       (id, automationId, ownerUserId, targetApplicationId, trigger, status)
+       (id, automationId, ownerUserId, targetDeviceId, trigger, status)
        VALUES (?, ?, ?, ?, 'manual', 'running')`,
       [runId, randomUUID(), 'owner-1', randomUUID()],
     );

@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from '../../database/migrations/1800000008000-initialize-sqlite-schema';
 import { Automation } from '../entities/automation.entity';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import {
@@ -14,7 +14,7 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [Automation, AutomationRun],
-    migrations: [InitializeSqliteSchema1800000005000],
+    migrations: [InitializeSqliteSchema1800000008000],
     migrationsRun: true,
   }).initialize();
   try {
@@ -28,7 +28,7 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
     const save = (values: Partial<AutomationRun> = {}) =>
       db.getRepository(AutomationRun).save({
         ownerUserId: 'owner',
-        targetApplicationId: 'app',
+        targetDeviceId: 'app',
         automationId: 'workflow',
         trigger: AutomationRunTrigger.Manual,
         status: AutomationRunStatus.Success,
@@ -41,7 +41,7 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
       automationId: 'deleted',
       error: 'Runtime unavailable',
     });
-    const otherApp = await save({ targetApplicationId: 'other-app' });
+    const otherApp = await save({ targetDeviceId: 'other-app' });
     const otherOwner = await save({ ownerUserId: 'other-owner' });
     const adHoc = await save({ automationId: 'ephemeral-ai-fixture' });
     for (const [index, status] of ['success', 'failed', 'skipped'].entries()) {
@@ -118,7 +118,7 @@ it('prunes only expired finished workflows with their results and events', async
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [Automation, AutomationRun, AutomationRunEvent],
-    migrations: [InitializeSqliteSchema1800000005000],
+    migrations: [InitializeSqliteSchema1800000008000],
     migrationsRun: true,
   }).initialize();
   try {
@@ -130,7 +130,7 @@ it('prunes only expired finished workflows with their results and events', async
       await db.getRepository(AutomationRun).save({
         id,
         ownerUserId: 'owner',
-        targetApplicationId: id,
+        targetDeviceId: id,
         automationId: 'deleted-workflow',
         trigger: AutomationRunTrigger.Manual,
         status: AutomationRunStatus.Success,

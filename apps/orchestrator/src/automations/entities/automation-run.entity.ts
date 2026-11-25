@@ -35,7 +35,13 @@ export class AutomationRun {
   ownerUserId!: string;
 
   @Column()
-  targetApplicationId!: string;
+  targetDeviceId!: string;
+
+  @Column({ type: 'varchar', default: 'managed' })
+  targetKind?: 'managed' | 'external';
+
+  @Column({ type: 'varchar', nullable: true })
+  targetAttachmentId?: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   targetProfileMode!: string | null;
@@ -82,7 +88,9 @@ export type AutomationRunSummaryFields = Pick<
   AutomationRun,
   | 'id'
   | 'automationId'
-  | 'targetApplicationId'
+  | 'targetDeviceId'
+  | 'targetKind'
+  | 'targetAttachmentId'
   | 'targetProfileMode'
   | 'targetProfileName'
   | 'trigger'

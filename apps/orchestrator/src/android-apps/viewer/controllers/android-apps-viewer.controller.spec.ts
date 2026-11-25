@@ -22,7 +22,7 @@ describe('virtual display authorization contract', () => {
         app,
         new DocumentBuilder().build(),
       );
-      const operation = doc.paths['/apps/{id}/viewer/displays'].post!;
+      const operation = doc.paths['/devices/{id}/viewer/displays'].post!;
       expect(operation.parameters).toEqual(
         expect.arrayContaining(
           ['control', 'clipboard', 'screenshot'].map((name) =>

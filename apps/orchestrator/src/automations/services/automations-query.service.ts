@@ -66,13 +66,13 @@ export class AutomationsQueryService {
       this.runs.latestForAutomations(ownerUserId),
     ]);
 
-    const targetApplicationIdsByAutomation = new Map<string, Set<string>>();
+    const targetDeviceIdsByAutomation = new Map<string, Set<string>>();
     for (const trigger of triggers) {
       const appIds =
-        targetApplicationIdsByAutomation.get(trigger.automationId) ??
+        targetDeviceIdsByAutomation.get(trigger.automationId) ??
         new Set<string>();
-      appIds.add(trigger.targetApplicationId);
-      targetApplicationIdsByAutomation.set(trigger.automationId, appIds);
+      appIds.add(trigger.targetDeviceId);
+      targetDeviceIdsByAutomation.set(trigger.automationId, appIds);
     }
 
     const rows = automations.map((automation) => {
@@ -91,15 +91,15 @@ export class AutomationsQueryService {
     const page = buildAutomationGridPage(
       rows,
       query,
-      targetApplicationIdsByAutomation,
+      targetDeviceIdsByAutomation,
     );
     return {
       ...page,
       items: page.items.map(({ steps, ...summary }) => ({
         ...summary,
         stepCount: countAutomationSteps(steps),
-        targetApplicationIds: Array.from(
-          targetApplicationIdsByAutomation.get(summary.id) ?? [],
+        targetDeviceIds: Array.from(
+          targetDeviceIdsByAutomation.get(summary.id) ?? [],
         ),
       })),
     };

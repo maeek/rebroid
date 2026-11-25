@@ -421,6 +421,9 @@ export class ScrcpyService implements OnModuleDestroy {
     options: ScrcpyStreamOptions,
     registerStop: (stop: () => Promise<void>) => void,
   ): Promise<ScrcpyAttemptResult> {
+    if (this.config.externalAdbEnabled) {
+      return this.streamRawVideoAttemptWithTunnel(options, registerStop, "forward");
+    }
     if (
       this.config.scrcpyTunnelMode === "reverse" ||
       this.config.scrcpyTunnelMode === "direct" ||
@@ -1104,6 +1107,11 @@ export class ScrcpyService implements OnModuleDestroy {
     ]);
   }
 
+  requestClipboard(sessionId: string) {
+    // scrcpy GET_CLIPBOARD, with no copy or cut key injected.
+    return this.writeControlMessages(sessionId, [Buffer.from([8, 0])], false);
+  }
+
   private startServer(
     options: ScrcpyStreamOptions,
     scid: string,
@@ -1115,6 +1123,7 @@ export class ScrcpyService implements OnModuleDestroy {
       logLevel: this.config.scrcpyServerLogLevel,
       controlEnabled: this.streamControlEnabled(options),
       videoEncoder: this.config.scrcpyVideoEncoder,
+      passive: this.config.externalAdbEnabled,
     });
 
     const serverClasspath = "/data/local/tmp/rebroid-scrcpy-server.jar";
@@ -1177,6 +1186,7 @@ export class ScrcpyService implements OnModuleDestroy {
   }
 
   private shouldLaunchDetached(tunnelMode: ScrcpyTunnelMode) {
+    if (this.config.externalAdbEnabled) return false;
     if (this.config.scrcpyServerLaunchMode === "shell") {
       return false;
     }
@@ -1705,13 +1715,15 @@ export class ScrcpyService implements OnModuleDestroy {
           ["sh", "-c", this.shellQuote(command)],
           8_000,
         ),
-        this.adb.logcat(udid, COMPATIBILITY_PROBE_LOGCAT_LINES),
+        this.config.externalAdbEnabled
+          ? Promise.resolve(null)
+          : this.adb.logcat(udid, COMPATIBILITY_PROBE_LOGCAT_LINES),
       ]);
 
       const output =
         probeResult.status === "fulfilled" ? probeResult.value.stdout : "";
       const logcat =
-        logcatResult.status === "fulfilled" ? logcatResult.value.stdout : "";
+        logcatResult.status === "fulfilled" ? logcatResult.value?.stdout ?? "" : "";
       const probe = parseCompatibilityProbe(output, logcat);
       this.logger.debug(
         `[${logPrefix}] Android display compatibility probe: ${compatibilityProbeSummary(probe)}`,
@@ -1786,6 +1798,7 @@ export class ScrcpyService implements OnModuleDestroy {
   }
 
   private shouldCollectDeviceDiagnostics(reason: string) {
+    if (this.config.externalAdbEnabled) return false;
     return (
       reason.startsWith("display server exited") ||
       reason.startsWith("display server launcher exited") ||

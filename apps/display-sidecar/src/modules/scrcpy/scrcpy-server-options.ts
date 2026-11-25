@@ -5,6 +5,7 @@ type ScrcpyServerSettings = {
   logLevel: string;
   controlEnabled: boolean;
   videoEncoder?: string;
+  passive?: boolean;
 };
 
 type ScrcpyServerStreamOptions = Pick<
@@ -23,7 +24,13 @@ export function buildScrcpyServerOptions(
   options: ScrcpyServerStreamOptions,
   scid: string,
   tunnelMode: ScrcpyTunnelMode,
-  { version, logLevel, controlEnabled, videoEncoder }: ScrcpyServerSettings,
+  {
+    version,
+    logLevel,
+    controlEnabled,
+    videoEncoder,
+    passive,
+  }: ScrcpyServerSettings,
 ): string[] {
   const serverOptions = [
     version,
@@ -33,10 +40,10 @@ export function buildScrcpyServerOptions(
     `audio=${options.audio ? "true" : "false"}`,
     "audio_codec=opus",
     `control=${controlEnabled ? "true" : "false"}`,
-    "clipboard_autosync=true",
+    `clipboard_autosync=${!passive}`,
     "cleanup=false",
-    "keep_active=true",
-    "power_on=true",
+    `keep_active=${!passive}`,
+    `power_on=${!passive}`,
     "send_device_meta=false",
     "send_frame_meta=true",
     `send_dummy_byte=${tunnelMode === "reverse" ? "false" : "true"}`,

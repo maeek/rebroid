@@ -1,4 +1,6 @@
 import type { AndroidAppsAutomationPort } from '../../android-apps/contracts/android-apps-automation.port';
+import { ConflictException } from '@nestjs/common';
+import { externalAutomationCapability } from '@rebroid/automation-core/device-capabilities';
 import { waitForOperation } from '../../common/wait-for-operation';
 import type { AutomationTargetExecutor } from '../commands/automation-command.types';
 import type {
@@ -24,7 +26,7 @@ export function createStepCommandDispatch(
   stepUses: string,
 ) {
   const pendingAiWork = new Set<Promise<unknown>>();
-  const withTarget: AutomationTargetExecutor = async (signal, operation) => {
+  const runWithTarget: AutomationTargetExecutor = async (signal, operation) => {
     signal?.throwIfAborted();
     const pending = options.admitTargetWork(() =>
       applications.withAutomationTarget(state.target, signal, (app) => {
@@ -43,11 +45,32 @@ export function createStepCommandDispatch(
     signal: AbortSignal | undefined,
     execute: (app: AutomationExecutionState['app']) => Promise<T>,
   ) {
-    if (commandsWithoutTargetWork.has(uses) || capturesScreen(uses)) {
+    if (
+      state.target.kind === 'external' &&
+      !externalAutomationCapability(uses)
+    ) {
+      throw new ConflictException(
+        `Command "${uses}" requires a managed device.`,
+      );
+    }
+    if (
+      (commandsWithoutTargetWork.has(uses) &&
+        !(state.target.kind === 'external' && uses === 'android.wait')) ||
+      capturesScreen(uses)
+    ) {
       return execute(state.app);
     }
-    return withTarget(signal, execute);
+    if (state.authorizeTarget) {
+      return state
+        .authorizeTarget(signal, uses)
+        .then(() => runWithTarget(signal, execute));
+    }
+    return runWithTarget(signal, execute);
   }
+  const withTarget: AutomationTargetExecutor = async (signal, operation) => {
+    await state.authorizeTarget?.(signal, stepUses);
+    return runWithTarget(signal, operation);
+  };
 
   return {
     dispatch,

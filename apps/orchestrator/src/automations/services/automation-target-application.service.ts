@@ -18,11 +18,13 @@ export class AutomationTargetApplicationService {
 
   async assertOwnerAccess(ownerUserId: string, id?: string | null) {
     if (!id) {
-      throw new BadRequestException('targetApplicationId is required.');
+      throw new BadRequestException('targetDeviceId is required.');
     }
-    const app = await this.apps.get(id);
+    const app = await (this.apps.getAutomationDevice?.(id) ??
+      this.apps.get(id));
     if (app.ownerUserId !== ownerUserId) {
-      throw new NotFoundException(`Application "${id}" was not found.`);
+      throw new NotFoundException(`Device "${id}" was not found.`);
     }
+    return app;
   }
 }

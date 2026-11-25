@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
-import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from '../../database/migrations/1800000008000-initialize-sqlite-schema';
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import { ContainerImageBuildRecipe } from '../entities/container-image-build-recipe.entity';
 import { ContainerImageBuilderService } from './container-image-builder.service';
@@ -13,7 +13,7 @@ const openDatabase = () =>
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [ContainerImageBuildJob, ContainerImageBuildRecipe],
-    migrations: [InitializeSqliteSchema1800000005000],
+    migrations: [InitializeSqliteSchema1800000008000],
     migrationsRun: true,
   }).initialize();
 

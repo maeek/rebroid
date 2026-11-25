@@ -71,6 +71,7 @@ RUN apt-get -o Acquire::Check-Date=false update \
   adb \
   ca-certificates \
   && command -v adb \
+  && install -d -m 0700 -o 1000 -g 1000 /app/adb-keys \
   && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production \

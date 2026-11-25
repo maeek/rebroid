@@ -1,6 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { SerializedSqliteDataSource } from '../../../database/serialized-sqlite-data-source';
-import { InitializeSqliteSchema1800000005000 } from '../../../database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from '../../../database/migrations/1800000008000-initialize-sqlite-schema';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
@@ -35,7 +35,7 @@ describe('committed application changes', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication, AndroidAppLifecycleJob],
-      migrations: [InitializeSqliteSchema1800000005000],
+      migrations: [InitializeSqliteSchema1800000008000],
       migrationsRun: true,
     }).initialize();
     const rows = database.getRepository(AndroidApplication);
@@ -308,7 +308,7 @@ describe('open application admission', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication, AndroidAppLifecycleJob],
-      migrations: [InitializeSqliteSchema1800000005000],
+      migrations: [InitializeSqliteSchema1800000008000],
       migrationsRun: true,
     }).initialize();
     try {

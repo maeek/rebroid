@@ -1,6 +1,7 @@
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
-import { DataSource, In, IsNull, type EntityManager } from 'typeorm';
+import { DataSource, IsNull, type EntityManager } from 'typeorm';
+import { assertOpenDeviceSlot } from './open-device-quota';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
@@ -521,20 +522,7 @@ export class AndroidAppsLifecycleTransitionService {
     )
       return;
 
-    const openApps = await manager.getRepository(AndroidApplication).countBy([
-      { ownerUserId: ownerUserId ?? IsNull(), status: In(openStatuses) },
-      {
-        ownerUserId: ownerUserId ?? IsNull(),
-        lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
-      },
-    ]);
-    if (openApps >= maxOpenApps) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'open_app_quota_exceeded',
-        message: `Open app limit reached (${openApps}/${maxOpenApps}). Stop an app before starting another.`,
-      });
-    }
+    await assertOpenDeviceSlot(manager, ownerUserId, maxOpenApps);
   }
 
   private applyPatch(

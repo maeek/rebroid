@@ -6,6 +6,10 @@
   "type": "commonjs",
   "sideEffects": false,
   "exports": {
+    "./android-device": {
+      "types": "./dist/android-device.d.ts",
+      "default": "./dist/android-device.js"
+    },
     "./ui-text": {
       "types": "./dist/ui-text.d.ts",
       "default": "./dist/ui-text.js"
@@ -25,6 +29,9 @@
   },
   "typesVersions": {
     "*": {
+      "android-device": [
+        "dist/android-device.d.ts"
+      ],
       "ui-text": [
         "dist/ui-text.d.ts"
       ],

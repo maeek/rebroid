@@ -1,4 +1,5 @@
 import type { ViewerConfig } from "./types.js";
+import { displayRequestPath } from "./config.js";
 
 export class PermanentWebrtcError extends Error {}
 export class WebrtcSessionExpiredError extends PermanentWebrtcError {}
@@ -106,7 +107,9 @@ export async function requestWebrtcAnswer(
   signal: AbortSignal,
 ) {
   const response = await fetch(
-    `/rebroid/display/public/sessions/${encodeURIComponent(sessionId)}/webrtc/offer`,
+    displayRequestPath(
+      `/rebroid/display/public/sessions/${encodeURIComponent(sessionId)}/webrtc/offer`,
+    ),
     {
       method: "POST",
       signal,

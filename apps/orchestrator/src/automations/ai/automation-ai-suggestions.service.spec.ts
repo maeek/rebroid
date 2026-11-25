@@ -49,7 +49,7 @@ describe('AutomationAiSuggestionsService', () => {
     await expect(
       service.suggest({
         ownerUserId: 'owner',
-        targetApplicationId: 'app',
+        targetDeviceId: 'app',
         appName: 'Android 14',
       }),
     ).resolves.toEqual({
@@ -93,7 +93,7 @@ describe('AutomationAiSuggestionsService', () => {
     await expect(
       service.suggest({
         ownerUserId: 'owner',
-        targetApplicationId: 'app',
+        targetDeviceId: 'app',
         appName: 'Android 14',
       }),
     ).resolves.toMatchObject({
@@ -119,7 +119,7 @@ describe('AutomationAiSuggestionsService', () => {
 
     const result = await service.suggest({
       ownerUserId: 'owner',
-      targetApplicationId: 'app',
+      targetDeviceId: 'app',
       appName: 'Android 14',
     });
 

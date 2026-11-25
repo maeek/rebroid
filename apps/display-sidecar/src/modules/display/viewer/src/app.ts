@@ -1,5 +1,9 @@
 import { applyVideoRecoveryStatus } from "./video-recovery-metrics.js";
-import { getViewerElements, readViewerConfig } from "./config.js";
+import {
+  displayRequestPath,
+  getViewerElements,
+  readViewerConfig,
+} from "./config.js";
 import { createControlChannel } from "./control-channel.js";
 import { createDisplayStream } from "./display-stream.js";
 import { createPageLifecycle } from "./page-lifecycle.js";
@@ -35,6 +39,17 @@ const emitAudioDisabled = (
   });
 };
 const handleSidecarMessage = (message: Record<string, unknown>) => {
+  if (
+    displayRequestPath("/") !== "/" &&
+    message.type === "clipboard" &&
+    typeof message.text === "string"
+  ) {
+    window.parent.postMessage(
+      { type: "rebroid-viewer-clipboard", text: message.text },
+      window.location.origin,
+    );
+    return;
+  }
   latestRelayMetrics = applyVideoRecoveryStatus(latestRelayMetrics, message);
   if (message.type === "video-reset" || message.type === "video-reset-complete")
     return;

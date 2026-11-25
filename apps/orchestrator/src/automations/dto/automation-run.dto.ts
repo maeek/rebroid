@@ -27,7 +27,13 @@ export class RunAutomationDto extends AutomationRunTargetDto {
   @IsOptional()
   @IsString()
   @MaxLength(120)
-  targetApplicationId?: string | null;
+  targetDeviceId?: string | null;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(36)
+  attachmentId?: string;
 }
 
 export class ListAutomationRunsQueryDto extends AutomationOwnerDto {
@@ -50,7 +56,10 @@ export class ActiveAutomationRunDto {
   automationId!: string;
 
   @ApiProperty()
-  targetApplicationId!: string;
+  targetDeviceId!: string;
+
+  @ApiPropertyOptional({ enum: ['managed', 'external'] })
+  targetKind?: 'managed' | 'external';
 
   @ApiProperty({
     enum: [AutomationRunStatus.Queued, AutomationRunStatus.Running],
@@ -107,7 +116,13 @@ export class AutomationRunDto {
   ownerUserId!: string;
 
   @ApiProperty()
-  targetApplicationId!: string;
+  targetDeviceId!: string;
+
+  @ApiPropertyOptional({ enum: ['managed', 'external'] })
+  targetKind?: 'managed' | 'external';
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  targetAttachmentId?: string | null;
 
   @ApiProperty({ type: String, nullable: true })
   targetProfileMode!: string | null;
@@ -151,7 +166,8 @@ export class AutomationRunDto {
 export class AutomationRunHistoryRowDto extends PickType(AutomationRunDto, [
   'id',
   'automationId',
-  'targetApplicationId',
+  'targetDeviceId',
+  'targetKind',
   'targetProfileMode',
   'targetProfileName',
   'trigger',

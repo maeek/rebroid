@@ -10,6 +10,7 @@ import { AutomationTriggersRepository } from './automation-triggers.repository';
 import { AutomationsRepository } from './automations.repository';
 import { SerialQueue } from '../../common/serial-queue';
 import { MetricsModule } from '../../metrics/metrics.module';
+import { AndroidAppsModule } from '../../android-apps/android-apps.module';
 import { WORKFLOW_HISTORY_MAINTENANCE } from '../contracts/workflow-history-maintenance.port';
 
 @Module({
@@ -21,6 +22,7 @@ import { WORKFLOW_HISTORY_MAINTENANCE } from '../contracts/workflow-history-main
       AutomationTrigger,
     ]),
     MetricsModule,
+    AndroidAppsModule,
   ],
   providers: [
     SerialQueue,

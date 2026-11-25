@@ -1,5 +1,5 @@
 import { DataSource, type Repository } from 'typeorm';
-import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from '../../database/migrations/1800000008000-initialize-sqlite-schema';
 import { AndroidApplication } from '../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
@@ -81,7 +81,7 @@ describe('Android application runtime observations', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication],
-      migrations: [InitializeSqliteSchema1800000005000],
+      migrations: [InitializeSqliteSchema1800000008000],
       migrationsRun: true,
     }).initialize();
     apps = database.getRepository(AndroidApplication);

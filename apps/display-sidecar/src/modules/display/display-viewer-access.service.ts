@@ -87,6 +87,8 @@ export class DisplayViewerAccessService {
       ) {
         throw sessionUnavailable();
       }
+      if (this.config.externalAdbEnabled)
+        this.sessions.assertCapability(session, "video");
       return { session, accountSessionId: account.accountSessionId };
     };
 
@@ -150,6 +152,9 @@ export class DisplayViewerAccessService {
             "x-rebroid-viewer-app": target.appId,
             "x-rebroid-viewer-runtime": target.runtimeId,
             "x-rebroid-viewer-owner": target.ownerUserId,
+            ...(this.config.externalAdbEnabled && {
+              "x-rebroid-viewer-kind": "external",
+            }),
           },
           redirect: "error",
           signal: signal ? AbortSignal.any([signal, timeout]) : timeout,

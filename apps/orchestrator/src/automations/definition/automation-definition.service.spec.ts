@@ -31,7 +31,7 @@ describe('AutomationDefinitionService', () => {
     const { service } = createService();
 
     const definition = service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Wake and wait
@@ -60,7 +60,7 @@ spec:
 
     expect(() =>
       service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Bad command
@@ -85,7 +85,7 @@ spec:
       ).not.toContain(uses);
       expect(() =>
         service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Unavailable command
@@ -103,7 +103,7 @@ spec:
       const { service } = createService();
       expect(() =>
         service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: AI capability check
@@ -123,7 +123,7 @@ spec:
 
     expect(() =>
       service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Bad input
@@ -145,7 +145,7 @@ spec:
       const { service } = createService();
       expect(() =>
         service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata: { name: AI settings }
 spec:
@@ -165,7 +165,7 @@ spec:
   it('accepts type-compatible earlier outputs and rejects wrong types or authorization inputs', () => {
     const { service } = createService();
     const yaml = `
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Copy a file
@@ -242,7 +242,7 @@ spec:
     const { service } = createService();
     expect(() =>
       service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata: { name: Branch scope }
 spec:
@@ -272,7 +272,7 @@ spec:
     const { service } = createService();
 
     const definition = service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Branching
@@ -362,7 +362,7 @@ spec:
 
     expect(() =>
       service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Duplicate nested ids
@@ -375,7 +375,7 @@ spec:
           - conditions:
               - value:
                   source: runContext
-                  key: targetApplicationId
+                  key: targetDeviceId
                 operator: exists
       then:
         - id: duplicate
@@ -395,7 +395,7 @@ spec:
 
     expect(() =>
       service.parseYaml(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Bad repeat

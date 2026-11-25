@@ -66,7 +66,9 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
       .select([
         'run.id',
         'run.automationId',
-        'run.targetApplicationId',
+        'run.targetDeviceId',
+        'run.targetKind',
+        'run.targetAttachmentId',
         'run.targetProfileMode',
         'run.targetProfileName',
         'run.trigger',
@@ -155,7 +157,9 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
       .select([
         'run.id',
         'run.automationId',
-        'run.targetApplicationId',
+        'run.targetDeviceId',
+        'run.targetKind',
+        'run.targetAttachmentId',
         'run.status',
         'run.createdAt',
       ])
@@ -174,12 +178,12 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
 
   async listApplicationWorkflows(
     ownerUserId: string,
-    targetApplicationId: string,
+    targetDeviceId: string,
     page: number,
     pageSize: number,
     search: string,
   ) {
-    const query = this.applicationWorkflows(ownerUserId, targetApplicationId);
+    const query = this.applicationWorkflows(ownerUserId, targetDeviceId);
     if (search) {
       query.andWhere(
         '(instr(lower(workflow.name), lower(:search)) > 0 OR instr(lower(run.id), lower(:search)) > 0)',
@@ -217,13 +221,13 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
 
   async findApplicationWorkflow(
     ownerUserId: string,
-    targetApplicationId: string,
+    targetDeviceId: string,
     runId: string,
   ) {
     const {
       entities: [run],
       raw,
-    } = await this.applicationWorkflows(ownerUserId, targetApplicationId)
+    } = await this.applicationWorkflows(ownerUserId, targetDeviceId)
       .andWhere('run.id = :runId', { runId })
       .addSelect('run.stepResultsJson')
       .addSelect('workflow.name', 'automationName')
@@ -231,12 +235,9 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
     return run ? { run, automationName: raw[0]?.automationName ?? null } : null;
   }
 
-  private applicationWorkflows(
-    ownerUserId: string,
-    targetApplicationId: string,
-  ) {
+  private applicationWorkflows(ownerUserId: string, targetDeviceId: string) {
     return this.runsWithWorkflow()
-      .where({ ownerUserId, targetApplicationId })
+      .where({ ownerUserId, targetDeviceId })
       .andWhere('run.automationId NOT LIKE :adHocAiPattern', {
         adHocAiPattern,
       });
@@ -254,7 +255,7 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
 
   listAdHocAiForTarget(
     ownerUserId: string,
-    targetApplicationId: string,
+    targetDeviceId: string,
     limit = 20,
   ) {
     return this.runs
@@ -262,7 +263,7 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
       .addSelect('run.stepResultsJson')
       .where({
         ownerUserId,
-        targetApplicationId,
+        targetDeviceId,
         automationId: Like(adHocAiPattern),
       })
       .orderBy('run.createdAt', 'DESC')
@@ -270,12 +271,12 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
       .getMany();
   }
 
-  listAllAdHocAiForTarget(ownerUserId: string, targetApplicationId: string) {
+  listAllAdHocAiForTarget(ownerUserId: string, targetDeviceId: string) {
     return this.runs.find({
       select: { id: true, status: true },
       where: {
         ownerUserId,
-        targetApplicationId,
+        targetDeviceId,
         automationId: Like(adHocAiPattern),
       },
       order: { createdAt: 'DESC' },

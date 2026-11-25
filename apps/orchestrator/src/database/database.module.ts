@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule, type TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { InitializeSqliteSchema1800000005000 } from './migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from './migrations/1800000008000-initialize-sqlite-schema';
 import { SerializedSqliteDataSource } from './serialized-sqlite-data-source';
 
 @Module({
@@ -30,7 +30,7 @@ import { SerializedSqliteDataSource } from './serialized-sqlite-data-source';
             connection.pragma('busy_timeout = 5000');
           },
           autoLoadEntities: true,
-          migrations: [InitializeSqliteSchema1800000005000],
+          migrations: [InitializeSqliteSchema1800000008000],
           migrationsRun: true,
           synchronize: false,
         };

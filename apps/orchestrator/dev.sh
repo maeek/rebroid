@@ -55,4 +55,4 @@ export FIREWALL_AGENT_SOCKET="${FIREWALL_AGENT_SOCKET:-/tmp/rebroid-firewall/age
 export FIREWALL_AGENT_SHARED_SECRET="${FIREWALL_AGENT_SHARED_SECRET:-$ORCHESTRATOR_SHARED_SECRET}"
 export FIREWALL_POLICY_BOOTSTRAP="${FIREWALL_POLICY_BOOTSTRAP:-false}"
 
-exec corepack pnpm dev
+exec corepack pnpm exec nest start --watch

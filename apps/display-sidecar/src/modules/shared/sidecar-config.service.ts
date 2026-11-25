@@ -16,6 +16,7 @@ const optionalVideoEncoder = z.preprocess(
 
 const environmentSchema = z.object({
   PORT: optionalInteger(1, 65_535),
+  DISPLAY_SIDECAR_BIND_HOST: z.enum(["0.0.0.0", "127.0.0.1"]).optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   DISPLAY_SESSION_TTL_SECONDS: optionalInteger(1, 86_400),
   DISPLAY_SESSION_MAX_LIFETIME_SECONDS: optionalInteger(1, 604_800),
@@ -32,6 +33,10 @@ const environmentSchema = z.object({
     .optional(),
   ENABLE_API_DOCS: z.enum(["true", "false"]).optional(),
   ADB_PATH: z.string().trim().min(1).optional(),
+  EXTERNAL_ADB_ENABLED: z.enum(["true", "false"]).optional(),
+  EXTERNAL_ADB_KEYS_DIRECTORY: z.string().trim().min(1).optional(),
+  EXTERNAL_ADB_TCP_ENDPOINTS: z.string().optional(),
+  EXTERNAL_ADB_USB_PORTS: z.string().optional(),
   ADB_TEXT_OUTPUT_MAX_BYTES: optionalInteger(1_024, 64 * 1024 * 1024),
   ADB_BINARY_OUTPUT_MAX_BYTES: optionalInteger(1_024, 512 * 1024 * 1024),
   SCRCPY_TUNNEL_MODE: z.enum(["direct", "forward", "reverse"]).optional(),
@@ -59,6 +64,7 @@ const environment = parseSidecarEnvironment(process.env);
 @Injectable()
 export class SidecarConfigService {
   readonly port = environment.PORT ?? 8000;
+  readonly bindHost = environment.DISPLAY_SIDECAR_BIND_HOST ?? "0.0.0.0";
   readonly webInternalUrl = environment.WEB_INTERNAL_URL ?? "http://web:3101";
   readonly sessionTtlSeconds = environment.DISPLAY_SESSION_TTL_SECONDS ?? 900;
   readonly sessionMaxLifetimeSeconds =
@@ -89,6 +95,19 @@ export class SidecarConfigService {
     (environment.NODE_ENV ?? "development") !== "production" ||
     environment.ENABLE_API_DOCS === "true";
   readonly adbPath = environment.ADB_PATH || "adb";
+  readonly externalAdbEnabled = environment.EXTERNAL_ADB_ENABLED === "true";
+  readonly externalAdbKeysDirectory =
+    environment.EXTERNAL_ADB_KEYS_DIRECTORY ?? "/app/adb-keys";
+  readonly externalAdbTcpEndpoints = new Set(
+    environment.EXTERNAL_ADB_TCP_ENDPOINTS?.split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+  readonly externalAdbUsbPorts = new Set(
+    environment.EXTERNAL_ADB_USB_PORTS?.split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
   readonly adbTextOutputMaxBytes =
     environment.ADB_TEXT_OUTPUT_MAX_BYTES ?? 2 * 1024 * 1024;
   readonly adbBinaryOutputMaxBytes =

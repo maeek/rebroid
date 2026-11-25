@@ -74,7 +74,7 @@ export class CreateAutomationTriggerDto extends AutomationProfileTargetDto {
   @ApiProperty()
   @IsString()
   @MaxLength(120)
-  targetApplicationId!: string;
+  targetDeviceId!: string;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()
@@ -134,7 +134,7 @@ export class AutomationTriggerDto {
   automationId!: string;
 
   @ApiProperty()
-  targetApplicationId!: string;
+  targetDeviceId!: string;
 
   @ApiProperty({ type: String, nullable: true })
   profileMode!: string | null;

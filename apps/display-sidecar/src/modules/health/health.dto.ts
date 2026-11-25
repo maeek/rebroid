@@ -1,8 +1,19 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 class HealthAuthDto {
   @ApiProperty({ example: true })
   sharedSecretConfigured!: boolean;
+}
+
+class ExternalAdbReadinessDto {
+  @ApiProperty()
+  adb!: boolean;
+
+  @ApiProperty()
+  keyStorage!: boolean;
+
+  @ApiProperty({ enum: ["not_configured", "configured", "unavailable"] })
+  usb!: "not_configured" | "configured" | "unavailable";
 }
 
 export class HealthDto {
@@ -17,4 +28,7 @@ export class HealthDto {
 
   @ApiProperty({ type: HealthAuthDto })
   auth!: HealthAuthDto;
+
+  @ApiPropertyOptional({ type: ExternalAdbReadinessDto })
+  externalAdb?: ExternalAdbReadinessDto;
 }

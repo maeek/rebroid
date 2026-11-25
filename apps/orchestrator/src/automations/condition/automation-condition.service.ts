@@ -92,10 +92,13 @@ export class AutomationConditionService {
         {
           runId: state.runId,
           trigger: state.trigger,
-          targetApplicationId: state.app.id,
+          targetDeviceId: state.app.id,
           targetProfileMode: state.targetProfileMode,
           targetProfileName: state.targetProfileName,
-          app: state.app,
+          device:
+            state.app.kind === 'external'
+              ? { id: state.app.id, status: state.app.status, kind: 'external' }
+              : { ...state.app, kind: 'managed' },
         },
         ref.key,
       );

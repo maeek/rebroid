@@ -10,6 +10,10 @@
       "types": "./dist/definition.d.ts",
       "default": "./dist/definition.js"
     },
+    "./device-capabilities": {
+      "types": "./dist/device-capabilities.d.ts",
+      "default": "./dist/device-capabilities.js"
+    },
     "./grid-sort": {
       "types": "./dist/grid-sort.d.ts",
       "default": "./dist/grid-sort.js"
@@ -39,6 +43,9 @@
     "*": {
       "definition": [
         "dist/definition.d.ts"
+      ],
+      "device-capabilities": [
+        "dist/device-capabilities.d.ts"
       ],
       "grid-sort": [
         "dist/grid-sort.d.ts"

@@ -27,13 +27,31 @@ const expectNoRequestBody = (path: string, method: string) => {
 };
 
 describe('orchestrator OpenAPI domain contract', () => {
-  it('exposes the app domain routes without legacy android-applications paths', () => {
-    expect(document.paths['/api/v1/apps']).toBeDefined();
-    expect(document.paths['/api/v1/apps/{id}/lifecycle/start']).toBeDefined();
+  it('exposes the managed device contract and lifecycle routes', () => {
+    expect(document.paths['/api/v1/devices']).toBeDefined();
+    expect(document.paths['/api/v1/devices']?.post?.requestBody).toMatchObject({
+      content: {
+        'application/json': {
+          schema: {
+            $ref: '#/components/schemas/CreateManagedAndroidDeviceDto',
+          },
+        },
+      },
+    });
     expect(
-      document.paths['/api/v1/apps/{id}/runtime/data-files'],
+      document.components.schemas.CreateManagedAndroidDeviceDto,
+    ).toMatchObject({
+      properties: { kind: { enum: ['managed'] } },
+      required: expect.arrayContaining(['kind', 'name']),
+    });
+    expect(
+      document.paths['/api/v1/devices/{id}/lifecycle/start'],
     ).toBeDefined();
-    expect(document.paths['/api/v1/apps/{id}/viewer/session']).toBeDefined();
+    expect(
+      document.paths['/api/v1/devices/{id}/runtime/data-files'],
+    ).toBeDefined();
+    expect(document.paths['/api/v1/devices/{id}/viewer/session']).toBeDefined();
+    expect(document.paths['/api/v1/apps']).toBeUndefined();
     expect(document.paths['/api/v1/android-applications']).toBeUndefined();
   });
 
@@ -89,8 +107,8 @@ describe('orchestrator OpenAPI domain contract', () => {
   });
 
   it('does not document request bodies for bodyless mutations', () => {
-    expectNoRequestBody('/api/v1/apps/{id}/lifecycle/stop', 'post');
-    expectNoRequestBody('/api/v1/apps/{id}/runtime/screenshot', 'post');
+    expectNoRequestBody('/api/v1/devices/{id}/lifecycle/stop', 'post');
+    expectNoRequestBody('/api/v1/devices/{id}/runtime/screenshot', 'post');
     expectNoRequestBody('/api/v1/network-policies/reconcile', 'post');
     expectNoRequestBody('/api/v1/platform/docker/networks/{id}', 'delete');
     expectNoRequestBody('/api/v1/platform/docker/images/{id}', 'delete');
@@ -101,7 +119,8 @@ describe('orchestrator OpenAPI domain contract', () => {
   });
 
   it('requires the authenticated web account and runtime version for viewer activity', () => {
-    const activity = document.paths['/api/v1/apps/{id}/viewer/activity']?.post;
+    const activity =
+      document.paths['/api/v1/devices/{id}/viewer/activity']?.post;
     expect(activity?.requestBody).toMatchObject({
       required: true,
       content: {
@@ -118,7 +137,7 @@ describe('orchestrator OpenAPI domain contract', () => {
   });
 
   it('exposes a bodyless runtime recreation command with a conflict response', () => {
-    const path = '/api/v1/apps/{id}/lifecycle/recreate';
+    const path = '/api/v1/devices/{id}/lifecycle/recreate';
     expectNoRequestBody(path, 'post');
     expect(document.paths[path]?.post?.responses).toMatchObject({
       200: {
@@ -135,10 +154,10 @@ describe('orchestrator OpenAPI domain contract', () => {
   });
 
   it.each([
-    '/api/v1/apps',
-    '/api/v1/apps/{id}/clone',
-    '/api/v1/apps/{id}/lifecycle/start',
-    '/api/v1/apps/{id}/lifecycle/recreate',
+    '/api/v1/devices',
+    '/api/v1/devices/{id}/clone',
+    '/api/v1/devices/{id}/lifecycle/start',
+    '/api/v1/devices/{id}/lifecycle/recreate',
   ])('documents the trusted owner quota for %s', (path) => {
     expect(document.paths[path]?.post?.parameters).toContainEqual(
       expect.objectContaining({
@@ -149,7 +168,8 @@ describe('orchestrator OpenAPI domain contract', () => {
   });
 
   it('documents the trusted egress permission for network policy changes', () => {
-    const operation = document.paths['/api/v1/apps/{id}/network-policy']?.patch;
+    const operation =
+      document.paths['/api/v1/devices/{id}/network-policy']?.patch;
     expect(operation?.parameters).toContainEqual(
       expect.objectContaining({
         name: 'x-rebroid-allow-broad-egress',
@@ -164,7 +184,7 @@ describe('orchestrator OpenAPI domain contract', () => {
     );
   });
 
-  it.each(['/api/v1/apps', '/api/v1/apps/{id}/clone'])(
+  it.each(['/api/v1/devices', '/api/v1/devices/{id}/clone'])(
     'documents the trusted image grants for %s',
     (path) => {
       expect(document.paths[path]?.post?.parameters).toContainEqual(

@@ -1,6 +1,6 @@
 import type { AutomationDefinition } from '@rebroid/automation-core/definition';
 import { DataSource } from 'typeorm';
-import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from '../../database/migrations/1800000008000-initialize-sqlite-schema';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 import {
   Automation,
@@ -33,7 +33,7 @@ describe('workflow run summaries', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [Automation, AutomationRun, AutomationTrigger],
-      migrations: [InitializeSqliteSchema1800000005000],
+      migrations: [InitializeSqliteSchema1800000008000],
       migrationsRun: true,
     }).initialize();
     runs = new AutomationRunsRepository(db.getRepository(AutomationRun));
@@ -63,7 +63,7 @@ describe('workflow run summaries', () => {
       with: { message: id },
     });
     const definition: AutomationDefinition = {
-      apiVersion: 'rebroid.io/automation/v1',
+      apiVersion: 'rebroid.io/automation/v2',
       kind: 'AndroidAutomation',
       metadata: {
         name: 'Inventory audit',
@@ -115,7 +115,7 @@ describe('workflow run summaries', () => {
     const trigger = {
       ownerUserId: 'owner',
       automationId: 'audit',
-      targetApplicationId: 'app-1',
+      targetDeviceId: 'app-1',
       triggerType: AutomationTriggerType.Schedule,
       triggerConfigJson: '{}',
     };
@@ -136,13 +136,13 @@ describe('workflow run summaries', () => {
       total: 2,
       page: 2,
       pageSize: 1,
-      facets: { tags: ['nightly'], targetApplicationIds: ['app-1'] },
+      facets: { tags: ['nightly'], targetDeviceIds: ['app-1'] },
       items: [
         {
           id: 'audit',
           tags: [{ name: 'nightly' }],
           stepCount: 8,
-          targetApplicationIds: ['app-1'],
+          targetDeviceIds: ['app-1'],
         },
       ],
     });
@@ -184,11 +184,11 @@ describe('workflow run summaries', () => {
       lastError: null,
     });
 
-    const enqueue = (targetApplicationId: string) =>
+    const enqueue = (targetDeviceId: string) =>
       db.getRepository(AutomationRun).save({
         automationId: 'workflow',
         ownerUserId: 'owner',
-        targetApplicationId,
+        targetDeviceId,
         trigger: AutomationRunTrigger.Manual,
         status: AutomationRunStatus.Queued,
         createdAt: new Date('2026-01-02T00:00:00Z'),
@@ -249,7 +249,7 @@ describe('workflow run summaries', () => {
         ownerUserId: 'owner',
         name: 'Inventory schedule',
         automationId: 'workflow',
-        targetApplicationId: 'app',
+        targetDeviceId: 'app',
         triggerType: AutomationTriggerType.Schedule,
         triggerConfigJson: '{}',
       }),
@@ -269,7 +269,7 @@ describe('workflow run summaries', () => {
         automationId: 'workflow',
         automationTriggerId: trigger.id,
         ownerUserId: 'owner',
-        targetApplicationId: 'app',
+        targetDeviceId: 'app',
         trigger: AutomationRunTrigger.Schedule,
         createdAt: new Date(createdAt),
       });

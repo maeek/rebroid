@@ -4,8 +4,9 @@ import type { AndroidApplicationStatus } from './android-application-status';
 
 export const ANDROID_APPS_AUTOMATION = Symbol('ANDROID_APPS_AUTOMATION');
 
-export interface AndroidAutomationApplication {
+export interface ManagedAutomationApplication {
   id: string;
+  kind?: 'managed';
   ownerUserId: string | null;
   status: AndroidApplicationStatus;
   statusMessage: string | null;
@@ -20,9 +21,23 @@ export interface AndroidAutomationApplication {
   networkPolicyAllowCidrs: string;
 }
 
-export interface AndroidAutomationTarget extends AndroidAutomationApplication {
+export interface ExternalAutomationApplication {
+  id: string;
+  kind: 'external';
+  ownerUserId: string;
+  attachmentId: string | null;
+}
+
+export type AndroidAutomationApplication =
+  ManagedAutomationApplication | ExternalAutomationApplication;
+
+export interface ManagedAutomationTarget extends ManagedAutomationApplication {
   readonly containerStartedAt: string;
 }
+
+export type AndroidAutomationTarget =
+  | ManagedAutomationTarget
+  | (ExternalAutomationApplication & { attachmentId: string });
 
 export interface AndroidAutomationDisplaySession {
   id: string;
@@ -40,6 +55,11 @@ export interface AndroidAutomationCidrChange {
 }
 
 export interface AndroidAutomationAdbPort {
+  launchPackage?(
+    app: AndroidAutomationApplication,
+    packageName: string,
+    signal?: AbortSignal,
+  ): Promise<{ installed: boolean; launched: boolean }>;
   getClipboard(
     app: AndroidAutomationApplication,
     signal?: AbortSignal,
@@ -176,11 +196,11 @@ export interface AndroidAutomationNetworkPolicyPort {
   updateNetworkPolicy(
     id: string,
     input: AndroidAutomationNetworkPolicyUpdate,
-  ): Promise<AndroidAutomationApplication>;
+  ): Promise<ManagedAutomationApplication>;
   changeAllowedCidr(
     id: string,
     change: AndroidAutomationCidrChange,
-  ): Promise<AndroidAutomationApplication>;
+  ): Promise<ManagedAutomationApplication>;
 }
 
 export interface AndroidAutomationAdapters {
@@ -190,12 +210,13 @@ export interface AndroidAutomationAdapters {
 }
 
 export interface AndroidAppsAutomationPort {
-  get(id: string): Promise<AndroidAutomationApplication>;
+  get(id: string): Promise<ManagedAutomationApplication>;
+  getAutomationDevice?(id: string): Promise<AndroidAutomationApplication>;
   start(
     id: string,
     dto?: { profileMode?: ApplicationProfileMode; profileName?: string },
     maxOpenApps?: number,
-  ): Promise<AndroidAutomationApplication>;
+  ): Promise<ManagedAutomationApplication>;
   captureAutomationTarget(
     app: AndroidAutomationApplication,
     signal: AbortSignal,
@@ -205,5 +226,8 @@ export interface AndroidAppsAutomationPort {
     signal: AbortSignal | undefined,
     operation: (app: AndroidAutomationApplication) => Promise<T>,
   ): Promise<T>;
-  automationAdapters(canUseInternet: boolean): AndroidAutomationAdapters;
+  automationAdapters(
+    canUseInternet: boolean,
+    device?: AndroidAutomationApplication,
+  ): AndroidAutomationAdapters;
 }

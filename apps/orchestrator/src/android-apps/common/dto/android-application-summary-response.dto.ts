@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ManagedAndroidDeviceDto } from './managed-android-device.dto';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
@@ -6,7 +7,7 @@ import {
 } from '../../contracts/android-application-status';
 import { AndroidApplicationStatusDetail } from '../../android-application.entity';
 
-export class AndroidApplicationSummaryResponseDto {
+export class AndroidApplicationSummaryResponseDto extends ManagedAndroidDeviceDto {
   @ApiProperty()
   id!: string;
 
@@ -35,6 +36,7 @@ export class AndroidApplicationSummaryResponseDto {
     app: AndroidApplication,
   ): AndroidApplicationSummaryResponseDto {
     return {
+      ...ManagedAndroidDeviceDto.describe(app.kind),
       id: app.id,
       name: app.name,
       ownerUserId: app.ownerUserId,

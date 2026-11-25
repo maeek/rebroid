@@ -8,6 +8,9 @@ const optionalNumber = (minimum: number, maximum: number) =>
 
 export const orchestratorEnvironmentSchema = z.object({
   WEB_INTERNAL_URL: z.url({ protocol: /^https?$/ }).optional(),
+  EXTERNAL_ADB_BROKER_URL: z.url({ protocol: /^https?$/ }).optional(),
+  EXTERNAL_ADB_BROKER_SECRET: z.string().trim().min(32).optional(),
+  EXTERNAL_ADB_TCP_ENDPOINTS: z.string().optional(),
   PORT: optionalInteger(1, 65_535),
   DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
   DOCKER_REQUEST_TIMEOUT_MS: optionalInteger(1, 300_000),

@@ -2,11 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Optional,
 } from "@nestjs/common";
+import { SidecarConfigService } from "./sidecar-config.service";
 
 export const displayFeatureKeys = [
   "feature.display-virtual",
   "feature.display-webrtc",
+  "feature.external-devices",
 ] as const;
 
 type DisplayFeatureKey = (typeof displayFeatureKeys)[number];
@@ -20,6 +23,15 @@ export interface SidecarFeatureSnapshot {
 export class SidecarFeatureService {
   private revision = -1;
   private enabled = new Set<DisplayFeatureKey>();
+  private observedAt = 0;
+
+  constructor(@Optional() private readonly config?: SidecarConfigService) {}
+
+  private keys() {
+    return this.config?.externalAdbEnabled
+      ? displayFeatureKeys
+      : displayFeatureKeys.filter((key) => key !== "feature.external-devices");
+  }
 
   apply(snapshot: SidecarFeatureSnapshot) {
     if (!Number.isSafeInteger(snapshot?.revision) || snapshot.revision < 0) {
@@ -28,10 +40,11 @@ export class SidecarFeatureService {
       );
     }
     const features = snapshot.features;
+    const keys = this.keys();
     if (
       !Array.isArray(features) ||
-      features.length !== displayFeatureKeys.length ||
-      !displayFeatureKeys.every((key) =>
+      features.length !== keys.length ||
+      !keys.every((key) =>
         features.some(
           (feature) =>
             feature?.key === key && typeof feature.effective === "boolean",
@@ -52,15 +65,16 @@ export class SidecarFeatureService {
       features.filter(({ effective }) => effective).map(({ key }) => key),
     );
     this.revision = snapshot.revision;
+    this.observedAt = Date.now();
     return this.state();
   }
 
   state(): SidecarFeatureSnapshot {
     return {
       revision: this.revision,
-      features: displayFeatureKeys.map((key) => ({
+      features: this.keys().map((key) => ({
         key,
-        effective: this.enabled.has(key),
+        effective: this.isEnabled(key),
       })),
     };
   }
@@ -70,7 +84,14 @@ export class SidecarFeatureService {
   }
 
   isWebrtcEnabled() {
-    return this.enabled.has("feature.display-webrtc");
+    return this.isEnabled("feature.display-webrtc");
+  }
+
+  isExternalAdbEnabled() {
+    return Boolean(
+      this.config?.externalAdbEnabled &&
+      this.isEnabled("feature.external-devices"),
+    );
   }
 
   assertWebrtcEnabled() {
@@ -78,12 +99,20 @@ export class SidecarFeatureService {
   }
 
   private assertEnabled(key: DisplayFeatureKey, label: string) {
-    if (this.enabled.has(key)) return;
+    if (this.isEnabled(key)) return;
     throw new ConflictException({
       statusCode: 409,
       code: "feature_disabled",
       feature: key,
       message: `${label} is disabled or feature state is not synchronized.`,
     });
+  }
+
+  private isEnabled(key: DisplayFeatureKey) {
+    return (
+      this.enabled.has(key) &&
+      (!this.config?.externalAdbEnabled ||
+        Date.now() - this.observedAt < 30_000)
+    );
   }
 }

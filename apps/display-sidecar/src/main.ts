@@ -70,7 +70,7 @@ async function bootstrap() {
   }
 
   const port = config.port;
-  await app.listen({ port, host: "0.0.0.0" });
+  await app.listen({ port, host: config.bindHost });
 }
 
 void bootstrap().catch((error) => {

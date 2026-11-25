@@ -15,7 +15,7 @@ const run = {
   id: 'run-1',
   automationId: 'automation-1',
   ownerUserId: 'owner-1',
-  targetApplicationId: 'app-1',
+  targetDeviceId: 'app-1',
   trigger: AutomationRunTrigger.Manual,
   status: AutomationRunStatus.Running,
   startedAt: new Date(),
@@ -37,6 +37,7 @@ const createService = (
     events?: object;
     ephemeral?: object;
     execution?: object;
+    devices?: object;
   } = {},
 ) => {
   const runs = {
@@ -70,11 +71,56 @@ const createService = (
       execution,
       new MetricsService(),
       { assertEnabled: jest.fn() } as never,
+      overrides.devices as never,
     ),
   };
 };
 
 describe('AutomationRunnerService', () => {
+  it.each(['android.adbShell', 'android.pullFile'])(
+    'rejects a nested external %s before reservation',
+    async (uses) => {
+      const definition = {
+        apiVersion: 'rebroid.io/automation/v2',
+        kind: 'Automation',
+        metadata: { name: 'nested unsupported step' },
+        spec: {
+          steps: [
+            {
+              id: 'inspect',
+              type: 'condition',
+              then: [{ id: 'restricted', uses, with: {} }],
+            },
+          ],
+        },
+      } as never;
+      const runnable = {
+        definition,
+        ephemeral: true,
+        entity: { id: 'ephemeral-1', ownerUserId: 'owner-1' },
+      };
+      const { service, events } = createService({
+        ephemeral: { create: jest.fn().mockReturnValue(runnable) },
+        devices: {
+          getAutomationDevice: jest
+            .fn()
+            .mockResolvedValue({ kind: 'external', ownerUserId: 'owner-1' }),
+        },
+      });
+      await expect(
+        service.enqueueEphemeral(
+          'owner-1',
+          definition,
+          AutomationRunTrigger.Manual,
+          {
+            targetDeviceId: 'phone',
+          },
+        ),
+      ).rejects.toThrow(uses);
+      expect(events.enqueueRun).not.toHaveBeenCalled();
+    },
+  );
+
   it('requires a target before reserving a run', async () => {
     const definition = {
       apiVersion: 'rebroid.io/v1alpha1',
@@ -127,7 +173,7 @@ describe('AutomationRunnerService', () => {
         'owner-1',
         definition,
         AutomationRunTrigger.Manual,
-        { targetApplicationId: 'app-1' },
+        { targetDeviceId: 'app-1' },
       ),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(ephemeral.delete).toHaveBeenCalledWith('ephemeral-1');
@@ -147,7 +193,7 @@ describe('AutomationRunnerService', () => {
 
     await expect(
       service.enqueue(automation, AutomationRunTrigger.Manual, {
-        targetApplicationId: run.targetApplicationId,
+        targetDeviceId: run.targetDeviceId,
       }),
     ).rejects.toBe(error);
     expect(execution.execute).not.toHaveBeenCalled();
@@ -184,7 +230,7 @@ describe('AutomationRunnerService', () => {
         'owner-1',
         definition,
         AutomationRunTrigger.Manual,
-        { targetApplicationId: 'app-1' },
+        { targetDeviceId: 'app-1' },
         { prompt: 'Open settings', clientMessageId: 'turn-1' },
       ),
     ).resolves.toBe(queued);
@@ -224,7 +270,7 @@ describe('AutomationRunnerService', () => {
         automation as never,
         AutomationRunTrigger.Manual,
         {
-          targetApplicationId: 'app-1',
+          targetDeviceId: 'app-1',
         },
       ),
     ).resolves.toBe(queued);
@@ -239,7 +285,7 @@ describe('AutomationRunnerService', () => {
         automation as never,
         AutomationRunTrigger.Manual,
         {
-          targetApplicationId: 'app-1',
+          targetDeviceId: 'app-1',
         },
       ),
     ).rejects.toThrow('database offline');
@@ -270,7 +316,7 @@ describe('AutomationRunnerService', () => {
         'owner-1',
         definition,
         AutomationRunTrigger.Manual,
-        { targetApplicationId: 'app-1' },
+        { targetDeviceId: 'app-1' },
       ),
     ).rejects.toBe('event failed');
     expect(events.transitionRun).not.toHaveBeenCalled();
@@ -350,7 +396,7 @@ describe('AutomationRunnerService', () => {
     });
     const enqueue = () =>
       service.enqueue(automation, AutomationRunTrigger.Manual, {
-        targetApplicationId: queued.targetApplicationId,
+        targetDeviceId: queued.targetDeviceId,
       });
     await enqueue();
     await startEntered.promise;
@@ -433,7 +479,7 @@ describe('AutomationRunnerService', () => {
       },
     });
     const enqueued = service.enqueue(automation, AutomationRunTrigger.Manual, {
-      targetApplicationId: queued.targetApplicationId,
+      targetDeviceId: queued.targetDeviceId,
     });
     await queuedEventEntered.promise;
 
@@ -497,7 +543,7 @@ describe('AutomationRunnerService', () => {
       'owner-1',
       definition,
       AutomationRunTrigger.Manual,
-      { targetApplicationId: 'app-1' },
+      { targetDeviceId: 'app-1' },
     );
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(execution.execute).toHaveBeenCalled();

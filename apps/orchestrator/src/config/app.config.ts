@@ -20,6 +20,15 @@ export default registerAs('app', () => {
     port: environmentNumber(process.env.PORT, 4100),
     sharedSecret: sharedSecret || undefined,
     webInternalUrl: process.env.WEB_INTERNAL_URL ?? 'http://localhost:3101',
+    externalAdb: {
+      configured: Boolean(
+        process.env.EXTERNAL_ADB_BROKER_URL &&
+        process.env.EXTERNAL_ADB_BROKER_SECRET?.trim(),
+      ),
+      brokerUrl: process.env.EXTERNAL_ADB_BROKER_URL,
+      brokerSecret: process.env.EXTERNAL_ADB_BROKER_SECRET?.trim(),
+      tcpEndpoints: environmentCsv(process.env.EXTERNAL_ADB_TCP_ENDPOINTS, []),
+    },
     corsOrigins: environmentCsv(process.env.ORCHESTRATOR_CORS_ORIGINS, []),
     databasePath,
     runtimeSnapshotsDir: resolve(dirname(databasePath), 'runtime-snapshots'),

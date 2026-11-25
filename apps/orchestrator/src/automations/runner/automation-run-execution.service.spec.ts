@@ -16,7 +16,7 @@ const queuedRun = {
   id: 'run-1',
   automationId: 'automation-1',
   ownerUserId: 'owner-1',
-  targetApplicationId: 'app-1',
+  targetDeviceId: 'app-1',
   targetProfileMode: null,
   targetProfileName: null,
   trigger: 'manual',
@@ -395,7 +395,7 @@ describe('AutomationRunExecutionService', () => {
       definitionJson: JSON.stringify(runnable.definition),
     });
     await runner.enqueue(workflow, AutomationRunTrigger.Manual, {
-      targetApplicationId: target.id,
+      targetDeviceId: target.id,
     });
     await runningPersisted.promise;
     await expect(

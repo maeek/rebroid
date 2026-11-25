@@ -23,6 +23,7 @@ import type {
 
 const applicationNavigationColumns = {
   id: true,
+  kind: true,
   name: true,
   ownerUserId: true,
   status: true,
@@ -294,6 +295,7 @@ export class AndroidApplicationsRepository
     return this.applications.find({
       select: {
         id: true,
+        kind: true,
         name: true,
         ownerUserId: true,
         status: true,
@@ -327,7 +329,13 @@ export class AndroidApplicationsRepository
   findViewerRuntime(id: string) {
     return this.applications.findOne({
       where: { id },
-      select: { ownerUserId: true, status: true, containerId: true },
+      select: {
+        id: true,
+        kind: true,
+        ownerUserId: true,
+        status: true,
+        containerId: true,
+      },
     });
   }
 

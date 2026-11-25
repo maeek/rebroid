@@ -20,15 +20,15 @@ export enum AndroidAppLifecycleJobStatus {
   Running = 'running',
 }
 
-@Entity({ name: 'android_app_lifecycle_jobs' })
-@Index('android_app_lifecycle_jobs_application_unique', ['applicationId'], {
+@Entity({ name: 'android_device_lifecycle_jobs' })
+@Index('android_device_lifecycle_jobs_device_unique', ['applicationId'], {
   unique: true,
 })
 export class AndroidAppLifecycleJob {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @Column({ name: 'deviceId' })
   applicationId!: string;
 
   @Column()

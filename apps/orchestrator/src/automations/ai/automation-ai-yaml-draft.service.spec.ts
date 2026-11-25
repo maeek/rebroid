@@ -46,7 +46,7 @@ const model: AutomationAiProviderModel = {
 };
 
 const validYaml = `
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Login smoke
@@ -68,7 +68,7 @@ spec:
 `;
 
 const controlYaml = `
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Retry readiness
@@ -277,7 +277,7 @@ describe('AutomationAiYamlDraftService', () => {
         type: 'function_call_output',
         call_id: 'call_1',
         output: expect.stringContaining(
-          'apiVersion must be rebroid.io/automation/v1',
+          'apiVersion must be rebroid.io/automation/v2',
         ),
       },
     ]);
@@ -374,7 +374,7 @@ describe('AutomationAiYamlDraftService', () => {
     expect(events.map((event) => event.type)).toContain('draft.repair.started');
     expect(chat).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(chat.mock.calls[1][0].messages)).toContain(
-      'apiVersion must be rebroid.io/automation/v1',
+      'apiVersion must be rebroid.io/automation/v2',
     );
   });
 

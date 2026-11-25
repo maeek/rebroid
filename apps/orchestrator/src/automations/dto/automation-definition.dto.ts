@@ -32,7 +32,7 @@ class AutomationDefinitionSpecDto {
 }
 
 export class AutomationDefinitionDto {
-  @ApiProperty({ example: 'rebroid.io/automation/v1' })
+  @ApiProperty({ example: 'rebroid.io/automation/v2' })
   apiVersion!: string;
 
   @ApiProperty({ example: 'AndroidAutomation' })

@@ -42,7 +42,13 @@ export class RunAdHocAiAutomationDto extends IntersectionType(
   @ApiProperty({ example: '98a530d6-a45d-466a-9cb4-c023067c4971' })
   @IsString()
   @MaxLength(120)
-  targetApplicationId!: string;
+  targetDeviceId!: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(36)
+  attachmentId?: string;
 
   @ApiProperty({ example: 'Open settings and verify Wi-Fi is visible.' })
   @IsString()
@@ -119,7 +125,8 @@ export class SuggestAdHocAiPromptsDto extends PickType(
   RunAdHocAiAutomationDto,
   [
     'ownerUserId',
-    'targetApplicationId',
+    'targetDeviceId',
+    'attachmentId',
     'profileMode',
     'profileName',
     'providerId',

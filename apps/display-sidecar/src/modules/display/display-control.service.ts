@@ -4,9 +4,11 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import type { ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { AdbService } from "../adb/adb.service";
+import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import { ScrcpyControlDispatchError } from "../scrcpy/scrcpy-control-dispatch-error";
@@ -21,6 +23,7 @@ export class DisplayControlService {
     private readonly sessions: DisplaySessionService,
     private readonly adb: AdbService,
     private readonly scrcpy: ScrcpyService,
+    @Optional() private readonly config?: SidecarConfigService,
   ) {}
 
   async executeAction(
@@ -39,6 +42,17 @@ export class DisplayControlService {
       executed: result.executed,
       transport: result.transport,
     };
+  }
+
+  async requestClipboard(sessionId: string) {
+    const session = this.sessions.get(sessionId);
+    this.sessions.assertCapability(session, "clipboard");
+    if (!(await this.scrcpy.requestClipboard(sessionId))) {
+      throw new ConflictException(
+        "The live clipboard connection is unavailable.",
+      );
+    }
+    this.sessions.touch(sessionId);
   }
 
   async execute(
@@ -99,6 +113,7 @@ export class DisplayControlService {
       }
       const command = request.command as ViewerCommand;
       if (
+        !this.config?.externalAdbEnabled &&
         session.surfaceKind === "main" &&
         this.scrcpy.shouldWaitForStreamControl(sessionId) &&
         !this.scrcpy.hasActiveControl(sessionId)
@@ -186,6 +201,7 @@ export class DisplayControlService {
     }
     this.sessions.get(session.id);
     if (
+      this.config?.externalAdbEnabled ||
       session.surfaceKind === "virtual" ||
       this.scrcpy.shouldWaitForStreamControl(session.id)
     ) {

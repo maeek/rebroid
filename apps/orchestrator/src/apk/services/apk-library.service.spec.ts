@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { DataSource } from 'typeorm';
-import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from '../../database/migrations/1800000008000-initialize-sqlite-schema';
 import { ApkBlockRule } from '../entities/apk-block-rule.entity';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
 import { ApkBlockRulesRepository } from '../persistence/apk-block-rules.repository';
@@ -27,7 +27,7 @@ describe('APK library', () => {
     dataSource = await new DataSource({
       type: 'better-sqlite3',
       database: ':memory:',
-      migrations: [InitializeSqliteSchema1800000005000],
+      migrations: [InitializeSqliteSchema1800000008000],
       migrationsRun: true,
       entities: [UploadedApk, ApkBlockRule],
     }).initialize();

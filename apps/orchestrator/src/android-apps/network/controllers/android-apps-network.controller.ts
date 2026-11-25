@@ -25,7 +25,7 @@ export class AndroidAppsNetworkController {
     return this.network.reconcileNetworkPolicies();
   }
 
-  @Patch('apps/:id/network-policy')
+  @Patch('devices/:id/network-policy')
   @ApiHeader({
     name: 'x-rebroid-allow-broad-egress',
     required: false,
@@ -51,7 +51,7 @@ export class AndroidAppsNetworkController {
     );
   }
 
-  @Post('apps/:id/network-policy/apply')
+  @Post('devices/:id/network-policy/apply')
   @ApiOperation({
     summary:
       'Re-apply the stored network policy without restarting the container.',

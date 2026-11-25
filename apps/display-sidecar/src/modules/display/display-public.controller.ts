@@ -1,4 +1,13 @@
-import { Body, Controller, Param, Post, Req, Res } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  Res,
+} from "@nestjs/common";
 import type { FastifyReply } from "fastify";
 import type { IncomingHttpHeaders } from "node:http";
 import {
@@ -19,6 +28,15 @@ import {
 import { DisplayControlService } from "./display-control.service";
 import { DisplayViewerAccessService } from "./display-viewer-access.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
+import { z } from "zod";
+
+const clipboardRequest = z.discriminatedUnion("action", [
+  z.strictObject({ action: z.literal("read") }),
+  z.strictObject({
+    action: z.literal("write"),
+    text: z.string().max(64 * 1024),
+  }),
+]);
 
 @ApiTags("display-public")
 @Controller("rebroid/display/public/sessions/:id")
@@ -47,6 +65,34 @@ export class DisplayPublicController {
       ...(await this.controls.execute(id, {
         type: "action",
         command: body.command,
+      })),
+    };
+  }
+
+  @Post("clipboard")
+  @HttpCode(200)
+  @ApiOperation({
+    summary: "Read or write clipboard text on the authorized live display.",
+  })
+  @ApiOkResponse({ type: DisplayCommandResultDto })
+  async clipboard(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: { headers: IncomingHttpHeaders },
+  ) {
+    await this.access.admit(id, request.headers);
+    const input = clipboardRequest.safeParse(body);
+    if (!input.success)
+      throw new BadRequestException("Invalid clipboard request.");
+    if (input.data.action === "read") {
+      await this.controls.requestClipboard(id);
+      return { ok: true, executed: true, transport: "stream-control" as const };
+    }
+    return {
+      ok: true,
+      ...(await this.controls.execute(id, {
+        type: "clipboard",
+        text: input.data.text,
       })),
     };
   }

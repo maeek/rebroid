@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  managedAndroidDeviceKind,
+  type ManagedAndroidDeviceKind,
+} from '@rebroid/android-application-core/android-device';
+import {
   Column,
   CreateDateColumn,
   Entity,
@@ -163,11 +167,14 @@ export class AndroidApplicationStatusDetail {
   tone!: 'neutral' | 'progress' | 'success' | 'warning' | 'error';
 }
 
-@Entity({ name: 'android_applications' })
+@Entity({ name: 'android_devices' })
 export class AndroidApplication {
   @ApiProperty({ example: '98a530d6-a45d-466a-9cb4-c023067c4971' })
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ type: 'varchar', default: managedAndroidDeviceKind })
+  kind: ManagedAndroidDeviceKind = managedAndroidDeviceKind;
 
   @ApiProperty({ example: 'Signal Android' })
   @Column()

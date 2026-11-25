@@ -43,7 +43,7 @@ export class CreateAutomationDto extends AutomationOwnerDto {
 export class UpdateAutomationDto extends PartialType(CreateAutomationDto) {}
 
 export class ValidateAutomationYamlDto {
-  @ApiProperty({ example: 'apiVersion: rebroid.io/automation/v1\n...' })
+  @ApiProperty({ example: 'apiVersion: rebroid.io/automation/v2\n...' })
   @IsString()
   yaml!: string;
 }
@@ -127,7 +127,7 @@ export class ListAutomationsGridQueryDto extends AutomationOwnerDto {
   @IsOptional()
   @IsString()
   @MaxLength(120)
-  targetApplicationId?: string;
+  targetDeviceId?: string;
 
   @ApiPropertyOptional({ enum: AutomationLastStatus })
   @IsOptional()
@@ -194,7 +194,7 @@ class AutomationGridRowDto extends AutomationSummaryDto {
   stepCount!: number;
 
   @ApiProperty({ type: String, isArray: true })
-  targetApplicationIds!: string[];
+  targetDeviceIds!: string[];
 }
 
 export class RunnableAutomationOptionDto {
@@ -221,7 +221,7 @@ export class AutomationsGridFacetsDto {
   tags!: string[];
 
   @ApiProperty({ type: String, isArray: true })
-  targetApplicationIds!: string[];
+  targetDeviceIds!: string[];
 }
 
 export class AutomationsGridPageDto {

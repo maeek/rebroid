@@ -36,6 +36,11 @@ export class AutomationDefinitionNormalizerService {
       throw new BadRequestException('Automation definition must be an object.');
     }
     if (raw.apiVersion !== AUTOMATION_API_VERSION) {
+      if (raw.apiVersion === 'rebroid.io/automation/v1') {
+        throw new BadRequestException(
+          'Upgrade this workflow to rebroid.io/automation/v2. Replace targetApplicationId with targetDeviceId and app.* run-context keys with device.*.',
+        );
+      }
       throw new BadRequestException(
         `apiVersion must be ${AUTOMATION_API_VERSION}.`,
       );

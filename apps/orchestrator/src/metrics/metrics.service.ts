@@ -1,4 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import type {
+  ExternalDeviceFailure,
+  ExternalDeviceState,
+  ExternalDeviceTransport,
+} from '@rebroid/android-application-core/android-device';
 import {
   collectDefaultMetrics,
   Counter,
@@ -46,6 +51,9 @@ export class MetricsService {
   private readonly aiProviderRequests: Counter;
   private readonly aiProviderDurations: Histogram;
   private readonly automationEventDurations: Histogram;
+  private readonly externalAttachmentDurations: Histogram;
+  private readonly externalStaleRequests: Counter;
+  private readonly managedViewerAdmissions: Counter;
   private readonly aggregates = new Map<string, DockerOperationAggregate>();
   private readonly inFlight = { read: 0, mutation: 0, long: 0 };
   private readonly queued = { read: 0, mutation: 0, long: 0 };
@@ -135,6 +143,45 @@ export class MetricsService {
       labelNames: ['outcome'],
       registers: [this.registry],
     });
+    this.externalAttachmentDurations = new Histogram({
+      name: 'rebroid_external_attachment_operation_duration_seconds',
+      help: 'External attachment operation durations by transport and outcome.',
+      labelNames: ['transport', 'operation', 'outcome'],
+      registers: [this.registry],
+    });
+    this.externalStaleRequests = new Counter({
+      name: 'rebroid_external_stale_attachment_requests_total',
+      help: 'Requests rejected because the expected attachment is no longer current.',
+      labelNames: ['surface'],
+      registers: [this.registry],
+    });
+    this.managedViewerAdmissions = new Counter({
+      name: 'rebroid_managed_viewer_admissions_total',
+      help: 'Managed display session admission attempts by outcome.',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+  }
+
+  beginExternalAttachmentOperation(
+    transport: ExternalDeviceTransport,
+    operation: 'connect' | 'verify' | 'detach',
+  ) {
+    const startedAt = performance.now();
+    return (outcome: ExternalDeviceState | ExternalDeviceFailure | 'error') => {
+      this.externalAttachmentDurations.observe(
+        { transport, operation, outcome },
+        (performance.now() - startedAt) / 1000,
+      );
+    };
+  }
+
+  externalStaleAttachment(surface: 'automation' | 'viewer') {
+    this.externalStaleRequests.inc({ surface });
+  }
+
+  managedViewerAdmission(outcome: 'success' | 'error') {
+    this.managedViewerAdmissions.inc({ outcome });
   }
 
   beginAutomationRunExecution() {

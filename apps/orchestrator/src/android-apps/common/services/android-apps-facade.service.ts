@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
@@ -18,6 +19,7 @@ import type {
   AndroidAutomationTarget,
 } from '../../contracts/android-apps-automation.port';
 import { AndroidAppsRuntimeOperationGate } from './android-apps-runtime-operation-gate.service';
+import { ExternalAutomationDeviceService } from '../../external/devices/external-automation-device.service';
 
 @Injectable()
 export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
@@ -29,11 +31,17 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     private readonly display: AndroidAppsDisplaySidecarService,
     private readonly adb: AndroidAppsSidecarAdbService,
     private readonly runtimeOperations: AndroidAppsRuntimeOperationGate,
+    @Optional()
+    private readonly externalAutomation?: ExternalAutomationDeviceService,
   ) {}
 
   /** Loads one app. */
   get(id: string): Promise<AndroidApplication> {
     return this.queries.getStored(id);
+  }
+
+  async getAutomationDevice(id: string): Promise<AndroidAutomationApplication> {
+    return (await this.externalAutomation?.find(id)) ?? this.get(id);
   }
 
   async applyPlatformContainerChange(
@@ -80,7 +88,11 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
   }
 
   /** Provides the narrow Android runtime capabilities used by automations. */
-  automationAdapters(canUseInternet: boolean): AndroidAutomationAdapters {
+  automationAdapters(
+    canUseInternet: boolean,
+    device?: AndroidAutomationApplication,
+  ): AndroidAutomationAdapters {
+    if (device?.kind === 'external') return this.externalAutomation!.adapters();
     return {
       adb: this.adb,
       display: this.display,
@@ -97,6 +109,9 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     app: AndroidAutomationApplication,
     signal: AbortSignal,
   ) {
+    if (app.kind === 'external') {
+      return this.externalAutomation!.assertCurrent(app, signal);
+    }
     return this.runtimeOperations.capture(app, signal);
   }
 
@@ -105,6 +120,15 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     signal: AbortSignal | undefined,
     operation: (app: AndroidAutomationApplication) => Promise<T>,
   ) {
+    if (expected.kind === 'external') {
+      return this.externalAutomation!.assertCurrent(expected, signal).then(
+        async (device) => {
+          const result = await operation(device);
+          await this.externalAutomation!.assertCurrent(expected, signal);
+          return result;
+        },
+      );
+    }
     return this.runtimeOperations.run(expected, signal, operation);
   }
 

@@ -410,6 +410,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apk-uploads/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApkController_listLibrary"];
+        put?: never;
+        post: operations["ApkController_mutateLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/apk-uploads": {
         parameters: {
             query?: never;
@@ -442,6 +458,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apk-uploads/selection/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApkController_selection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/apk-uploads/{id}": {
         parameters: {
             query?: never;
@@ -458,7 +490,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps": {
+    "/api/v1/devices": {
         parameters: {
             query?: never;
             header?: never;
@@ -467,7 +499,7 @@ export interface paths {
         };
         get: operations["AndroidAppsController_list"];
         put?: never;
-        /** Provision an isolated application container. */
+        /** Provision a managed Android device. */
         post: operations["AndroidAppsController_create"];
         delete?: never;
         options?: never;
@@ -475,7 +507,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/clone": {
+    "/api/v1/devices/{id}/clone": {
         parameters: {
             query?: never;
             header?: never;
@@ -492,7 +524,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/summaries": {
+    "/api/v1/devices/gallery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AndroidAppsController_listGallery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/navigation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AndroidAppsController_listNavigation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/summaries": {
         parameters: {
             query?: never;
             header?: never;
@@ -509,7 +573,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/runtime-state/reconcile": {
+    "/api/v1/devices/runtime-state/reconcile": {
         parameters: {
             query?: never;
             header?: never;
@@ -526,7 +590,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime-state/reconcile": {
+    "/api/v1/devices/{id}/runtime-state/reconcile": {
         parameters: {
             query?: never;
             header?: never;
@@ -543,7 +607,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/viewer-runtime": {
+    "/api/v1/devices/{id}/viewer-runtime": {
         parameters: {
             query?: never;
             header?: never;
@@ -559,7 +623,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}": {
+    "/api/v1/devices/{id}/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AndroidAppsController_refreshDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -575,7 +655,7 @@ export interface paths {
         patch: operations["AndroidAppsController_update"];
         trace?: never;
     };
-    "/api/v1/apps/{id}/viewer/session": {
+    "/api/v1/devices/{id}/viewer/session": {
         parameters: {
             query?: never;
             header?: never;
@@ -591,7 +671,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/viewer/activity": {
+    "/api/v1/devices/{id}/viewer/activity": {
         parameters: {
             query?: never;
             header?: never;
@@ -608,7 +688,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/viewer/control": {
+    "/api/v1/devices/{id}/viewer/control": {
         parameters: {
             query?: never;
             header?: never;
@@ -625,7 +705,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/viewer/displays": {
+    "/api/v1/devices/{id}/viewer/displays": {
         parameters: {
             query?: never;
             header?: never;
@@ -642,7 +722,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
+    "/api/v1/devices/{id}/viewer/displays/{surfaceId}/release": {
         parameters: {
             query?: never;
             header?: never;
@@ -676,7 +756,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/network-policy": {
+    "/api/v1/devices/{id}/network-policy": {
         parameters: {
             query?: never;
             header?: never;
@@ -693,7 +773,7 @@ export interface paths {
         patch: operations["AndroidAppsNetworkController_updateNetworkPolicy"];
         trace?: never;
     };
-    "/api/v1/apps/{id}/network-policy/apply": {
+    "/api/v1/devices/{id}/network-policy/apply": {
         parameters: {
             query?: never;
             header?: never;
@@ -710,7 +790,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/lifecycle/profile": {
+    "/api/v1/devices/{id}/lifecycle/profile": {
         parameters: {
             query?: never;
             header?: never;
@@ -727,7 +807,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/lifecycle/profiles/{profileName}": {
+    "/api/v1/devices/{id}/lifecycle/profiles/{profileName}": {
         parameters: {
             query?: never;
             header?: never;
@@ -744,7 +824,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/lifecycle/start": {
+    "/api/v1/devices/{id}/lifecycle/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -761,7 +841,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/lifecycle/stop": {
+    "/api/v1/devices/{id}/lifecycle/stop": {
         parameters: {
             query?: never;
             header?: never;
@@ -777,7 +857,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/lifecycle/recreate": {
+    "/api/v1/devices/{id}/lifecycle/recreate": {
         parameters: {
             query?: never;
             header?: never;
@@ -794,7 +874,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/lifecycle/apk": {
+    "/api/v1/devices/{id}/lifecycle/apk": {
         parameters: {
             query?: never;
             header?: never;
@@ -810,7 +890,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/data-files": {
+    "/api/v1/devices/{id}/runtime/data-files": {
         parameters: {
             query?: never;
             header?: never;
@@ -830,7 +910,7 @@ export interface paths {
         patch: operations["AndroidAppsRuntimeController_renameFile"];
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/data-directories": {
+    "/api/v1/devices/{id}/runtime/data-directories": {
         parameters: {
             query?: never;
             header?: never;
@@ -847,7 +927,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/data-files/preview": {
+    "/api/v1/devices/{id}/runtime/data-files/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -864,7 +944,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/data-files/download": {
+    "/api/v1/devices/{id}/runtime/data-files/download": {
         parameters: {
             query?: never;
             header?: never;
@@ -881,7 +961,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/download-files": {
+    "/api/v1/devices/{id}/runtime/download-files": {
         parameters: {
             query?: never;
             header?: never;
@@ -899,7 +979,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/download-files/{fileName}": {
+    "/api/v1/devices/{id}/runtime/download-files/{fileName}": {
         parameters: {
             query?: never;
             header?: never;
@@ -916,7 +996,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/clipboard": {
+    "/api/v1/devices/{id}/runtime/clipboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -934,7 +1014,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/screenshot": {
+    "/api/v1/devices/{id}/runtime/screenshot": {
         parameters: {
             query?: never;
             header?: never;
@@ -951,7 +1031,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/logs/container": {
+    "/api/v1/devices/{id}/runtime/logs/container": {
         parameters: {
             query?: never;
             header?: never;
@@ -968,7 +1048,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/logs/orchestrator": {
+    "/api/v1/devices/{id}/runtime/logs/orchestrator": {
         parameters: {
             query?: never;
             header?: never;
@@ -985,7 +1065,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/logs/adb": {
+    "/api/v1/devices/{id}/runtime/logs/adb": {
         parameters: {
             query?: never;
             header?: never;
@@ -1002,7 +1082,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/snapshot": {
+    "/api/v1/devices/{id}/runtime/snapshot": {
         parameters: {
             query?: never;
             header?: never;
@@ -1011,6 +1091,278 @@ export interface paths {
         };
         /** Read the latest thumbnail for an owned running application. */
         get: operations["AndroidAppsRuntimeSnapshotController_read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/viewer-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalViewerAdministrationController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/viewer-sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["ExternalViewerAdministrationController_release"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/viewer-sessions/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExternalViewerAdministrationController_revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalAndroidDevicesController_availability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalAndroidDevicesController_list"];
+        put?: never;
+        post: operations["ExternalAndroidDevicesController_register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/usb-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalAndroidDevicesController_candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/tcp-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExternalAndroidDevicesController_checkTcp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalAndroidDevicesController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["ExternalAndroidDevicesController_forget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExternalAndroidDevicesController_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExternalAndroidDevicesController_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalAndroidDevicesController_instructions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExternalAndroidDevicesController_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExternalAndroidDevicesController_disconnect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/attachments/{attachmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalDeviceViewerController_target"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/viewer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExternalDeviceViewerController_open"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/attachments/{attachmentId}/screenshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalDeviceViewerController_screenshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/external/{id}/attachments/{attachmentId}/logcat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalDeviceViewerController_logcat"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1397,6 +1749,22 @@ export interface paths {
         get: operations["AutomationsController_listRuns"];
         put?: never;
         post: operations["AutomationsController_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/{id}/run-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listRunHistory"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2045,102 +2413,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apk-uploads/library": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ApkController_listLibrary"];
-        put?: never;
-        post: operations["ApkController_mutateLibrary"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apk-uploads/selection/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ApkController_selection"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/gallery": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsController_listGallery"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/navigation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AndroidAppsController_listNavigation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/detail": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsController_refreshDetail"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/{id}/run-history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listRunHistory"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2555,7 +2827,7 @@ export interface components {
              * @example feature.ocr
              * @enum {string}
              */
-            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.external-devices" | "feature.display-webrtc";
             /** @enum {string} */
             owner: "automations" | "network-policy" | "container-images" | "display" | "android-apps";
             /** @example 3 */
@@ -2579,8 +2851,8 @@ export interface components {
             /** @enum {string} */
             lifecycle: "permanent" | "rollout";
             removalCondition: string | null;
-            dependencies: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
-            conflicts: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
+            dependencies: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.external-devices" | "feature.display-webrtc")[];
+            conflicts: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.external-devices" | "feature.display-webrtc")[];
         };
         FeatureFlagManifestDto: {
             /** @example 3 */
@@ -2592,7 +2864,7 @@ export interface components {
              * @example feature.ocr
              * @enum {string}
              */
-            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.external-devices" | "feature.display-webrtc";
             /** @example false */
             enabled: boolean;
         };
@@ -2604,6 +2876,47 @@ export interface components {
         ResetFeatureFlagsDto: {
             /** @example 3 */
             revision: number;
+        };
+        ApkLibraryAppDto: {
+            id: string;
+            name: string;
+        };
+        ApkLibraryRuleDto: {
+            /** @enum {string} */
+            scope: "sha256" | "package";
+            value: string;
+            reason: string;
+        };
+        ApkLibraryEntryDto: {
+            id: string;
+            originalName: string;
+            displayName: string | null;
+            sha256: string | null;
+            packageName: string | null;
+            sizeBytes: number | null;
+            ownerUserIds: string[];
+            uploads: number;
+            apps: components["schemas"]["ApkLibraryAppDto"][];
+            googlePlayServices: string | null;
+            inspectionEvidence: string[];
+            rules: components["schemas"]["ApkLibraryRuleDto"][];
+        };
+        ApkLibraryMutationDto: {
+            /** @enum {string} */
+            action: "block" | "unblock" | "delete";
+            ids: string[];
+            /** @enum {string} */
+            scope?: "sha256" | "package";
+            reason?: string;
+        };
+        ApkLibrarySkippedDto: {
+            id: string;
+            reason: string;
+        };
+        ApkLibraryMutationResultDto: {
+            changed: string[];
+            skipped: components["schemas"]["ApkLibrarySkippedDto"][];
+            bytesFreed: number;
         };
         GooglePlayServicesAnalysisDto: {
             /** @enum {string} */
@@ -2626,6 +2939,51 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CreateManagedAndroidDeviceDto: {
+            /** @example Signal Android */
+            name: string;
+            /**
+             * @description Owner user ID supplied by the trusted web service.
+             * @example user_123
+             */
+            ownerUserId?: string;
+            /** @example redroid/redroid:14.0.0-latest */
+            containerImage?: string;
+            /**
+             * @description Use -1 to keep the session running until manually stopped.
+             * @default 900
+             */
+            inactivityTimeoutSeconds: number;
+            /** @example 2048 */
+            memoryLimitMb?: number;
+            /** @example 2 */
+            cpuLimitCpus?: number;
+            /**
+             * @description Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.
+             * @example sleep infinity
+             */
+            containerArgs?: string;
+            /**
+             * @description Previously uploaded APK id to install into this Android application.
+             * @example 98a530d6-a45d-466a-9cb4-c023067c4971
+             */
+            uploadedApkId?: string;
+            /**
+             * @description Whether app outbound traffic is restricted to API/default destinations plus the explicit allowlist.
+             * @default true
+             */
+            networkPolicyEnabled: boolean;
+            /**
+             * @description Additional app-specific destination CIDRs the Android container may reach. Backend default destinations such as API_IP are applied automatically and are not stored here.
+             * @example [
+             *       "10.20.0.0/16",
+             *       "203.0.113.10/32"
+             *     ]
+             */
+            networkPolicyAllowCidrs?: string[];
+            /** @enum {string} */
+            kind: "managed";
         };
         ApplicationCommandNetworkPolicyDto: {
             enabled: boolean;
@@ -2773,6 +3131,10 @@ export interface components {
             uploadedApkId: string | null;
         };
         AndroidApplicationResponseDto: {
+            /** @enum {string} */
+            kind: "managed";
+            /** @description Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately. */
+            operations: ("configure" | "clone" | "start" | "stop" | "recreate" | "remove" | "profiles" | "viewer" | "files" | "network-policy")[];
             id: string;
             name: string;
             ownerUserId: string | null;
@@ -2787,7 +3149,51 @@ export interface components {
             /** @description Revision of stored app detail, excluding viewer activity. */
             detailRevision?: string;
         };
+        AndroidApplicationGalleryRowDto: {
+            /** @enum {string} */
+            kind: "managed";
+            /** @description Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately. */
+            operations: ("configure" | "clone" | "start" | "stop" | "recreate" | "remove" | "profiles" | "viewer" | "files" | "network-policy")[];
+            id: string;
+            name: string;
+            ownerUserId: string | null;
+            /** @enum {string} */
+            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
+            /** @enum {string} */
+            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
+            containerImage: string;
+            apkPackageName: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListAndroidApplicationNavigationDto: {
+            /** @example user_123 */
+            ownerUserId?: string;
+            applicationIds: string[];
+            includeRunning: boolean;
+            excludeIds?: string[];
+            runningLimit?: number;
+            /** @description Locale for the natural name ordering. */
+            locale?: string;
+        };
+        AndroidApplicationNavigationRowDto: {
+            /** @enum {string} */
+            kind: "managed";
+            /** @description Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately. */
+            operations: ("configure" | "clone" | "start" | "stop" | "recreate" | "remove" | "profiles" | "viewer" | "files" | "network-policy")[];
+            id: string;
+            name: string;
+            ownerUserId: string | null;
+            /** @enum {string} */
+            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
+            /** @enum {string} */
+            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
+        };
         AndroidApplicationSummaryResponseDto: {
+            /** @enum {string} */
+            kind: "managed";
+            /** @description Operations offered by the provider. Account permissions, feature flags, and runtime readiness are checked separately. */
+            operations: ("configure" | "clone" | "start" | "stop" | "recreate" | "remove" | "profiles" | "viewer" | "files" | "network-policy")[];
             id: string;
             name: string;
             ownerUserId: string | null;
@@ -2808,11 +3214,24 @@ export interface components {
             outcome: "updated" | "unchanged" | "unavailable";
             message?: string;
         };
-        AndroidApplicationViewerRuntimeDto: {
-            ownerUserId: string | null;
+        AndroidDeviceViewerTargetDto: {
+            /** Format: uuid */
+            deviceId: string;
             /** @enum {string} */
-            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
-            containerId: string | null;
+            kind: "managed";
+            ownerUserId: string | null;
+            /** @description Identity of the current runtime recorded for viewer authorization. */
+            runtimeId: string | null;
+        };
+        AndroidApplicationDetailStateDto: {
+            status: components["schemas"]["AndroidApplicationStatusResponseDto"];
+            errors: components["schemas"]["AndroidApplicationErrorResponseDto"];
+            updatedAt: string;
+        };
+        AndroidApplicationDetailRefreshDto: {
+            ownerUserId: string | null;
+            state: components["schemas"]["AndroidApplicationDetailStateDto"] | null;
+            app: components["schemas"]["AndroidApplicationResponseDto"] | null;
         };
         UpdateAndroidApplicationDto: {
             /** @example Signal Android */
@@ -2908,6 +3327,10 @@ export interface components {
             adbHost: string;
             adbPort: number;
             displaySession: components["schemas"]["DisplaySessionDto"] | null;
+        };
+        ApplicationViewerActivityDto: {
+            ownerUserId: string;
+            runtimeKey: string;
         };
         ApplicationViewerControlDto: {
             /**
@@ -3064,6 +3487,120 @@ export interface components {
             /** Format: date-time */
             capturedAt: string;
         };
+        ExternalAdminSessionDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            provider: "external";
+            applicationId: string | null;
+            deviceName: string | null;
+            ownerUserId: string | null;
+            /** @enum {string} */
+            status: "created" | "active" | "released" | "expired";
+            createdAt: string;
+            lastActivityAt: string;
+            expiresAt: string;
+            capabilities: string[];
+        };
+        ExternalViewerOwnersDto: {
+            ownerUserIds: string[];
+        };
+        ExternalViewerRevocationDto: {
+            released: number;
+        };
+        ExternalDeviceAvailabilityDto: {
+            enabled: boolean;
+            /** @enum {string} */
+            status: "not_configured" | "feature_disabled" | "broker_unavailable" | "available";
+        };
+        ExternalDeviceConnectionDto: {
+            /** @enum {string} */
+            state: "disconnected" | "connecting" | "awaiting_android_approval" | "awaiting_usb_replug" | "awaiting_verification" | "ready" | "offline";
+            /** @enum {string|null} */
+            failure: "transport_unavailable" | "verification_required" | "attempt_expired" | "broker_unavailable" | null;
+            attemptId: string | null;
+            attachmentId: string | null;
+            observedAt: string | null;
+        };
+        ExternalAndroidDeviceDto: {
+            /** @enum {string} */
+            kind: "external";
+            /** Format: uuid */
+            id: string;
+            name: string;
+            ownerUserId: string;
+            /** @enum {string} */
+            transport: "usb" | "tcp";
+            connection: components["schemas"]["ExternalDeviceConnectionDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ExternalDeviceCandidateDto: {
+            /** Format: uuid */
+            candidateId: string;
+            label: string;
+            state: string;
+        };
+        ExternalTcpEndpointDto: {
+            endpoint: string;
+        };
+        ExternalDeviceTcpCheckDto: {
+            /** @enum {string} */
+            status: "reachable" | "not_allowed" | "refused" | "timed_out" | "unreachable";
+        };
+        RegisterExternalAndroidDeviceDto: {
+            name: string;
+            /** @enum {string} */
+            transport: "usb" | "tcp";
+            /** @description Allowlisted IPv4 address and port for TCP. */
+            endpoint?: string;
+            /**
+             * Format: uuid
+             * @description Current USB discovery candidate.
+             */
+            candidateId?: string;
+        };
+        ExternalDeviceVerificationInstructionsDto: {
+            androidPromptObserved: boolean;
+            challenge: string | null;
+            fingerprint: string | null;
+        };
+        VerifyExternalAndroidDeviceDto: {
+            /** Format: uuid */
+            attemptId: string;
+            /** @enum {string} */
+            proof: "physical" | "challenge" | "android_prompt";
+        };
+        ForgottenExternalDeviceDto: {
+            /** Format: uuid */
+            id: string;
+        };
+        ExternalViewerTargetDto: {
+            /** Format: uuid */
+            deviceId: string;
+            ownerUserId: string;
+            /** Format: uuid */
+            attachmentId: string;
+        };
+        ExternalViewerInputDto: {
+            /** Format: uuid */
+            attachmentId: string;
+            grants: ("control" | "clipboard" | "screenshot")[];
+        };
+        ExternalViewerSessionDto: {
+            /** Format: uuid */
+            id: string;
+            viewerPath: string;
+            audioSupported: boolean;
+        };
+        ExternalViewerScreenshotDto: {
+            pngBase64: string;
+        };
+        ExternalViewerLogcatDto: {
+            /** Format: date-time */
+            collectedAt: string;
+            output: string;
+        };
         AutomationCommandDto: {
             /** @example android.viewerCommand */
             uses: string;
@@ -3078,7 +3615,7 @@ export interface components {
         };
         ValidateAutomationYamlDto: {
             /**
-             * @example apiVersion: rebroid.io/automation/v1
+             * @example apiVersion: rebroid.io/automation/v2
              *     ...
              */
             yaml: string;
@@ -3112,7 +3649,7 @@ export interface components {
             steps: Record<string, never>[];
         };
         AutomationDefinitionDto: {
-            /** @example rebroid.io/automation/v1 */
+            /** @example rebroid.io/automation/v2 */
             apiVersion: string;
             /** @example AndroidAutomation */
             kind: string;
@@ -3133,8 +3670,6 @@ export interface components {
             answer: string;
         };
         DraftAutomationYamlDto: {
-            /** @example Log in to the app and verify the home screen opens. */
-            prompt: string;
             /** @example local-ollama */
             providerId?: string;
             /** @example qwen2.5vl:7b */
@@ -3143,6 +3678,8 @@ export interface components {
             visionProviderId?: string;
             /** @example qwen2.5vl:7b */
             visionModelId?: string;
+            /** @example Log in to the app and verify the home screen opens. */
+            prompt: string;
             /**
              * @example [
              *       "android.tapNormalized",
@@ -3161,8 +3698,6 @@ export interface components {
         RunAdHocAiAutomationDto: {
             /** @example user_123 */
             ownerUserId: string;
-            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            targetApplicationId: string;
             /** @enum {string|null} */
             profileMode?: "persistent" | "temporary" | null;
             /** @example default */
@@ -3172,9 +3707,6 @@ export interface components {
              * @enum {string}
              */
             startPolicy: "require-running" | "start-if-needed";
-            /** @example Open settings and verify Wi-Fi is visible. */
-            prompt: string;
-            conversation?: components["schemas"]["RunAdHocAiConversationMessageDto"][];
             /** @example local-ollama */
             providerId?: string;
             /** @example qwen2.5vl:7b */
@@ -3183,6 +3715,13 @@ export interface components {
             visionProviderId?: string;
             /** @example qwen2.5vl:7b */
             visionModelId?: string;
+            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+            targetDeviceId: string;
+            /** Format: uuid */
+            attachmentId?: string;
+            /** @example Open settings and verify Wi-Fi is visible. */
+            prompt: string;
+            conversation?: components["schemas"]["RunAdHocAiConversationMessageDto"][];
             /** @example msg_01HV4Y6N2R2N4SVJ8VJ7HJZJAA */
             clientMessageId?: string;
             capabilities?: string[];
@@ -3221,7 +3760,10 @@ export interface components {
             automationId: string;
             automationTriggerId: string | null;
             ownerUserId: string;
-            targetApplicationId: string;
+            targetDeviceId: string;
+            /** @enum {string} */
+            targetKind?: "managed" | "external";
+            targetAttachmentId?: string | null;
             targetProfileMode: string | null;
             targetProfileName: string | null;
             /** @enum {string} */
@@ -3248,22 +3790,24 @@ export interface components {
         SuggestAdHocAiPromptsDto: {
             /** @example user_123 */
             ownerUserId: string;
-            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            targetApplicationId: string;
-            /** @example Android 14 */
-            appName: string;
             /** @enum {string|null} */
             profileMode?: "persistent" | "temporary" | null;
             /** @example default */
             profileName?: string | null;
-            /** @example Turn on dark mode */
-            currentPrompt?: string;
-            conversation?: components["schemas"]["RunAdHocAiConversationMessageDto"][];
-            recentEvents?: components["schemas"]["AiPromptSuggestionContextEventDto"][];
             /** @example local-ollama */
             providerId?: string;
             /** @example qwen2.5vl:7b */
             modelId?: string;
+            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+            targetDeviceId: string;
+            /** Format: uuid */
+            attachmentId?: string;
+            /** @example Android 14 */
+            appName: string;
+            /** @example Turn on dark mode */
+            currentPrompt?: string;
+            conversation?: components["schemas"]["RunAdHocAiConversationMessageDto"][];
+            recentEvents?: components["schemas"]["AiPromptSuggestionContextEventDto"][];
             allowedTools?: string[];
         };
         AiPromptSuggestionDto: {
@@ -3326,11 +3870,11 @@ export interface components {
             createdAt: string;
             updatedAt: string;
             stepCount: number;
-            targetApplicationIds: string[];
+            targetDeviceIds: string[];
         };
         AutomationsGridFacetsDto: {
             tags: string[];
-            targetApplicationIds: string[];
+            targetDeviceIds: string[];
         };
         AutomationsGridPageDto: {
             items: components["schemas"]["AutomationGridRowDto"][];
@@ -3360,7 +3904,9 @@ export interface components {
         ActiveAutomationRunDto: {
             id: string;
             automationId: string;
-            targetApplicationId: string;
+            targetDeviceId: string;
+            /** @enum {string} */
+            targetKind?: "managed" | "external";
             /** @enum {string} */
             status: "queued" | "running";
             createdAt: string;
@@ -3388,7 +3934,10 @@ export interface components {
             automationId: string;
             automationTriggerId: string | null;
             ownerUserId: string;
-            targetApplicationId: string;
+            targetDeviceId: string;
+            /** @enum {string} */
+            targetKind?: "managed" | "external";
+            targetAttachmentId?: string | null;
             targetProfileMode: string | null;
             targetProfileName: string | null;
             /** @enum {string} */
@@ -3421,7 +3970,7 @@ export interface components {
             name: string;
             description: string | null;
             automationId: string;
-            targetApplicationId: string;
+            targetDeviceId: string;
             profileMode: string | null;
             profileName: string | null;
             enabled: boolean;
@@ -3440,7 +3989,7 @@ export interface components {
         };
         AutomationTriggersGridFacetsDto: {
             tags: string[];
-            targetApplicationIds: string[];
+            targetDeviceIds: string[];
         };
         AutomationTriggersGridPageDto: {
             items: components["schemas"]["AutomationTriggerDto"][];
@@ -3461,15 +4010,15 @@ export interface components {
         CreateAutomationTriggerDto: {
             /** @example user_123 */
             ownerUserId: string;
-            /** @example Daily setup */
-            name: string;
-            description?: string | null;
-            automationId: string;
-            targetApplicationId: string;
             /** @enum {string|null} */
             profileMode?: "persistent" | "temporary" | null;
             /** @example default */
             profileName?: string | null;
+            /** @example Daily setup */
+            name: string;
+            description?: string | null;
+            automationId: string;
+            targetDeviceId: string;
             /** @default true */
             enabled: boolean;
             tags?: components["schemas"]["AutomationTagDto"][];
@@ -3486,15 +4035,15 @@ export interface components {
         UpdateAutomationTriggerDto: {
             /** @example user_123 */
             ownerUserId?: string;
-            /** @example Daily setup */
-            name?: string;
-            description?: string | null;
-            automationId?: string;
-            targetApplicationId?: string;
             /** @enum {string|null} */
             profileMode?: "persistent" | "temporary" | null;
             /** @example default */
             profileName?: string | null;
+            /** @example Daily setup */
+            name?: string;
+            description?: string | null;
+            automationId?: string;
+            targetDeviceId?: string;
             /** @default true */
             enabled: boolean;
             tags?: components["schemas"]["AutomationTagDto"][];
@@ -3506,8 +4055,6 @@ export interface components {
         RunAutomationDto: {
             /** @example user_123 */
             ownerUserId: string;
-            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            targetApplicationId?: string | null;
             /** @enum {string|null} */
             profileMode?: "persistent" | "temporary" | null;
             /** @example default */
@@ -3517,6 +4064,10 @@ export interface components {
              * @enum {string}
              */
             startPolicy: "require-running" | "start-if-needed";
+            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+            targetDeviceId?: string | null;
+            /** Format: uuid */
+            attachmentId?: string;
         };
         UpdateAutomationDto: {
             /** @example user_123 */
@@ -3524,6 +4075,26 @@ export interface components {
             /** @description YAML automation definition. Required unless definition is supplied. */
             yaml?: string;
             definition?: components["schemas"]["AutomationDefinitionDto"];
+        };
+        AutomationRunHistoryRowDto: {
+            id: string;
+            automationId: string;
+            targetDeviceId: string;
+            /** @enum {string} */
+            targetKind?: "managed" | "external";
+            targetProfileMode: string | null;
+            targetProfileName: string | null;
+            /** @enum {string} */
+            trigger: "manual" | "schedule";
+            /** @enum {string} */
+            status: "queued" | "running" | "success" | "failed" | "canceled";
+            startedAt: string | null;
+            completedAt: string | null;
+            error: string | null;
+            createdAt: string;
+            stepCount: number;
+            completedSteps: number;
+            failedSteps: number;
         };
         PullContainerImageDto: {
             /** @example redroid/redroid:14.0.0-latest */
@@ -3550,8 +4121,6 @@ export interface components {
         };
         ContainerImageBuildRecipe: {
             id: string;
-            /** @example Redroid 14 microG overlay */
-            name: string;
             /** @example local/redroid-microg:14 */
             targetImage: string;
             /** @example redroid/redroid:14.0.0-latest */
@@ -3572,6 +4141,8 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /** @example Redroid 14 microG overlay */
+            name: string;
         };
         CreateContainerImageRecipeDto: {
             /** @example Redroid 14 microG overlay */
@@ -3604,17 +4175,10 @@ export interface components {
         };
         ContainerImageBuildJob: {
             id: string;
-            recipeId?: string | null;
             /** @example local/redroid-microg:14 */
             targetImage: string;
             /** @example redroid/redroid:14.0.0-latest */
             baseImage: string;
-            /** @enum {string} */
-            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
-            /** @enum {string} */
-            buildKind: "dockerfile_overlay" | "redroid_gapps_patch";
-            /** @enum {string} */
-            phase: "queued" | "pulling_base" | "resolving_sources" | "building_gapps" | "validating_payload" | "building_image" | "validating_image" | "complete";
             /** @enum {string} */
             runtimeKind: "redroid" | "generic";
             /** @example 14 */
@@ -3625,6 +4189,19 @@ export interface components {
             gmsMode: "none" | "microg" | "gapps";
             /** @enum {string} */
             signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            dockerfile: string;
+            contextFileIdsJson: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            recipeId?: string | null;
+            /** @enum {string} */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** @enum {string} */
+            buildKind: "dockerfile_overlay" | "redroid_gapps_patch";
+            /** @enum {string} */
+            phase: "queued" | "pulling_base" | "resolving_sources" | "building_gapps" | "validating_payload" | "building_image" | "validating_image" | "complete";
             resolvedBaseDigest?: string | null;
             mindTheGappsRevision?: string | null;
             packageSha256?: string | null;
@@ -3633,8 +4210,6 @@ export interface components {
             validationResults: {
                 [key: string]: unknown;
             };
-            dockerfile: string;
-            contextFileIdsJson: string;
             /** @example Step 1/4 : FROM redroid/redroid:14.0.0-latest */
             logTail: string;
             imageId?: string | null;
@@ -3643,10 +4218,6 @@ export interface components {
             startedAt?: string | null;
             /** Format: date-time */
             finishedAt?: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
         };
         GappsBuildPresetDto: {
             /** @enum {string} */
@@ -3861,6 +4432,18 @@ export interface components {
             label: string;
             description: string;
         };
+        ScheduledTaskPayloadDto: {
+            /**
+             * @description Only for prune_images. Defaults to true.
+             * @example true
+             */
+            danglingOnly?: boolean;
+            /**
+             * @description Retention period in days for runtime logs and build or workflow history.
+             * @example 30
+             */
+            retentionDays?: number;
+        };
         ScheduledTaskDto: {
             id: string;
             name: string;
@@ -3879,18 +4462,6 @@ export interface components {
             lastError: string | null;
             createdAt: string;
             updatedAt: string;
-        };
-        ScheduledTaskPayloadDto: {
-            /**
-             * @description Only for prune_images. Defaults to true.
-             * @example true
-             */
-            danglingOnly?: boolean;
-            /**
-             * @description Retention period in days for runtime logs and build or workflow history.
-             * @example 30
-             */
-            retentionDays?: number;
         };
         CreateScheduledTaskDto: {
             /** @example Weekly Docker cleanup */
@@ -3960,111 +4531,6 @@ export interface components {
             firewall: boolean;
             ocr: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
-        };
-        ApkLibraryAppDto: {
-            id: string;
-            name: string;
-        };
-        ApkLibraryRuleDto: {
-            /** @enum {string} */
-            scope: "sha256" | "package";
-            value: string;
-            reason: string;
-        };
-        ApkLibraryEntryDto: {
-            id: string;
-            originalName: string;
-            displayName: string | null;
-            sha256: string | null;
-            packageName: string | null;
-            sizeBytes: number | null;
-            ownerUserIds: string[];
-            uploads: number;
-            apps: components["schemas"]["ApkLibraryAppDto"][];
-            googlePlayServices: string | null;
-            inspectionEvidence: string[];
-            rules: components["schemas"]["ApkLibraryRuleDto"][];
-        };
-        ApkLibraryMutationDto: {
-            /** @enum {string} */
-            action: "block" | "unblock" | "delete";
-            ids: string[];
-            /** @enum {string} */
-            scope?: "sha256" | "package";
-            reason?: string;
-        };
-        ApkLibrarySkippedDto: {
-            id: string;
-            reason: string;
-        };
-        ApkLibraryMutationResultDto: {
-            changed: string[];
-            skipped: components["schemas"]["ApkLibrarySkippedDto"][];
-            bytesFreed: number;
-        };
-        AndroidApplicationGalleryRowDto: {
-            id: string;
-            name: string;
-            ownerUserId: string | null;
-            /** @enum {string} */
-            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
-            /** @enum {string} */
-            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
-            containerImage: string;
-            apkPackageName: string | null;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        AndroidApplicationNavigationRowDto: {
-            id: string;
-            name: string;
-            ownerUserId: string | null;
-            /** @enum {string} */
-            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
-            /** @enum {string} */
-            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
-        };
-        ListAndroidApplicationNavigationDto: {
-            /** @example user_123 */
-            ownerUserId?: string;
-            applicationIds: string[];
-            includeRunning: boolean;
-            excludeIds?: string[];
-            runningLimit?: number;
-            /** @description Locale for the natural name ordering. */
-            locale?: string;
-        };
-        ApplicationViewerActivityDto: {
-            ownerUserId: string;
-            runtimeKey: string;
-        };
-        AndroidApplicationDetailRefreshDto: {
-            ownerUserId: string | null;
-            state: components["schemas"]["AndroidApplicationDetailStateDto"] | null;
-            app: components["schemas"]["AndroidApplicationResponseDto"] | null;
-        };
-        AndroidApplicationDetailStateDto: {
-            status: components["schemas"]["AndroidApplicationStatusResponseDto"];
-            errors: components["schemas"]["AndroidApplicationErrorResponseDto"];
-            updatedAt: string;
-        };
-        AutomationRunHistoryRowDto: {
-            id: string;
-            automationId: string;
-            targetApplicationId: string;
-            targetProfileMode: string | null;
-            targetProfileName: string | null;
-            /** @enum {string} */
-            trigger: "manual" | "schedule";
-            /** @enum {string} */
-            status: "queued" | "running" | "success" | "failed" | "canceled";
-            startedAt: string | null;
-            completedAt: string | null;
-            error: string | null;
-            createdAt: string;
-            stepCount: number;
-            completedSteps: number;
-            failedSteps: number;
         };
     };
     responses: never;
@@ -4762,6 +5228,48 @@ export interface operations {
             };
         };
     };
+    ApkController_listLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApkLibraryEntryDto"][];
+                };
+            };
+        };
+    };
+    ApkController_mutateLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApkLibraryMutationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApkLibraryMutationResultDto"];
+                };
+            };
+        };
+    };
     ApkController_list: {
         parameters: {
             query?: {
@@ -4833,6 +5341,29 @@ export interface operations {
             };
         };
     };
+    ApkController_selection: {
+        parameters: {
+            query?: {
+                ownerUserId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedApkResponseDto"];
+                };
+            };
+        };
+    };
     ApkController_remove: {
         parameters: {
             query?: never;
@@ -4889,24 +5420,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @example Signal Android */
-                    name: string;
-                    /** @example user_123 */
-                    ownerUserId?: string;
-                    /** @example redroid/redroid:14.0.0-latest */
-                    containerImage?: string;
-                    /** @example 900 */
-                    inactivityTimeoutSeconds?: number;
-                    /** @example 2048 */
-                    memoryLimitMb?: number;
-                    /** @example 2 */
-                    cpuLimitCpus?: number;
-                    /** @example sleep infinity */
-                    containerArgs?: string;
-                    /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-                    uploadedApkId?: string;
-                };
+                "application/json": components["schemas"]["CreateManagedAndroidDeviceDto"];
             };
         };
         responses: {
@@ -4999,6 +5513,50 @@ export interface operations {
             };
         };
     };
+    AndroidAppsController_listGallery: {
+        parameters: {
+            query?: {
+                ownerUserId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidApplicationGalleryRowDto"][];
+                };
+            };
+        };
+    };
+    AndroidAppsController_listNavigation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListAndroidApplicationNavigationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidApplicationNavigationRowDto"][];
+                };
+            };
+        };
+    };
     AndroidAppsController_listSummaries: {
         parameters: {
             query?: {
@@ -5083,7 +5641,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationViewerRuntimeDto"];
+                    "application/json": components["schemas"]["AndroidDeviceViewerTargetDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsController_refreshDetail: {
+        parameters: {
+            query?: {
+                revision?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidApplicationDetailRefreshDto"];
                 };
             };
         };
@@ -5963,6 +6544,495 @@ export interface operations {
             };
         };
     };
+    ExternalViewerAdministrationController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAdminSessionDto"][];
+                };
+            };
+        };
+    };
+    ExternalViewerAdministrationController_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAdminSessionDto"];
+                };
+            };
+        };
+    };
+    ExternalViewerAdministrationController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalViewerOwnersDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalViewerRevocationDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_availability: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalDeviceAvailabilityDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_list: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAndroidDeviceDto"][];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_register: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterExternalAndroidDeviceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAndroidDeviceDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_candidates: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalDeviceCandidateDto"][];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_checkTcp: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalTcpEndpointDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalDeviceTcpCheckDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_get: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAndroidDeviceDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_forget: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForgottenExternalDeviceDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_connect: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+                "x-rebroid-max-session-seconds"?: string;
+                /** @description Open application limit supplied by the trusted web service. */
+                "x-rebroid-max-open-apps"?: number;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAndroidDeviceDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_refresh: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAndroidDeviceDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_instructions: {
+        parameters: {
+            query: {
+                attemptId: string;
+            };
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalDeviceVerificationInstructionsDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_verify: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyExternalAndroidDeviceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAndroidDeviceDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_disconnect: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalAndroidDeviceDto"];
+                };
+            };
+        };
+    };
+    ExternalDeviceViewerController_target: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-admin": string;
+                "x-rebroid-device-use": string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalViewerTargetDto"];
+                };
+            };
+        };
+    };
+    ExternalDeviceViewerController_open: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-admin": string;
+                "x-rebroid-device-use": string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalViewerInputDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalViewerSessionDto"];
+                };
+            };
+        };
+    };
+    ExternalDeviceViewerController_screenshot: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-admin": string;
+                "x-rebroid-device-use": string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalViewerScreenshotDto"];
+                };
+            };
+        };
+    };
+    ExternalDeviceViewerController_logcat: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-admin": string;
+                "x-rebroid-device-use": string;
+                "x-rebroid-device-user": string;
+            };
+            path: {
+                id: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalViewerLogcatDto"];
+                };
+            };
+        };
+    };
     AutomationsController_listCommands: {
         parameters: {
             query?: never;
@@ -6031,7 +7101,7 @@ export interface operations {
         parameters: {
             query: {
                 ownerUserId: string;
-                targetApplicationId: string;
+                targetDeviceId: string;
                 limit: string;
             };
             header?: never;
@@ -6077,7 +7147,8 @@ export interface operations {
         parameters: {
             query: {
                 ownerUserId: string;
-                targetApplicationId: string;
+                targetDeviceId: string;
+                attachmentId?: string;
             };
             header?: never;
             path?: never;
@@ -6120,8 +7191,9 @@ export interface operations {
         parameters: {
             query: {
                 ownerUserId: string;
-                targetApplicationId: string;
+                targetDeviceId: string;
                 limit?: string;
+                attachmentId?: string;
             };
             header?: never;
             path?: never;
@@ -6191,7 +7263,7 @@ export interface operations {
                 pageSize?: number;
                 q?: string;
                 tag?: string;
-                targetApplicationId?: string;
+                targetDeviceId?: string;
                 status?: "never_run" | "success" | "failed" | "running";
                 lastRun?: "all" | "never" | "7d" | "30d" | "90d";
                 sort?: string;
@@ -6279,7 +7351,7 @@ export interface operations {
         parameters: {
             query: {
                 ownerUserId: string;
-                targetApplicationId: string;
+                targetDeviceId: string;
                 page?: number;
                 pageSize?: number;
                 q?: string;
@@ -6304,7 +7376,7 @@ export interface operations {
         parameters: {
             query: {
                 ownerUserId: string;
-                targetApplicationId: string;
+                targetDeviceId: string;
             };
             header?: never;
             path: {
@@ -6490,7 +7562,7 @@ export interface operations {
                 pageSize?: number;
                 q?: string;
                 tag?: string;
-                targetApplicationId?: string;
+                targetDeviceId?: string;
                 status?: "never_run" | "success" | "failed" | "running";
                 lastRun?: "all" | "never" | "7d" | "30d" | "90d";
                 sort?: string;
@@ -6728,6 +7800,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationRunDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listRunHistory: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunHistoryRowDto"][];
                 };
             };
         };
@@ -7710,162 +8806,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
-                };
-            };
-        };
-    };
-    ApkController_listLibrary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApkLibraryEntryDto"][];
-                };
-            };
-        };
-    };
-    ApkController_mutateLibrary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApkLibraryMutationDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApkLibraryMutationResultDto"];
-                };
-            };
-        };
-    };
-    ApkController_selection: {
-        parameters: {
-            query?: {
-                ownerUserId?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadedApkResponseDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsController_listGallery: {
-        parameters: {
-            query?: {
-                ownerUserId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidApplicationGalleryRowDto"][];
-                };
-            };
-        };
-    };
-    AndroidAppsController_listNavigation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ListAndroidApplicationNavigationDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidApplicationNavigationRowDto"][];
-                };
-            };
-        };
-    };
-    AndroidAppsController_refreshDetail: {
-        parameters: {
-            query?: {
-                revision?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidApplicationDetailRefreshDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_listRunHistory: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunHistoryRowDto"][];
                 };
             };
         };

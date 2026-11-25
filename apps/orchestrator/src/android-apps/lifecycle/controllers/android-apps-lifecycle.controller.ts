@@ -25,7 +25,7 @@ import { UpdateAndroidApplicationApkDto } from '../dto/update-android-applicatio
 import { AndroidAppsLifecycleService } from '../services/android-apps-lifecycle.service';
 
 @ApiTags('app-lifecycle')
-@Controller('apps')
+@Controller('devices')
 export class AndroidAppsLifecycleController {
   constructor(private readonly lifecycle: AndroidAppsLifecycleService) {}
 

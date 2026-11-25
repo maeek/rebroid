@@ -19,7 +19,7 @@ import { AndroidAppsRuntimeSnapshotService } from '../services/android-apps-runt
 const ownerHeader = 'x-rebroid-snapshot-owner';
 
 @ApiTags('app-runtime')
-@Controller('apps')
+@Controller('devices')
 export class AndroidAppsRuntimeSnapshotController {
   constructor(private readonly snapshots: AndroidAppsRuntimeSnapshotService) {}
 

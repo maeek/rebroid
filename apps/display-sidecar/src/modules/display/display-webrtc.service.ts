@@ -223,6 +223,11 @@ export class DisplayWebrtcService implements OnModuleDestroy {
     return {
       sessionId: options.sessionId,
       udid: session.udid,
+      ...(this.config.externalAdbEnabled && {
+        control:
+          session.capabilities.includes("control") ||
+          session.capabilities.includes("clipboard"),
+      }),
       codec: "h264",
       displayId: session.displayId,
       newDisplay: session.newDisplay,

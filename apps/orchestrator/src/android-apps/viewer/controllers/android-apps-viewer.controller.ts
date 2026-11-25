@@ -22,7 +22,7 @@ import { DisplaySessionDto, ScrcpySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsViewerService } from '../services/android-apps-viewer.service';
 
 @ApiTags('app-viewer')
-@Controller('apps')
+@Controller('devices')
 export class AndroidAppsViewerController {
   constructor(private readonly viewer: AndroidAppsViewerService) {}
 

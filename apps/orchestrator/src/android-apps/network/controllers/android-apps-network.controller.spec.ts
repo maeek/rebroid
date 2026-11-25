@@ -126,13 +126,16 @@ describe('application network policy', () => {
 
     const retried = await server.inject({
       method: 'POST',
-      url: '/apps/app-1/network-policy/apply',
+      url: '/devices/app-1/network-policy/apply',
     });
     expect(retried.statusCode).toBe(201);
     expect(retried.json().networkPolicy.status).toBe('applied');
 
-    const list = await server.inject({ method: 'GET', url: '/apps' });
-    const detail = await server.inject({ method: 'GET', url: '/apps/app-1' });
+    const list = await server.inject({ method: 'GET', url: '/devices' });
+    const detail = await server.inject({
+      method: 'GET',
+      url: '/devices/app-1',
+    });
     expect(list.statusCode).toBe(200);
     expect(detail.statusCode).toBe(200);
     const [listed] = list.json<AndroidApplicationResponseDto[]>();
@@ -145,7 +148,7 @@ describe('application network policy', () => {
   it('saves a disabled policy and retained allowlist through the API', async () => {
     const response = await server.inject({
       method: 'PATCH',
-      url: '/apps/app-1/network-policy',
+      url: '/devices/app-1/network-policy',
       headers: { 'x-rebroid-allow-broad-egress': 'true' },
       payload: {
         networkPolicyEnabled: false,
@@ -172,7 +175,7 @@ describe('application network policy', () => {
     async (networkPolicyEnabled) => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/apps/app-1/network-policy',
+        url: '/devices/app-1/network-policy',
         payload: {
           networkPolicyEnabled,
           networkPolicyAllowCidrs: ['10.0.0.0/8'],
@@ -191,14 +194,14 @@ describe('application network policy', () => {
     app.networkPolicyEnabled = false;
     const response = await server.inject({
       method: 'PATCH',
-      url: '/apps/app-1/network-policy',
+      url: '/devices/app-1/network-policy',
       headers: { 'x-rebroid-allow-broad-egress': 'true' },
       payload: { networkPolicyAllowCidrs: ['10.0.0.0/8'] },
     });
     expect(response.statusCode).toBe(200);
     const applied = await server.inject({
       method: 'POST',
-      url: '/apps/app-1/network-policy/apply',
+      url: '/devices/app-1/network-policy/apply',
     });
     expect(applied.statusCode).toBe(201);
     expect(applied.json().networkPolicy.enabled).toBe(false);
@@ -206,7 +209,7 @@ describe('application network policy', () => {
 
   it('rejects applying a restricted policy and bulk reconciliation', async () => {
     for (const url of [
-      '/apps/app-1/network-policy/apply',
+      '/devices/app-1/network-policy/apply',
       '/network-policies/reconcile',
     ]) {
       const response = await server.inject({ method: 'POST', url });
@@ -225,7 +228,7 @@ describe('application network policy', () => {
       firewallEnabled = true;
       const response = await server.inject({
         method: 'PATCH',
-        url: '/apps/app-1/network-policy',
+        url: '/devices/app-1/network-policy',
         payload,
       });
       expect(response.statusCode).toBe(403);
@@ -242,7 +245,7 @@ describe('application network policy', () => {
     app.status = AndroidApplicationStatus.Running;
     const response = await server.inject({
       method: 'PATCH',
-      url: '/apps/app-1/network-policy',
+      url: '/devices/app-1/network-policy',
       payload: { networkPolicyEnabled: true },
     });
     expect(response.statusCode).toBe(200);

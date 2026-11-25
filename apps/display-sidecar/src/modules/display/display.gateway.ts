@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   UnauthorizedException,
+  Optional,
 } from "@nestjs/common";
 import { OnGatewayConnection, WebSocketGateway } from "@nestjs/websockets";
 import { IncomingMessage } from "node:http";
@@ -14,6 +15,7 @@ import { DisplaySessionService } from "./display-session.service";
 import { DisplayViewerAccessService } from "./display-viewer-access.service";
 import type { ScrcpyStreamAttachment } from "../scrcpy/scrcpy.types";
 import { resolveDisplayStreamProfile } from "./display-stream-profile";
+import { SidecarConfigService } from "../shared/sidecar-config.service";
 
 @WebSocketGateway({
   path: "/rebroid/display/stream",
@@ -26,6 +28,7 @@ export class DisplayGateway implements OnGatewayConnection {
     private readonly sessions: DisplaySessionService,
     private readonly scrcpy: ScrcpyService,
     private readonly access: DisplayViewerAccessService,
+    @Optional() private readonly config?: SidecarConfigService,
   ) {}
 
   async handleConnection(client: WebSocket, request: IncomingMessage) {
@@ -137,6 +140,11 @@ export class DisplayGateway implements OnGatewayConnection {
         attachment = this.scrcpy.attachStream({
           sessionId,
           udid: session.udid,
+          ...(this.config?.externalAdbEnabled && {
+            control:
+              session.capabilities.includes("control") ||
+              session.capabilities.includes("clipboard"),
+          }),
           sink,
           codec: "h264",
           displayId: session.displayId,

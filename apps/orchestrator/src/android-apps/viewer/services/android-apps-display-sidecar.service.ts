@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import {
@@ -6,6 +11,7 @@ import {
   displaySidecarUrl,
 } from '../../../common/display-sidecar-request';
 import { getErrorMessage } from '../../../common/error-message';
+import { MetricsService } from '../../../metrics/metrics.service';
 import { AndroidApplication } from '../../android-application.entity';
 import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
 import type { DisplaySessionDto } from '../dto/scrcpy-session.dto';
@@ -44,6 +50,7 @@ export class AndroidAppsDisplaySidecarService {
     private readonly features: FeatureFlagsService,
     @Inject(SIDECAR_FEATURE_SYNC)
     private readonly featureSync: SidecarFeatureSyncPort,
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
 
   /** Creates or reuses a sidecar-owned display session for an already prepared ADB target. */
@@ -70,8 +77,12 @@ export class AndroidAppsDisplaySidecarService {
         ownerUserId: app.ownerUserId,
         capabilities,
       }),
+    }).catch((error: unknown) => {
+      if (!signal?.aborted) this.metrics?.managedViewerAdmission('error');
+      throw error;
     });
 
+    this.metrics?.managedViewerAdmission('success');
     return result.session;
   }
 

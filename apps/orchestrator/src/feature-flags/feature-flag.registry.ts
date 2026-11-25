@@ -78,10 +78,19 @@ const definitions = {
   },
   'feature.resource-quota': {
     ...permanentRuntimeFlag,
-    description: 'Per-user open app, CPU, memory, and session limits.',
+    description: 'Per-user open device, CPU, memory, and session limits.',
     owner: 'android-apps',
     defaultEnabled: true,
     disablePolicy: 'block_new',
+  },
+  'feature.external-devices': {
+    ...permanentRuntimeFlag,
+    description:
+      'Enrollment, viewer sessions, and automation for USB and TCP Android devices.',
+    owner: 'android-apps',
+    defaultEnabled: false,
+    disablePolicy: 'stop_active',
+    supportConfigKey: 'app.externalAdb.configured',
   },
   'feature.display-webrtc': {
     ...permanentRuntimeFlag,

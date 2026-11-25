@@ -10,6 +10,7 @@ import {
 } from "./control-messages.js";
 import type { ControlChannel, JsonRecord, PageLifecycle } from "./types.js";
 import type { ViewerPresentation } from "./viewer-presentation.js";
+import { displayRequestPath } from "./config.js";
 
 type ControlChannelOptions = {
   sessionId: string | null;
@@ -141,7 +142,7 @@ export function createControlChannel({
   ): Promise<void> {
     if (!sessionId) throw new Error("No viewer control session is available.");
     const response = await fetch(
-      `/rebroid/display/public/sessions/${encodeURIComponent(sessionId)}/${path}`,
+      displayRequestPath(`/rebroid/display/public/sessions/${encodeURIComponent(sessionId)}/${path}`),
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -176,7 +177,7 @@ export function createControlChannel({
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const controlParams = new URLSearchParams({ sessionId });
     controlWs = new WebSocket(
-      `${protocol}//${location.host}/rebroid/display/control?${controlParams.toString()}`,
+      `${protocol}//${location.host}${displayRequestPath("/rebroid/display/control")}?${controlParams.toString()}`,
     );
     const socket = controlWs;
     const signal = demand.signal;

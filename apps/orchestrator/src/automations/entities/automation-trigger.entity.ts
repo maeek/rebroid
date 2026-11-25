@@ -33,7 +33,7 @@ export class AutomationTrigger {
   automationId!: string;
 
   @Column()
-  targetApplicationId!: string;
+  targetDeviceId!: string;
 
   @Column({ type: 'varchar', nullable: true })
   profileMode!: string | null;

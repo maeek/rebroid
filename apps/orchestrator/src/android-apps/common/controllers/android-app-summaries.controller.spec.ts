@@ -20,19 +20,22 @@ describe('application summary query', () => {
   const listNavigation = jest.fn().mockResolvedValue([]);
   const listSummaries = jest.fn().mockResolvedValue([]);
   const getStored = jest.fn<Promise<AndroidApplication>, [string]>();
+  const findViewerRuntime = jest.fn<Promise<AndroidApplication>, [string]>();
+  const create = jest.fn<Promise<AndroidApplication>, [unknown]>();
   let server: NestFastifyApplication;
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [AndroidAppsController],
       providers: [
-        { provide: AndroidAppsLifecycleService, useValue: {} },
+        { provide: AndroidAppsLifecycleService, useValue: { create } },
         {
           provide: AndroidAppsQueryService,
           useValue: Object.assign(
             new AndroidAppsQueryService(
               {
                 findById: getStored,
+                findViewerRuntime,
               } as unknown as AndroidApplicationsRepository,
               new AndroidAppsStatusService(),
             ),
@@ -57,13 +60,64 @@ describe('application summary query', () => {
 
   afterAll(() => server.close());
 
+  it('requires the managed kind before dispatching provisioning', async () => {
+    for (const kind of [undefined, 'external', null]) {
+      const result = await server.inject({
+        method: 'POST',
+        url: '/devices',
+        payload: { name: 'Test device', kind },
+      });
+      expect(result.statusCode).toBe(400);
+    }
+    expect(create).not.toHaveBeenCalled();
+    create.mockResolvedValue(
+      Object.assign(new AndroidApplication(), {
+        id: 'device-id',
+        status: AndroidApplicationStatus.Provisioning,
+        savedProfilesJson: '[]',
+      }),
+    );
+    const accepted = await server.inject({
+      method: 'POST',
+      url: '/devices',
+      payload: { name: 'Test device', kind: 'managed' },
+    });
+    expect(accepted.statusCode).toBe(201);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Test device', kind: 'managed' }),
+      undefined,
+      'admin',
+    );
+  });
+
+  it('projects a running viewer target from its stored record', async () => {
+    const device = Object.assign(new AndroidApplication(), {
+      id: 'device-id',
+      ownerUserId: 'owner',
+      status: AndroidApplicationStatus.Running,
+      containerId: 'container-id',
+    });
+    findViewerRuntime.mockResolvedValue(device);
+    const url = '/devices/device-id/viewer-runtime';
+    const running = await server.inject({ url });
+    expect(running.json()).toEqual({
+      deviceId: 'device-id',
+      kind: 'managed',
+      ownerUserId: 'owner',
+      runtimeId: 'container-id',
+    });
+    device.status = AndroidApplicationStatus.Stopped;
+    const stopped = await server.inject({ url });
+    expect(stopped.json()).toMatchObject({ runtimeId: null });
+  });
+
   it.each([
     ['applicationIds=one', ['one']],
     ['applicationIds=one&applicationIds=two', ['one', 'two']],
   ])('accepts bounded application IDs via %s', async (query, ids) => {
     const result = await server.inject({
       method: 'GET',
-      url: `/apps/summaries?ownerUserId=owner&includeRunning=true&${query}`,
+      url: `/devices/summaries?ownerUserId=owner&includeRunning=true&${query}`,
     });
 
     expect(result.statusCode).toBe(200);
@@ -78,7 +132,7 @@ describe('application summary query', () => {
     listSummaries.mockClear();
     const result = await server.inject({
       method: 'GET',
-      url: '/apps/summaries?applicationIds=1&applicationIds=2&applicationIds=3&applicationIds=4&applicationIds=5&applicationIds=6',
+      url: '/devices/summaries?applicationIds=1&applicationIds=2&applicationIds=3&applicationIds=4&applicationIds=5&applicationIds=6',
     });
 
     expect(result.statusCode).toBe(400);
@@ -94,7 +148,7 @@ describe('application summary query', () => {
     };
     const response = await server.inject({
       method: 'POST',
-      url: '/apps/navigation',
+      url: '/devices/navigation',
       payload: request,
     });
     expect(response.statusCode).toBe(200);
@@ -103,7 +157,7 @@ describe('application summary query', () => {
     listNavigation.mockClear();
     const invalid = await server.inject({
       method: 'POST',
-      url: '/apps/navigation',
+      url: '/devices/navigation',
       payload: { ...request, runningLimit: 6 },
     });
     expect(invalid.statusCode).toBe(400);
@@ -122,11 +176,19 @@ describe('application summary query', () => {
       updatedAt: new Date('2026-11-01T00:00:00Z'),
     });
     getStored.mockResolvedValue(app);
-    const initial = await server.inject({ method: 'GET', url: '/apps/app-id' });
+    const initial = await server.inject({
+      method: 'GET',
+      url: '/devices/app-id',
+    });
     expect(initial.statusCode).toBe(200);
+    expect(initial.json()).toMatchObject({
+      id: 'app-id',
+      kind: 'managed',
+      operations: expect.arrayContaining(['start', 'profiles', 'viewer']),
+    });
     const { detailRevision } = initial.json<{ detailRevision: string }>();
     expect(detailRevision).toMatch(/^[a-f0-9]{64}$/);
-    const url = `/apps/app-id/detail?revision=${detailRevision}`;
+    const url = `/devices/app-id/detail?revision=${detailRevision}`;
     app.status = AndroidApplicationStatus.Running;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
     app.updatedAt = new Date('2026-11-02T00:00:00Z');

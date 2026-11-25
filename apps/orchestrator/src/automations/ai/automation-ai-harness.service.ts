@@ -3,6 +3,7 @@ import {
   Injectable,
   RequestTimeoutException,
 } from '@nestjs/common';
+import { externalAutomationCapability } from '@rebroid/automation-core/device-capabilities';
 import type { DeviceAgentDecision } from './core/device-decision';
 import { providerProtocol } from '../../common/ai-provider-request';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
@@ -123,8 +124,12 @@ export class AutomationAiHarnessService {
       input.modelId,
       'controller',
     );
+    const commands = this.registry.listCommands();
     const capabilities = routeCapabilities({
-      commands: this.registry.listCommands(),
+      commands:
+        context.app.kind === 'external'
+          ? commands.filter(({ uses }) => externalAutomationCapability(uses))
+          : commands,
       goal: input.prompt,
       input,
     });

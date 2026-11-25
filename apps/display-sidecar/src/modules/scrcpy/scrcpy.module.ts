@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
-import { AdbModule } from "../adb/adb.module";
+import { DisplayAdbModule } from "../adb/display-adb.module";
 import { ScrcpyService } from "./scrcpy.service";
 
 @Module({
-  imports: [AdbModule],
+  imports: [DisplayAdbModule],
   providers: [ScrcpyService],
   exports: [ScrcpyService],
 })

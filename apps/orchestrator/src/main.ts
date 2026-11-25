@@ -26,9 +26,11 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Rebroid Orchestrator')
-    .setDescription('Internal API for isolated app container orchestration.')
+    .setDescription(
+      'Internal API for Android devices and runtime orchestration.',
+    )
     .setVersion('0.1.0')
-    .addTag('apps')
+    .addTag('devices')
     .addTag('app-lifecycle')
     .addTag('app-runtime')
     .addTag('app-viewer')

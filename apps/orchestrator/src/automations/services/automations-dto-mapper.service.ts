@@ -85,7 +85,11 @@ export class AutomationsDtoMapper {
     return {
       id: run.id,
       automationId: run.automationId,
-      targetApplicationId: run.targetApplicationId,
+      targetDeviceId: run.targetDeviceId,
+      ...(run.targetKind === 'external' && {
+        targetKind: run.targetKind,
+        targetAttachmentId: run.targetAttachmentId,
+      }),
       targetProfileMode: run.targetProfileMode,
       targetProfileName: run.targetProfileName,
       trigger: run.trigger,
@@ -107,7 +111,7 @@ export class AutomationsDtoMapper {
       name: trigger.name,
       description: trigger.description,
       automationId: trigger.automationId,
-      targetApplicationId: trigger.targetApplicationId,
+      targetDeviceId: trigger.targetDeviceId,
       profileMode: trigger.profileMode,
       profileName: trigger.profileName,
       enabled: trigger.enabled,

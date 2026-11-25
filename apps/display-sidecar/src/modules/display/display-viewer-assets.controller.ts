@@ -1,5 +1,6 @@
 import { SidecarFeatureService } from "../shared/sidecar-feature.service";
-import { Controller, Get, Param, Res } from "@nestjs/common";
+import { Controller, Get, Optional, Param, Res } from "@nestjs/common";
+import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { ApiExcludeEndpoint } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
 import { createReadStream } from "node:fs";
@@ -15,7 +16,10 @@ const viewerContentSecurityPolicy =
 
 @Controller("viewer/display")
 export class DisplayViewerAssetsController {
-  constructor(private readonly features: SidecarFeatureService) {}
+  constructor(
+    private readonly features: SidecarFeatureService,
+    @Optional() private readonly config?: SidecarConfigService,
+  ) {}
 
   @Get()
   @ApiExcludeEndpoint()
@@ -32,6 +36,12 @@ export class DisplayViewerAssetsController {
     if (!this.features.isWebrtcEnabled()) {
       html = html.replace("<body>", '<body data-webrtc-disabled="true">');
     }
+    if (this.config?.externalAdbEnabled) {
+      html = html.replaceAll(
+        'src="/viewer/display/',
+        'src="/external-display/viewer/display/',
+      );
+    }
     response.type("text/html; charset=utf-8").send(html);
   }
 
@@ -39,7 +49,10 @@ export class DisplayViewerAssetsController {
   @ApiExcludeEndpoint()
   async asset(@Param("file") file: string, @Res() response: FastifyReply) {
     const safeFile = basename(file);
-    const contentType = assetContentTypes[extname(safeFile)];
+    const contentType =
+      safeFile === "device.webp"
+        ? "image/webp"
+        : assetContentTypes[extname(safeFile)];
     if (!contentType || safeFile !== file) {
       response.status(404).send("Not found.");
       return;

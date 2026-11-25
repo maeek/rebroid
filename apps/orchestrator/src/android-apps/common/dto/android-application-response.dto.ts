@@ -13,6 +13,7 @@ import { parseJsonStringArray } from '../../../common/json-array';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { parseSavedProfiles } from '../utils/android-apps-profile-history.utils';
+import { ManagedAndroidDeviceDto } from './managed-android-device.dto';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
@@ -177,7 +178,7 @@ class AndroidApplicationApkDto {
   uploadedApkId!: string | null;
 }
 
-export class AndroidApplicationResponseDto {
+export class AndroidApplicationResponseDto extends ManagedAndroidDeviceDto {
   @ApiProperty()
   id!: string;
 
@@ -218,6 +219,7 @@ export class AndroidApplicationResponseDto {
 
   static fromEntity(app: AndroidApplication): AndroidApplicationResponseDto {
     return {
+      ...ManagedAndroidDeviceDto.describe(app.kind),
       id: app.id,
       name: app.name,
       ownerUserId: app.ownerUserId,

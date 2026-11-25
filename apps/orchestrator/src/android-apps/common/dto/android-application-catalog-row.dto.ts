@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ManagedAndroidDeviceDto } from './managed-android-device.dto';
 import type { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 
-export class AndroidApplicationNavigationRowDto {
+export class AndroidApplicationNavigationRowDto extends ManagedAndroidDeviceDto {
   @ApiProperty()
   id!: string;
 
@@ -25,7 +26,14 @@ export class AndroidApplicationNavigationRowDto {
     app: AndroidApplication,
   ): AndroidApplicationNavigationRowDto {
     const { id, name, ownerUserId, status, lifecycleStage } = app;
-    return { id, name, ownerUserId, status, lifecycleStage };
+    return {
+      ...ManagedAndroidDeviceDto.describe(app.kind),
+      id,
+      name,
+      ownerUserId,
+      status,
+      lifecycleStage,
+    };
   }
 }
 

@@ -4,8 +4,11 @@ import {
   HttpException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
+import { ExternalAdbAttachments } from "../external-adb/external-adb-attachments";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import {
@@ -33,6 +36,13 @@ const DEFAULT_DISPLAY_CAPABILITIES = [
   "screenshot",
   "diagnostics",
 ] as const;
+const externalCapability = z.enum([
+  "video",
+  "audio",
+  "control",
+  "clipboard",
+  "screenshot",
+]);
 
 @Injectable()
 export class DisplaySessionService {
@@ -42,11 +52,35 @@ export class DisplaySessionService {
   constructor(
     private readonly config: SidecarConfigService,
     private readonly features: SidecarFeatureService,
+    @Optional() private readonly attachments?: ExternalAdbAttachments,
   ) {}
 
   create(body: CreateDisplaySessionBody): PublicDisplaySession {
     if (!body.udid?.trim()) {
       throw new BadRequestException("udid is required.");
+    }
+    if (this.config.externalAdbEnabled) {
+      if (
+        !body.appId ||
+        !z.uuid().safeParse(body.appId).success ||
+        !body.ownerUserId ||
+        body.ownerUserId.length > 200 ||
+        body.runtimeId !== body.udid ||
+        body.newDisplay ||
+        body.displayId !== undefined ||
+        (body.surfaceKind && body.surfaceKind !== "main") ||
+        (body.surfaceId && body.surfaceId !== MAIN_SURFACE_ID) ||
+        !Array.isArray(body.capabilities) ||
+        !body.capabilities.includes("video") ||
+        !body.capabilities.every(
+          (capability) => externalCapability.safeParse(capability).success,
+        )
+      ) {
+        throw new BadRequestException(
+          "A verified external main display target is required.",
+        );
+      }
+      this.attachments!.requireVerified(body.udid, body.appId);
     }
 
     this.purgeInactiveSessions();
@@ -100,6 +134,9 @@ export class DisplaySessionService {
     parentSessionId: string,
     body: CreateDisplaySurfaceBody = {},
   ): PublicDisplaySession {
+    if (this.config.externalAdbEnabled) {
+      throw new ConflictException("External devices support the main display.");
+    }
     this.features.assertVirtualDisplayEnabled();
     const parent = this.get(parentSessionId);
     if (parent.surfaceKind !== "main") {
@@ -151,6 +188,7 @@ export class DisplaySessionService {
     return [...this.sessions.values()].map((session) => ({
       id: session.id,
       appId: session.appId,
+      ...(this.config.externalAdbEnabled && { runtimeId: session.runtimeId }),
       ownerUserId: session.ownerUserId,
       status: session.status,
       createdAt: session.createdAt,
@@ -172,6 +210,12 @@ export class DisplaySessionService {
     }
     for (const session of released) this.notifyClosed(session.id);
     return released.length;
+  }
+
+  releaseForAttachment(attachmentId: string) {
+    for (const session of this.sessions.values()) {
+      if (session.runtimeId === attachmentId) this.release(session.id);
+    }
   }
 
   get(id: string): DisplaySession {
@@ -283,11 +327,13 @@ export class DisplaySessionService {
 
   activate(session: DisplaySession): void {
     this.get(session.id);
+    this.assertCurrentAttachment(session);
     session.status = "active";
     this.extend(session);
   }
 
   assertCapability(session: DisplaySession, capability: string) {
+    this.assertCurrentAttachment(session);
     const normalized = this.normalizeCapability(capability);
     if (!session.capabilities.includes(normalized)) {
       throw new BadRequestException({
@@ -296,6 +342,12 @@ export class DisplaySessionService {
         capability: normalized,
         message: `Display session does not allow ${normalized}.`,
       });
+    }
+  }
+
+  private assertCurrentAttachment(session: DisplaySession) {
+    if (this.config.externalAdbEnabled) {
+      this.attachments!.requireVerified(session.udid, session.appId);
     }
   }
 
@@ -419,6 +471,7 @@ export class DisplaySessionService {
   }
 
   private toSurface(session: DisplaySession): DisplaySurface {
+    const prefix = this.config.externalAdbEnabled ? "/external-display" : "";
     return {
       id: session.surfaceId,
       sessionId: session.id,
@@ -427,9 +480,9 @@ export class DisplaySessionService {
       status: session.status,
       createdAt: session.createdAt,
       lastActivityAt: session.lastActivityAt,
-      streamPath: `/rebroid/display/stream?sessionId=${encodeURIComponent(session.id)}`,
-      viewerPath: `/viewer/display?sessionId=${encodeURIComponent(session.id)}&surfaceKind=${session.surfaceKind}`,
-      webrtcOfferPath: `/rebroid/display/public/sessions/${encodeURIComponent(session.id)}/webrtc/offer`,
+      streamPath: `${prefix}/rebroid/display/stream?sessionId=${encodeURIComponent(session.id)}`,
+      viewerPath: `${prefix}/viewer/display?sessionId=${encodeURIComponent(session.id)}&surfaceKind=${session.surfaceKind}`,
+      webrtcOfferPath: `${prefix}/rebroid/display/public/sessions/${encodeURIComponent(session.id)}/webrtc/offer`,
       displayId: session.displayId,
       newDisplay: session.newDisplay,
     };

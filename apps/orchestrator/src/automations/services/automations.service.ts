@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -142,10 +143,18 @@ export class AutomationsService {
   }
 
   async runAdHocAi(dto: RunAdHocAiAutomationDto) {
-    await this.targetApplications.assertOwnerAccess(
+    const device = await this.targetApplications.assertOwnerAccess(
       dto.ownerUserId,
-      dto.targetApplicationId,
+      dto.targetDeviceId,
     );
+    if (
+      device?.kind === 'external' &&
+      (!dto.attachmentId || dto.attachmentId !== device.attachmentId)
+    ) {
+      throw new ConflictException(
+        'Open the verified attachment before sending a device-agent prompt.',
+      );
+    }
     const definition = this.aiDefinitions.create({
       name: 'Ad-hoc AI automation',
       prompt: dto.prompt,
@@ -166,7 +175,8 @@ export class AutomationsService {
       definition,
       AutomationRunTrigger.Manual,
       {
-        targetApplicationId: dto.targetApplicationId,
+        targetDeviceId: dto.targetDeviceId,
+        targetAttachmentId: dto.attachmentId,
         targetProfileMode: dto.profileMode,
         targetProfileName: dto.profileName?.trim() || null,
         currentProfileOnly:
@@ -181,26 +191,36 @@ export class AutomationsService {
   }
 
   async suggestAdHocAiPrompts(dto: SuggestAdHocAiPromptsDto) {
-    await this.targetApplications.assertOwnerAccess(
+    const device = await this.targetApplications.assertOwnerAccess(
       dto.ownerUserId,
-      dto.targetApplicationId,
+      dto.targetDeviceId,
     );
-    return this.aiSuggestions.suggest(dto);
+    const external = device?.kind === 'external';
+    if (external) this.features.assertEnabled('feature.external-devices');
+    if (
+      external &&
+      (!dto.attachmentId || dto.attachmentId !== device.attachmentId)
+    ) {
+      throw new ConflictException(
+        'Open the verified attachment before requesting device-agent suggestions.',
+      );
+    }
+    return this.aiSuggestions.suggest(dto, external);
   }
 
   async listAdHocAiRuns(
     ownerUserId: string,
-    targetApplicationId: string,
+    targetDeviceId: string,
     limit?: number,
   ) {
     await this.targetApplications.assertOwnerAccess(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
     );
     return (
       await this.runs.listAdHocAiForTarget(
         ownerUserId.trim(),
-        targetApplicationId,
+        targetDeviceId,
         limit,
       )
     ).map((run) => this.mapper.run(run));
@@ -208,14 +228,18 @@ export class AutomationsService {
 
   async listAdHocAiRunHistory(
     ownerUserId: string,
-    targetApplicationId: string,
+    targetDeviceId: string,
     limit?: number,
+    attachmentId?: string,
   ) {
-    const runs = await this.listAdHocAiRuns(
+    const history = await this.listAdHocAiRuns(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
       limit,
     );
+    const runs = attachmentId
+      ? history.filter((run) => run.targetAttachmentId === attachmentId)
+      : history;
     const events = await this.events.listConversationEvents(
       ownerUserId.trim(),
       runs.map((run) => run.id),
@@ -229,15 +253,26 @@ export class AutomationsService {
     return runs.map((run) => ({ run, events: byRun.get(run.id) ?? [] }));
   }
 
-  async clearAdHocAiRuns(ownerUserId: string, targetApplicationId: string) {
-    await this.targetApplications.assertOwnerAccess(
+  async clearAdHocAiRuns(
+    ownerUserId: string,
+    targetDeviceId: string,
+    attachmentId?: string,
+  ) {
+    const device = await this.targetApplications.assertOwnerAccess(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
     );
-    const runs = await this.runs.listAllAdHocAiForTarget(
+    if (device?.kind === 'external' && !attachmentId)
+      throw new ConflictException(
+        'Select a device attachment to clear its conversation.',
+      );
+    const history = await this.runs.listAllAdHocAiForTarget(
       ownerUserId.trim(),
-      targetApplicationId,
+      targetDeviceId,
     );
+    const runs = attachmentId
+      ? history.filter((run) => run.targetAttachmentId === attachmentId)
+      : history;
     for (const run of runs) {
       if (
         run.status === AutomationRunStatus.Queued ||
@@ -256,13 +291,14 @@ export class AutomationsService {
     const automation = await this.queries.getEntity(ownerUserId, id);
     await this.targetApplications.assertOwnerAccess(
       ownerUserId,
-      dto.targetApplicationId,
+      dto.targetDeviceId,
     );
     const run = await this.runner.enqueue(
       automation,
       AutomationRunTrigger.Manual,
       {
-        targetApplicationId: dto.targetApplicationId,
+        targetDeviceId: dto.targetDeviceId,
+        targetAttachmentId: dto.attachmentId,
         targetProfileMode: dto.profileMode,
         targetProfileName: dto.profileName?.trim() || null,
         startPolicy: toAutomationRunStartPolicy(
@@ -300,7 +336,14 @@ export class AutomationsService {
     const rows = await this.runs.listActive(ownerUserId);
     const showNames = this.features.isEnabled('feature.workflows');
     return rows.flatMap(({ run, workflowName }) => {
-      const { id, automationId, targetApplicationId, status, createdAt } = run;
+      const {
+        id,
+        automationId,
+        targetDeviceId,
+        targetKind,
+        status,
+        createdAt,
+      } = run;
       if (
         status !== AutomationRunStatus.Queued &&
         status !== AutomationRunStatus.Running
@@ -310,7 +353,8 @@ export class AutomationsService {
         {
           id,
           automationId,
-          targetApplicationId,
+          targetDeviceId,
+          ...(targetKind === 'external' && { targetKind }),
           status,
           createdAt: createdAt.toISOString(),
           workflowName: showNames ? workflowName : null,
@@ -321,18 +365,18 @@ export class AutomationsService {
 
   async listApplicationWorkflowRuns({
     ownerUserId,
-    targetApplicationId,
+    targetDeviceId,
     page = 0,
     pageSize = 25,
     q = '',
   }: ListApplicationWorkflowRunsDto): Promise<ApplicationWorkflowRunPageDto> {
     await this.targetApplications.assertOwnerAccess(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
     );
     const { items, total } = await this.runs.listApplicationWorkflows(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
       page,
       pageSize,
       q.trim(),
@@ -355,16 +399,16 @@ export class AutomationsService {
 
   async getApplicationWorkflowRun(
     ownerUserId: string,
-    targetApplicationId: string,
+    targetDeviceId: string,
     runId: string,
   ): Promise<ApplicationWorkflowRunDto> {
     await this.targetApplications.assertOwnerAccess(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
     );
     const record = await this.runs.findApplicationWorkflow(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
       runId,
     );
     if (!record)

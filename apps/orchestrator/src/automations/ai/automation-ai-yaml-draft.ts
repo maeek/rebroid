@@ -30,7 +30,7 @@ export const buildYamlDraftMessages = ({
       'You generate Rebroid Android automation YAML drafts.',
       'Return one complete automation definition by calling submitAutomationYaml.',
       `If one missing detail blocks a runnable draft, ask exactly one concise question by calling ${REQUEST_CLARIFICATION_TOOL_NAME}. Do not ask broad preference questions.`,
-      'Use apiVersion rebroid.io/automation/v1 and kind AndroidAutomation.',
+      'Use apiVersion rebroid.io/automation/v2 and kind AndroidAutomation.',
       'Use concrete available command steps and control steps; do not use ai.run.',
       'Prefer typed commands over android.adbShell. Prefer normalized coordinates when coordinates are necessary.',
       'If a package name is unknown, do not guess it; draft discovery or checks using available package/text/vision commands instead.',
@@ -56,7 +56,7 @@ export const buildYamlDraftMessages = ({
       'Available commands as JSON:',
       JSON.stringify(commandCatalog(commands)),
       '',
-      'Available runContext keys: targetApplicationId, targetProfileMode, targetProfileName, ownerUserId.',
+      'Available runContext keys: targetDeviceId, targetProfileMode, targetProfileName, ownerUserId.',
       'Submit only YAML through the submitAutomationYaml tool.',
     ].join('\n'),
   },
@@ -147,7 +147,7 @@ export const submitYamlTool = () => ({
         yaml: {
           type: 'string',
           description:
-            'Complete rebroid.io/automation/v1 AndroidAutomation YAML.',
+            'Complete rebroid.io/automation/v2 AndroidAutomation YAML.',
         },
         notes: {
           type: 'string',

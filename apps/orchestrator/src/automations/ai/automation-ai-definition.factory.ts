@@ -38,7 +38,7 @@ export class AutomationAiDefinitionFactory {
     clientMessageId,
   }: AutomationAiDefinitionInput): AutomationDefinition {
     return this.definitions.normalize({
-      apiVersion: 'rebroid.io/automation/v1',
+      apiVersion: 'rebroid.io/automation/v2',
       kind: 'AndroidAutomation',
       metadata: {
         name,

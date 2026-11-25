@@ -36,6 +36,18 @@ test("scrcpy server options preserve reverse and forward tunnel protocol flags",
   assert.ok(reverse.includes("display_id=0"));
   assert.ok(reverse.includes("control=false"));
   assert.ok(!reverse.includes("tunnel_forward=true"));
+  for (const option of ["keep_active", "power_on", "clipboard_autosync"]) {
+    assert.ok(reverse.includes(`${option}=true`));
+  }
+  const passive = buildScrcpyServerOptions(stream, "a1", "forward", {
+    ...settings,
+    passive: true,
+  });
+  for (const option of ["keep_active", "power_on", "clipboard_autosync"]) {
+    assert.ok(passive.includes(`${option}=false`));
+  }
+  assert.ok(passive.includes("control=false"));
+  assert.ok(passive.includes("tunnel_forward=true"));
   assert.ok(
     reverse.includes(
       "video_codec_options=i-frame-interval:int=1,max-bframes:int=0",

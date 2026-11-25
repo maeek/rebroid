@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { normalizeIpv4Cidr } from '@rebroid/firewall-policy-core/policy';
 import {
@@ -28,6 +28,12 @@ const restrictionsSchema = z.object({
   enabled: z.boolean(),
 });
 
+const requireManagedApp = (app: AutomationCommandContext['app']) => {
+  if (app.kind === 'external')
+    throw new ConflictException('This operation requires a managed device.');
+  return app;
+};
+
 @Injectable()
 export class ContainerNetworkAutomationCommandsService {
   list(): AutomationCommandDefinition[] {
@@ -43,11 +49,12 @@ export class ContainerNetworkAutomationCommandsService {
           { cidr }: z.infer<typeof cidrSchema>,
           { app, networkPolicy }: AutomationCommandContext,
         ) => {
+          const managed = requireManagedApp(app);
           const updated = await networkPolicy.changeAllowedCidr(app.id, {
             operation: 'add',
             cidr,
           });
-          app.networkPolicyAllowCidrs = updated.networkPolicyAllowCidrs;
+          managed.networkPolicyAllowCidrs = updated.networkPolicyAllowCidrs;
           return { summary: `Allowed ${cidr}.` };
         },
       },
@@ -62,11 +69,12 @@ export class ContainerNetworkAutomationCommandsService {
           { cidr }: z.infer<typeof cidrSchema>,
           { app, networkPolicy }: AutomationCommandContext,
         ) => {
+          const managed = requireManagedApp(app);
           const updated = await networkPolicy.changeAllowedCidr(app.id, {
             operation: 'remove',
             cidr,
           });
-          app.networkPolicyAllowCidrs = updated.networkPolicyAllowCidrs;
+          managed.networkPolicyAllowCidrs = updated.networkPolicyAllowCidrs;
           return { summary: `Removed allowed CIDR ${cidr}.` };
         },
       },
@@ -81,10 +89,11 @@ export class ContainerNetworkAutomationCommandsService {
           _input: Record<string, never>,
           { app, networkPolicy }: AutomationCommandContext,
         ) => {
+          const managed = requireManagedApp(app);
           await networkPolicy.updateNetworkPolicy(app.id, {
             networkPolicyAllowCidrs: [],
           });
-          app.networkPolicyAllowCidrs = '[]';
+          managed.networkPolicyAllowCidrs = '[]';
           return { summary: 'Cleared allowed CIDRs.' };
         },
       },
@@ -99,10 +108,11 @@ export class ContainerNetworkAutomationCommandsService {
           { enabled }: z.infer<typeof restrictionsSchema>,
           { app, networkPolicy }: AutomationCommandContext,
         ) => {
+          const managed = requireManagedApp(app);
           await networkPolicy.updateNetworkPolicy(app.id, {
             networkPolicyEnabled: enabled,
           });
-          app.networkPolicyEnabled = enabled;
+          managed.networkPolicyEnabled = enabled;
           return {
             summary: `Network restrictions ${enabled ? 'enabled' : 'disabled'}.`,
           };
@@ -118,12 +128,13 @@ export class ContainerNetworkAutomationCommandsService {
           _input: Record<string, never>,
           { app, networkPolicy }: AutomationCommandContext,
         ) => {
+          const managed = requireManagedApp(app);
           await networkPolicy.updateNetworkPolicy(app.id, {
             networkPolicyEnabled: true,
             networkPolicyAllowCidrs: [],
           });
-          app.networkPolicyEnabled = true;
-          app.networkPolicyAllowCidrs = '[]';
+          managed.networkPolicyEnabled = true;
+          managed.networkPolicyAllowCidrs = '[]';
           return { summary: 'Network policy reset.' };
         },
       },

@@ -4,7 +4,9 @@ export enum AutomationRunStartPolicy {
 }
 
 export interface AutomationRunTargetOptions {
-  targetApplicationId?: string | null;
+  targetDeviceId?: string | null;
+  targetKind?: 'managed' | 'external';
+  targetAttachmentId?: string | null;
   targetProfileMode?: string | null;
   targetProfileName?: string | null;
   automationTriggerId?: string | null;

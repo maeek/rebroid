@@ -34,7 +34,7 @@ describe('trigger configuration', () => {
     ownerUserId: 'owner',
     name: 'Morning check',
     automationId: 'workflow',
-    targetApplicationId: 'app',
+    targetDeviceId: 'app',
     triggerType: AutomationTriggerType.Schedule,
     triggerConfig: { cronExpression: '0 9 * * *' },
     description: '  Stock check before opening.  ',

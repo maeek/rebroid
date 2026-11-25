@@ -1,15 +1,21 @@
 import { createHash } from 'node:crypto';
-import type { AndroidAutomationApplication } from '../../android-apps/contracts/android-apps-automation.port';
+import type {
+  ExternalAutomationApplication,
+  ManagedAutomationApplication,
+} from '../../android-apps/contracts/android-apps-automation.port';
 
-type TargetApplication = Pick<
-  AndroidAutomationApplication,
-  | 'id'
-  | 'containerId'
-  | 'containerName'
-  | 'networkName'
-  | 'adbPort'
-  | 'lastStartedAt'
->;
+type TargetApplication =
+  | Pick<
+      ManagedAutomationApplication,
+      | 'id'
+      | 'containerId'
+      | 'containerName'
+      | 'networkName'
+      | 'adbPort'
+      | 'lastStartedAt'
+      | 'kind'
+    >
+  | ExternalAutomationApplication;
 
 export interface DeviceTargetSession {
   id: string;
@@ -19,14 +25,17 @@ export interface DeviceTargetSession {
 export const createTargetSession = (
   app: TargetApplication,
 ): DeviceTargetSession => {
-  const identity = [
-    app.id,
-    app.containerId ?? 'no-container',
-    app.containerName,
-    app.networkName,
-    app.adbPort,
-    app.lastStartedAt?.getTime() ?? 'no-start',
-  ].join('|');
+  const identity =
+    app.kind === 'external'
+      ? ['external', app.id, app.attachmentId ?? 'offline'].join('|')
+      : [
+          app.id,
+          app.containerId ?? 'no-container',
+          app.containerName,
+          app.networkName,
+          app.adbPort,
+          app.lastStartedAt?.getTime() ?? 'no-start',
+        ].join('|');
   const fingerprint = createHash('sha256')
     .update(identity)
     .digest('hex')

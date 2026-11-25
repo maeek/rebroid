@@ -30,14 +30,14 @@ import {
   AndroidApplicationDetailRefreshDto,
   AndroidApplicationResponseDto,
 } from '../dto/android-application-response.dto';
-import { AndroidApplicationViewerRuntimeDto } from '../dto/android-application-viewer-runtime.dto';
+import { AndroidDeviceViewerTargetDto } from '../dto/android-application-viewer-runtime.dto';
 import {
   AndroidAppRuntimeReconciliationDto,
   ReconcileAndroidApplicationsDto,
 } from '../dto/android-app-runtime-reconciliation.dto';
 import { AndroidApplicationSummaryResponseDto } from '../dto/android-application-summary-response.dto';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
-import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
+import { CreateManagedAndroidDeviceDto } from '../dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from '../dto/delete-android-application-response.dto';
 import { ListAndroidApplicationSummariesDto } from '../dto/list-android-application-summaries.dto';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
@@ -50,8 +50,8 @@ import { ApiOpenAppQuota, OpenAppQuota } from './open-app-quota-header';
 import { ApiImageAccess, ImageAccess } from './application-image-access-header';
 import type { ApplicationImageAccess } from '../../lifecycle/utils/application-image-access';
 
-@ApiTags('apps')
-@Controller('apps')
+@ApiTags('devices')
+@Controller('devices')
 export class AndroidAppsController {
   constructor(
     private readonly lifecycle: AndroidAppsLifecycleService,
@@ -63,7 +63,7 @@ export class AndroidAppsController {
   @ApiOpenAppQuota()
   @ApiImageAccess()
   @ApiOperation({
-    summary: 'Provision an isolated application container.',
+    summary: 'Provision a managed Android device.',
   })
   @ApiCreatedResponse({ type: ApplicationCommandResultDto })
   @ApiBadRequestResponse({
@@ -112,33 +112,9 @@ export class AndroidAppsController {
       },
     },
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['name'],
-      properties: {
-        name: { type: 'string', example: 'Signal Android' },
-        ownerUserId: { type: 'string', example: 'user_123' },
-        containerImage: {
-          type: 'string',
-          example: 'redroid/redroid:14.0.0-latest',
-        },
-        inactivityTimeoutSeconds: { type: 'integer', example: 900 },
-        memoryLimitMb: { type: 'integer', example: 2048 },
-        cpuLimitCpus: { type: 'number', example: 2 },
-        containerArgs: {
-          type: 'string',
-          example: 'sleep infinity',
-        },
-        uploadedApkId: {
-          type: 'string',
-          example: '98a530d6-a45d-466a-9cb4-c023067c4971',
-        },
-      },
-    },
-  })
+  @ApiBody({ type: CreateManagedAndroidDeviceDto })
   async create(
-    @Body() dto: CreateAndroidApplicationDto,
+    @Body() dto: CreateManagedAndroidDeviceDto,
     @OpenAppQuota() maxOpenApps?: number,
     @ImageAccess() imageAccess?: ApplicationImageAccess,
   ) {
@@ -225,13 +201,13 @@ export class AndroidAppsController {
   }
 
   @Get(':id/viewer-runtime')
-  @ApiOkResponse({ type: AndroidApplicationViewerRuntimeDto })
+  @ApiOkResponse({ type: AndroidDeviceViewerTargetDto })
   async getViewerRuntime(
     @Param('id') id: string,
-  ): Promise<AndroidApplicationViewerRuntimeDto> {
-    const { ownerUserId, status, containerId } =
-      await this.queries.getViewerRuntime(id);
-    return { ownerUserId, status, containerId };
+  ): Promise<AndroidDeviceViewerTargetDto> {
+    return AndroidDeviceViewerTargetDto.fromRuntime(
+      await this.queries.getViewerRuntime(id),
+    );
   }
 
   @Get(':id/detail')

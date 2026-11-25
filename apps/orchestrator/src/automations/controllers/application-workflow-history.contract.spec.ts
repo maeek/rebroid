@@ -65,14 +65,14 @@ it('publishes and validates the app workflow history and run detail routes', asy
         doc.components?.schemas?.[name],
       );
     }
-    const scope = 'ownerUserId=owner&targetApplicationId=app';
+    const scope = 'ownerUserId=owner&targetDeviceId=app';
     const response = await app.inject({
       url: `${path}?${scope}&page=2&pageSize=10&q=inventory`,
     });
     expect(response.statusCode).toBe(200);
     expect(service.listApplicationWorkflowRuns).toHaveBeenCalledWith({
       ownerUserId: 'owner',
-      targetApplicationId: 'app',
+      targetDeviceId: 'app',
       page: 2,
       pageSize: 10,
       q: 'inventory',

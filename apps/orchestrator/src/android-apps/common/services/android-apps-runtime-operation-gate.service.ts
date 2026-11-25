@@ -7,8 +7,8 @@ import {
 import type { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import type {
-  AndroidAutomationApplication,
-  AndroidAutomationTarget,
+  ManagedAutomationApplication,
+  ManagedAutomationTarget,
 } from '../../contracts/android-apps-automation.port';
 import {
   runtimeIdentityKey,
@@ -31,14 +31,14 @@ export class AndroidAppsRuntimeOperationGate {
     private readonly containers: DockerContainerLifecyclePort,
   ) {}
 
-  capture(app: AndroidAutomationApplication, signal: AbortSignal) {
+  capture(app: ManagedAutomationApplication, signal: AbortSignal) {
     return this.withCurrentRuntime(app, signal, async (target) => target);
   }
 
   run<T>(
-    expected: AndroidAutomationTarget,
+    expected: ManagedAutomationTarget,
     signal: AbortSignal | undefined,
-    operation: (app: AndroidAutomationApplication) => Promise<T>,
+    operation: (app: ManagedAutomationApplication) => Promise<T>,
   ): Promise<T> {
     return this.withCurrentRuntime(expected, signal, (target) => {
       if (target.containerStartedAt !== expected.containerStartedAt) {

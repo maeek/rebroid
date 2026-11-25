@@ -26,9 +26,11 @@ export class AutomationRunAuthorizationService {
   async assertAllowed(
     ownerUserId: string,
     definition: AutomationDefinition,
-    targetApplicationId: string,
+    targetDeviceId: string,
     target: {
       operation: 'attach' | 'start';
+      attachmentId?: string;
+      command?: string;
       profileMode?: string | null;
       profileName?: string | null;
     },
@@ -52,7 +54,7 @@ export class AutomationRunAuthorizationService {
         body: JSON.stringify({
           ownerUserId,
           definition,
-          targetApplicationId,
+          targetDeviceId,
           ...target,
         }),
         signal: abortSignal ? AbortSignal.any([abortSignal, timeout]) : timeout,

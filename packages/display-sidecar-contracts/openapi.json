@@ -18,7 +18,9 @@
           }
         },
         "summary": "Read sidecar process health.",
-        "tags": ["health"]
+        "tags": [
+          "health"
+        ]
       }
     },
     "/health/ready": {
@@ -35,10 +37,22 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthDto"
+                }
+              }
+            }
           }
         },
         "summary": "Read sidecar readiness.",
-        "tags": ["health"]
+        "tags": [
+          "health"
+        ]
       }
     },
     "/rebroid/display/features": {
@@ -57,7 +71,9 @@
             }
           }
         },
-        "tags": ["features"]
+        "tags": [
+          "features"
+        ]
       },
       "put": {
         "operationId": "SidecarFeatureController_update",
@@ -84,664 +100,135 @@
             }
           }
         },
-        "tags": ["features"]
-      }
-    },
-    "/rebroid/adb/{udid}/clipboard": {
-      "get": {
-        "operationId": "AdbController_getClipboard",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbClipboardResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Read Android clipboard text through ADB.",
-        "tags": ["adb"]
-      },
-      "put": {
-        "operationId": "AdbController_setClipboard",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbClipboardDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbClipboardResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Set Android clipboard text through ADB.",
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/logcat": {
-      "get": {
-        "operationId": "AdbController_logcat",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tail",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "example": 300,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbLogcatDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Read recent Android logcat output through ADB.",
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/screenshot": {
-      "get": {
-        "operationId": "AdbController_screenshot",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbScreenshotDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Capture a PNG screenshot through ADB.",
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/tap": {
-      "post": {
-        "operationId": "AdbController_tap",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbTapDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/swipe": {
-      "post": {
-        "operationId": "AdbController_swipe",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbSwipeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/input-text": {
-      "post": {
-        "operationId": "AdbController_inputText",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbInputTextDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/key": {
-      "post": {
-        "operationId": "AdbController_key",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbKeyDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/rotate-display": {
-      "post": {
-        "operationId": "AdbController_rotateDisplay",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbRotateDisplayDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/shell": {
-      "post": {
-        "operationId": "AdbController_shell",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbShellDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbShellResultDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/ui-dump": {
-      "get": {
-        "operationId": "AdbController_uiDump",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbUiDumpDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/tap-text": {
-      "post": {
-        "operationId": "AdbController_tapText",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbTapTextDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbTapTextResultDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/ui-text": {
-      "post": {
-        "operationId": "AdbController_uiText",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdbUiTextDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbUiTextResultDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/ui-text/{operationId}": {
-      "delete": {
-        "operationId": "AdbController_cancelUiText",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "operationId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
         "tags": [
-          "adb"
+          "features"
         ]
       }
     },
-    "/rebroid/adb/{udid}/files": {
-      "put": {
-        "operationId": "AdbController_pushFile",
+    "/rebroid/external-adb/candidates": {
+      "get": {
+        "operationId": "ExternalAdbController_candidates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalAdbCandidateDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/external-adb/candidates/{id}": {
+      "get": {
+        "operationId": "ExternalAdbController_candidate",
         "parameters": [
           {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAdbSelectorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/external-adb/tcp-check": {
+      "post": {
+        "operationId": "ExternalAdbController_checkTcp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "endpoint"
+                ],
+                "properties": {
+                  "endpoint": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAdbTcpCheckDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/external-adb/devices/{id}/attempts/{attemptId}": {
+      "post": {
+        "operationId": "ExternalAdbController_connect",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "udid",
+            "name": "attemptId",
             "required": true,
             "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
             "schema": {
               "type": "string"
             }
@@ -752,7 +239,23 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdbPushFileDto"
+                "type": "object",
+                "required": [
+                  "transport",
+                  "selector"
+                ],
+                "properties": {
+                  "transport": {
+                    "type": "string",
+                    "enum": [
+                      "usb",
+                      "tcp"
+                    ]
+                  },
+                  "selector": {
+                    "type": "string"
+                  }
+                }
               }
             }
           }
@@ -763,39 +266,36 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ExternalAdbConnectionDto"
                 }
               }
             }
           }
         },
-        "tags": ["adb"]
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
       },
       "get": {
-        "operationId": "AdbController_pullFile",
+        "operationId": "ExternalAdbController_inspect",
         "parameters": [
           {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
+            "name": "id",
             "required": true,
             "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "path",
+            "name": "attemptId",
             "required": true,
-            "in": "query",
+            "in": "path",
             "schema": {
               "type": "string"
             }
@@ -807,31 +307,122 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdbPullFileResultDto"
+                  "$ref": "#/components/schemas/ExternalAdbConnectionDto"
                 }
               }
             }
           }
         },
-        "tags": ["adb"]
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
       },
       "delete": {
-        "operationId": "AdbController_deleteFile",
+        "operationId": "ExternalAdbController_detach",
         "parameters": [
           {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
+            "name": "id",
+            "required": true,
+            "in": "path",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "udid",
+            "name": "attemptId",
             "required": true,
             "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAdbDetachedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/external-adb/devices/{id}/attempts/{attemptId}/instructions": {
+      "get": {
+        "operationId": "ExternalAdbController_instructions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalAdbInstructionsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/external-adb/devices/{id}/attempts/{attemptId}/verify": {
+      "post": {
+        "operationId": "ExternalAdbController_verify",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
             "schema": {
               "type": "string"
             }
@@ -842,7 +433,20 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdbFileDto"
+                "type": "object",
+                "required": [
+                  "proof"
+                ],
+                "properties": {
+                  "proof": {
+                    "type": "string",
+                    "enum": [
+                      "physical",
+                      "challenge",
+                      "android_prompt"
+                    ]
+                  }
+                }
               }
             }
           }
@@ -853,105 +457,20 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ExternalAdbConnectionDto"
                 }
               }
             }
           }
         },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/files/exists": {
-      "get": {
-        "operationId": "AdbController_fileExists",
-        "parameters": [
+        "security": [
           {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "path",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
+            "sidecar-secret": []
           }
         ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbFileExistsResultDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
-      }
-    },
-    "/rebroid/adb/{udid}/files/list": {
-      "get": {
-        "operationId": "AdbController_listFiles",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "path",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbListFilesResultDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["adb"]
+        "tags": [
+          "external-adb"
+        ]
       }
     },
     "/rebroid/display/health": {
@@ -971,7 +490,9 @@
           }
         },
         "summary": "Read display service health.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/capabilities": {
@@ -991,7 +512,9 @@
           }
         },
         "summary": "Read display stream and control capabilities.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions": {
@@ -1031,7 +554,9 @@
           }
         },
         "summary": "Create or reuse an owner-scoped display session for an ADB target.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       },
       "get": {
         "operationId": "DisplayController_listSessions",
@@ -1058,7 +583,9 @@
           }
         },
         "summary": "List display sessions known to this sidecar instance.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/inventory": {
@@ -1087,7 +614,9 @@
           }
         },
         "summary": "List display session metadata for administration.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/revoke": {
@@ -1126,7 +655,9 @@
           }
         },
         "summary": "Revoke display sessions owned by the supplied accounts.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/{id}": {
@@ -1164,7 +695,9 @@
           }
         },
         "summary": "Read one display session.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       },
       "delete": {
         "operationId": "DisplayController_releaseSession",
@@ -1200,7 +733,9 @@
           }
         },
         "summary": "Release one display session.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/{id}/surfaces": {
@@ -1238,7 +773,9 @@
           }
         },
         "summary": "List display surfaces for one display session.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       },
       "post": {
         "operationId": "DisplayController_createSessionSurface",
@@ -1284,7 +821,9 @@
           }
         },
         "summary": "Create or reuse one experimental virtual display surface.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/{id}/surfaces/{surfaceId}": {
@@ -1331,7 +870,9 @@
           }
         },
         "summary": "Release one virtual display surface.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/apps/{appId}/runtimes/{runtimeId}/surfaces/{surfaceId}": {
@@ -1435,7 +976,9 @@
           }
         },
         "summary": "Release every display session for one app.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/{id}/clipboard": {
@@ -1483,7 +1026,9 @@
           }
         },
         "summary": "Set Android clipboard for a display session.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/{id}/actions": {
@@ -1531,7 +1076,9 @@
           }
         },
         "summary": "Execute a viewer control action for a display session.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/sessions/{id}/logcat": {
@@ -1578,7 +1125,9 @@
           }
         },
         "summary": "Read recent Android logcat output for a display session.",
-        "tags": ["display"]
+        "tags": [
+          "display"
+        ]
       }
     },
     "/rebroid/display/public/sessions/{id}/actions": {
@@ -1618,7 +1167,40 @@
           }
         },
         "summary": "Execute an action for the signed-in owner of a display session.",
-        "tags": ["display-public"]
+        "tags": [
+          "display-public"
+        ]
+      }
+    },
+    "/rebroid/display/public/sessions/{id}/clipboard": {
+      "post": {
+        "operationId": "DisplayPublicController_clipboard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayCommandResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read or write clipboard text on the authorized live display.",
+        "tags": [
+          "display-public"
+        ]
       }
     },
     "/rebroid/display/public/sessions/{id}/webrtc/offer": {
@@ -1658,7 +1240,9 @@
           }
         },
         "summary": "Create a WebRTC answer for the signed-in owner of a display session.",
-        "tags": ["display-public"]
+        "tags": [
+          "display-public"
+        ]
       }
     },
     "/rebroid/display/public/sessions/{id}/keyboard": {
@@ -1698,7 +1282,9 @@
           }
         },
         "summary": "Send a keyboard event for the signed-in owner of a display session.",
-        "tags": ["display-public"]
+        "tags": [
+          "display-public"
+        ]
       }
     },
     "/rebroid/display/public/sessions/{id}/touch": {
@@ -1738,7 +1324,1035 @@
           }
         },
         "summary": "Send a touch event for the signed-in owner of a display session.",
-        "tags": ["display-public"]
+        "tags": [
+          "display-public"
+        ]
+      }
+    },
+    "/rebroid/external-adb/devices/{id}/attachments/{attachmentId}/screenshot": {
+      "get": {
+        "operationId": "ExternalDisplayToolsController_screenshot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalScreenshotDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/external-adb/devices/{id}/attachments/{attachmentId}/logcat": {
+      "get": {
+        "operationId": "ExternalDisplayToolsController_logcat",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayLogcatDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/external-adb/devices/{id}/attachments/{attachmentId}/automation": {
+      "post": {
+        "operationId": "ExternalAutomationController_execute",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "sidecar-secret": []
+          }
+        ],
+        "summary": "Execute a typed operation on an external attachment.",
+        "tags": [
+          "external-adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/clipboard": {
+      "get": {
+        "operationId": "AdbController_getClipboard",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbClipboardResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read Android clipboard text through ADB.",
+        "tags": [
+          "adb"
+        ]
+      },
+      "put": {
+        "operationId": "AdbController_setClipboard",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbClipboardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbClipboardResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Set Android clipboard text through ADB.",
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/logcat": {
+      "get": {
+        "operationId": "AdbController_logcat",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tail",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 300,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbLogcatDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read recent Android logcat output through ADB.",
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/screenshot": {
+      "get": {
+        "operationId": "AdbController_screenshot",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbScreenshotDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Capture a PNG screenshot through ADB.",
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/tap": {
+      "post": {
+        "operationId": "AdbController_tap",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbTapDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/swipe": {
+      "post": {
+        "operationId": "AdbController_swipe",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbSwipeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/input-text": {
+      "post": {
+        "operationId": "AdbController_inputText",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbInputTextDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/key": {
+      "post": {
+        "operationId": "AdbController_key",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbKeyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/rotate-display": {
+      "post": {
+        "operationId": "AdbController_rotateDisplay",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbRotateDisplayDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/shell": {
+      "post": {
+        "operationId": "AdbController_shell",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbShellDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbShellResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/ui-dump": {
+      "get": {
+        "operationId": "AdbController_uiDump",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbUiDumpDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/tap-text": {
+      "post": {
+        "operationId": "AdbController_tapText",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbTapTextDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbTapTextResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/ui-text": {
+      "post": {
+        "operationId": "AdbController_uiText",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbUiTextDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbUiTextResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/ui-text/{operationId}": {
+      "delete": {
+        "operationId": "AdbController_cancelUiText",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "operationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/files": {
+      "put": {
+        "operationId": "AdbController_pushFile",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbPushFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      },
+      "get": {
+        "operationId": "AdbController_pullFile",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbPullFileResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      },
+      "delete": {
+        "operationId": "AdbController_deleteFile",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/files/exists": {
+      "get": {
+        "operationId": "AdbController_fileExists",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbFileExistsResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
+      }
+    },
+    "/rebroid/adb/{udid}/files/list": {
+      "get": {
+        "operationId": "AdbController_listFiles",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbListFilesResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "adb"
+        ]
       }
     }
   },
@@ -1768,7 +2382,33 @@
             "example": true
           }
         },
-        "required": ["sharedSecretConfigured"]
+        "required": [
+          "sharedSecretConfigured"
+        ]
+      },
+      "ExternalAdbReadinessDto": {
+        "type": "object",
+        "properties": {
+          "adb": {
+            "type": "boolean"
+          },
+          "keyStorage": {
+            "type": "boolean"
+          },
+          "usb": {
+            "type": "string",
+            "enum": [
+              "not_configured",
+              "configured",
+              "unavailable"
+            ]
+          }
+        },
+        "required": [
+          "adb",
+          "keyStorage",
+          "usb"
+        ]
       },
       "HealthDto": {
         "type": "object",
@@ -1787,22 +2427,37 @@
           },
           "auth": {
             "$ref": "#/components/schemas/HealthAuthDto"
+          },
+          "externalAdb": {
+            "$ref": "#/components/schemas/ExternalAdbReadinessDto"
           }
         },
-        "required": ["ok", "service", "port", "auth"]
+        "required": [
+          "ok",
+          "service",
+          "port",
+          "auth"
+        ]
       },
       "DisplayFeatureStateDto": {
         "type": "object",
         "properties": {
           "key": {
             "type": "string",
-            "enum": ["feature.display-virtual", "feature.display-webrtc"]
+            "enum": [
+              "feature.display-virtual",
+              "feature.display-webrtc",
+              "feature.external-devices"
+            ]
           },
           "effective": {
             "type": "boolean"
           }
         },
-        "required": ["key", "effective"]
+        "required": [
+          "key",
+          "effective"
+        ]
       },
       "DisplayFeatureSnapshotDto": {
         "type": "object",
@@ -1818,402 +2473,138 @@
             }
           }
         },
-        "required": ["revision", "features"]
-      },
-      "AdbClipboardResultDto": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "example": "Clipboard text"
-          },
-          "supported": {
-            "type": "boolean",
-            "example": true
-          }
-        },
-        "required": ["text", "supported"]
-      },
-      "AdbClipboardDto": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "example": "Text copied from the host."
-          }
-        }
-      },
-      "AdbLogcatDto": {
-        "type": "object",
-        "properties": {
-          "source": {
-            "type": "string",
-            "example": "adb"
-          },
-          "collectedAt": {
-            "type": "string",
-            "example": "2026-05-25T20:30:00.000Z"
-          },
-          "output": {
-            "type": "string",
-            "example": "05-25 20:30:00.000 ..."
-          }
-        },
-        "required": ["source", "collectedAt", "output"]
-      },
-      "AdbScreenshotDto": {
-        "type": "object",
-        "properties": {
-          "mimeType": {
-            "type": "string",
-            "example": "image/png"
-          },
-          "dataUrl": {
-            "type": "string",
-            "example": "data:image/png;base64,iVBORw0KGgo..."
-          },
-          "capturedAt": {
-            "type": "string",
-            "example": "2026-05-25T20:30:00.000Z"
-          }
-        },
-        "required": ["mimeType", "dataUrl", "capturedAt"]
-      },
-      "AdbTapDto": {
-        "type": "object",
-        "properties": {
-          "x": {
-            "type": "number",
-            "example": 120
-          },
-          "y": {
-            "type": "number",
-            "example": 640
-          }
-        },
-        "required": ["x", "y"]
-      },
-      "AdbSwipeDto": {
-        "type": "object",
-        "properties": {
-          "x1": {
-            "type": "number",
-            "example": 120
-          },
-          "y1": {
-            "type": "number",
-            "example": 900
-          },
-          "x2": {
-            "type": "number",
-            "example": 120
-          },
-          "y2": {
-            "type": "number",
-            "example": 200
-          },
-          "durationMs": {
-            "type": "number",
-            "example": 300
-          }
-        },
-        "required": ["x1", "y1", "x2", "y2"]
-      },
-      "AdbInputTextDto": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "example": "example text"
-          }
-        },
-        "required": ["text"]
-      },
-      "AdbKeyDto": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "example": "ENTER"
-          }
-        },
-        "required": ["key"]
-      },
-      "AdbRotateDisplayDto": {
-        "type": "object",
-        "properties": {
-          "orientation": {
-            "type": "string",
-            "enum": [
-              "portrait",
-              "landscape",
-              "reverse-portrait",
-              "reverse-landscape"
-            ],
-            "example": "landscape"
-          }
-        },
-        "required": ["orientation"]
-      },
-      "AdbShellDto": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string",
-            "example": "pm list packages"
-          },
-          "timeoutMs": {
-            "type": "number",
-            "example": 15000
-          }
-        },
-        "required": ["command"]
-      },
-      "AdbShellResultDto": {
-        "type": "object",
-        "properties": {
-          "stdout": {
-            "type": "string",
-            "example": ""
-          },
-          "stderr": {
-            "type": "string",
-            "example": ""
-          },
-          "exitCode": {
-            "type": "number",
-            "example": 0
-          }
-        },
-        "required": ["stdout", "stderr", "exitCode"]
-      },
-      "AdbUiDumpDiagnosticsDto": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string",
-            "example": "uiautomator dump /data/local/tmp/window.xml"
-          },
-          "compressed": {
-            "type": "boolean",
-            "example": false
-          },
-          "durationMs": {
-            "type": "number",
-            "example": 138
-          },
-          "exitCode": {
-            "type": "number",
-            "nullable": true,
-            "example": 0
-          },
-          "stdout": {
-            "type": "string",
-            "example": "UI hierarchy dumped to: /data/local/tmp/window.xml"
-          },
-          "stderr": {
-            "type": "string",
-            "example": ""
-          },
-          "xmlBytes": {
-            "type": "number",
-            "example": 12543
-          },
-          "rawNodeCount": {
-            "type": "number",
-            "example": 42
-          }
-        },
         "required": [
-          "command",
-          "compressed",
-          "durationMs",
-          "exitCode",
-          "stdout",
-          "stderr",
-          "xmlBytes",
-          "rawNodeCount"
+          "revision",
+          "features"
         ]
       },
-      "AdbUiDumpDto": {
+      "ExternalAdbCandidateDto": {
         "type": "object",
         "properties": {
-          "status": {
-            "type": "string",
-            "enum": ["available", "failed"],
-            "example": "available"
-          },
-          "xml": {
-            "type": "string",
-            "example": "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>"
-          },
-          "error": {
-            "type": "string",
-            "example": "UI hierarchy dump failed."
-          },
-          "diagnostics": {
-            "$ref": "#/components/schemas/AdbUiDumpDiagnosticsDto"
-          },
-          "attempts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AdbUiDumpDiagnosticsDto"
-            }
-          },
-          "dumpedAt": {
-            "type": "string",
-            "example": "2026-05-25T20:30:00.000Z"
-          }
-        },
-        "required": ["status", "dumpedAt"]
-      },
-      "AdbTapTextDto": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "example": "Install"
-          }
-        },
-        "required": ["text"]
-      },
-      "AdbTapTextResultDto": {
-        "type": "object",
-        "properties": {
-          "found": {
-            "type": "boolean",
-            "example": true
-          },
-          "x": {
-            "type": "number",
-            "nullable": true
-          },
-          "y": {
-            "type": "number",
-            "nullable": true
-          }
-        },
-        "required": ["found", "x", "y"]
-      },
-      "AdbUiTextDto": {
-        "type": "object",
-        "properties": {
-          "operationId": {
+          "candidateId": {
             "type": "string",
             "format": "uuid"
           },
-          "text": {
-            "type": "string",
-            "example": "Żappka",
-            "maxLength": 500
+          "label": {
+            "type": "string"
           },
-          "match": {
-            "type": "string",
-            "enum": ["exact", "contains"]
-          },
-          "operation": {
-            "type": "string",
-            "enum": ["wait", "tap"]
-          },
-          "timeoutMs": {
-            "type": "number",
-            "example": 10000,
-            "minimum": 1,
-            "maximum": 120000
-          },
-          "intervalMs": {
-            "type": "number",
-            "example": 500,
-            "minimum": 250,
-            "maximum": 10000
+          "state": {
+            "type": "string"
           }
         },
-        "required": ["text", "match", "operation", "timeoutMs", "intervalMs"]
+        "required": [
+          "candidateId",
+          "label",
+          "state"
+        ]
       },
-      "AdbUiTextResultDto": {
+      "ExternalAdbSelectorDto": {
+        "type": "object",
+        "properties": {
+          "selector": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "selector"
+        ]
+      },
+      "ExternalAdbTcpCheckDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
             "enum": [
-              "found",
-              "not_found",
-              "hierarchy_unavailable",
-              "tap_outcome_unknown"
+              "reachable",
+              "not_allowed",
+              "refused",
+              "timed_out",
+              "unreachable"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ExternalAdbConnectionDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "disconnected",
+              "connecting",
+              "awaiting_android_approval",
+              "awaiting_usb_replug",
+              "awaiting_verification",
+              "ready",
+              "offline"
             ]
           },
-          "x": {
-            "type": "number"
+          "failure": {
+            "type": "string",
+            "enum": [
+              "transport_unavailable",
+              "verification_required",
+              "attempt_expired",
+              "broker_unavailable"
+            ],
+            "nullable": true
           },
-          "y": {
-            "type": "number"
-          }
-        },
-        "required": ["status"]
-      },
-      "AdbPushFileDto": {
-        "type": "object",
-        "properties": {
-          "path": {
+          "attemptId": {
             "type": "string",
-            "example": "/sdcard/Download/example.txt"
+            "nullable": true
           },
-          "contentBase64": {
+          "attachmentId": {
             "type": "string",
-            "example": "SGVsbG8="
-          }
-        },
-        "required": ["path", "contentBase64"]
-      },
-      "AdbPullFileResultDto": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "example": "/sdcard/Download/example.txt"
+            "nullable": true
           },
-          "contentBase64": {
+          "observedAt": {
             "type": "string",
-            "example": "SGVsbG8="
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "state",
+          "failure",
+          "attemptId",
+          "attachmentId",
+          "observedAt"
+        ]
+      },
+      "ExternalAdbInstructionsDto": {
+        "type": "object",
+        "properties": {
+          "androidPromptObserved": {
+            "type": "boolean"
           },
-          "sizeBytes": {
-            "type": "number",
-            "example": 5
-          }
-        },
-        "required": ["path", "contentBase64", "sizeBytes"]
-      },
-      "AdbFileDto": {
-        "type": "object",
-        "properties": {
-          "path": {
+          "challenge": {
             "type": "string",
-            "example": "/sdcard/Download/example.txt"
+            "nullable": true
+          },
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
           }
         },
-        "required": ["path"]
+        "required": [
+          "androidPromptObserved",
+          "challenge",
+          "fingerprint"
+        ]
       },
-      "AdbFileExistsResultDto": {
+      "ExternalAdbDetachedDto": {
         "type": "object",
         "properties": {
-          "exists": {
-            "type": "boolean",
-            "example": true
+          "detached": {
+            "type": "boolean"
           }
         },
-        "required": ["exists"]
-      },
-      "AdbListFilesResultDto": {
-        "type": "object",
-        "properties": {
-          "files": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": ["files"]
+        "required": [
+          "detached"
+        ]
       },
       "DisplayHealthDto": {
         "type": "object",
@@ -2227,7 +2618,10 @@
             "example": "rebroid-display"
           }
         },
-        "required": ["ok", "service"]
+        "required": [
+          "ok",
+          "service"
+        ]
       },
       "DisplayCapabilitiesDto": {
         "type": "object",
@@ -2235,21 +2629,43 @@
           "stream": {
             "type": "object",
             "example": {
-              "protocols": ["websocket", "webrtc"],
-              "adapters": ["scrcpy-server-v4-rbd1"],
-              "codecs": ["h264"],
-              "audioCodecs": ["opus"],
+              "protocols": [
+                "websocket",
+                "webrtc"
+              ],
+              "adapters": [
+                "scrcpy-server-v4-rbd1"
+              ],
+              "codecs": [
+                "h264"
+              ],
+              "audioCodecs": [
+                "opus"
+              ],
               "defaultCodec": "h264",
-              "players": ["webcodecs", "webrtc"]
+              "players": [
+                "webcodecs",
+                "webrtc"
+              ]
             }
           },
           "compatibility": {
             "type": "object",
             "example": {
               "scrcpyVersion": "5.0.1",
-              "supportedAndroidVersions": ["13", "14", "15", "16"],
-              "unsupportedAndroidVersions": ["17"],
-              "fallbackModes": ["audio-disabled", "stream-control-disabled"]
+              "supportedAndroidVersions": [
+                "13",
+                "14",
+                "15",
+                "16"
+              ],
+              "unsupportedAndroidVersions": [
+                "17"
+              ],
+              "fallbackModes": [
+                "audio-disabled",
+                "stream-control-disabled"
+              ]
             }
           },
           "surfaces": {
@@ -2316,7 +2732,11 @@
             "example": 160
           }
         },
-        "required": ["width", "height", "dpi"]
+        "required": [
+          "width",
+          "height",
+          "dpi"
+        ]
       },
       "CreateDisplaySessionDto": {
         "type": "object",
@@ -2346,7 +2766,13 @@
             "description": "Session TTL in seconds. Defaults to DISPLAY_SESSION_TTL_SECONDS."
           },
           "capabilities": {
-            "example": ["video", "audio", "control", "clipboard", "screenshot"],
+            "example": [
+              "video",
+              "audio",
+              "control",
+              "clipboard",
+              "screenshot"
+            ],
             "description": "Capabilities assigned to the session.",
             "type": "array",
             "items": {
@@ -2360,7 +2786,10 @@
           },
           "surfaceKind": {
             "type": "string",
-            "enum": ["main", "virtual"],
+            "enum": [
+              "main",
+              "virtual"
+            ],
             "example": "main"
           },
           "displayName": {
@@ -2384,7 +2813,9 @@
             ]
           }
         },
-        "required": ["udid"]
+        "required": [
+          "udid"
+        ]
       },
       "DisplaySurfaceDto": {
         "type": "object",
@@ -2399,7 +2830,10 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["main", "virtual"],
+            "enum": [
+              "main",
+              "virtual"
+            ],
             "example": "main"
           },
           "name": {
@@ -2408,7 +2842,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["created", "active", "released", "expired"],
+            "enum": [
+              "created",
+              "active",
+              "released",
+              "expired"
+            ],
             "example": "created"
           },
           "createdAt": {
@@ -2469,7 +2908,10 @@
           },
           "surfaceKind": {
             "type": "string",
-            "enum": ["main", "virtual"],
+            "enum": [
+              "main",
+              "virtual"
+            ],
             "example": "main"
           },
           "displayName": {
@@ -2485,7 +2927,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["created", "active", "released", "expired"],
+            "enum": [
+              "created",
+              "active",
+              "released",
+              "expired"
+            ],
             "example": "created"
           },
           "createdAt": {
@@ -2505,7 +2952,13 @@
             "example": "2026-05-25T21:30:10.000Z"
           },
           "capabilities": {
-            "example": ["video", "audio", "control", "clipboard", "screenshot"],
+            "example": [
+              "video",
+              "audio",
+              "control",
+              "clipboard",
+              "screenshot"
+            ],
             "type": "array",
             "items": {
               "type": "string"
@@ -2558,7 +3011,9 @@
             "$ref": "#/components/schemas/DisplaySessionDto"
           }
         },
-        "required": ["session"]
+        "required": [
+          "session"
+        ]
       },
       "DisplaySessionListResponseDto": {
         "type": "object",
@@ -2570,7 +3025,9 @@
             }
           }
         },
-        "required": ["items"]
+        "required": [
+          "items"
+        ]
       },
       "DisplaySessionInventoryItemDto": {
         "type": "object",
@@ -2585,7 +3042,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["created", "active", "released", "expired"],
+            "enum": [
+              "created",
+              "active",
+              "released",
+              "expired"
+            ],
             "example": "created"
           },
           "createdAt": {
@@ -2601,7 +3063,13 @@
             "example": "2026-05-25T20:45:10.000Z"
           },
           "capabilities": {
-            "example": ["video", "audio", "control", "clipboard", "screenshot"],
+            "example": [
+              "video",
+              "audio",
+              "control",
+              "clipboard",
+              "screenshot"
+            ],
             "type": "array",
             "items": {
               "type": "string"
@@ -2631,7 +3099,9 @@
             }
           }
         },
-        "required": ["items"]
+        "required": [
+          "items"
+        ]
       },
       "RevokeDisplaySessionsDto": {
         "type": "object",
@@ -2647,7 +3117,9 @@
             }
           }
         },
-        "required": ["ownerUserIds"]
+        "required": [
+          "ownerUserIds"
+        ]
       },
       "DisplaySessionRevocationDto": {
         "type": "object",
@@ -2657,7 +3129,9 @@
             "minimum": 0
           }
         },
-        "required": ["released"]
+        "required": [
+          "released"
+        ]
       },
       "DisplaySurfaceListResponseDto": {
         "type": "object",
@@ -2669,7 +3143,9 @@
             }
           }
         },
-        "required": ["items"]
+        "required": [
+          "items"
+        ]
       },
       "CreateDisplaySurfaceDto": {
         "type": "object",
@@ -2720,7 +3196,10 @@
             "example": "stream-control"
           }
         },
-        "required": ["text", "supported"]
+        "required": [
+          "text",
+          "supported"
+        ]
       },
       "DisplayActionDto": {
         "type": "object",
@@ -2750,7 +3229,9 @@
         "properties": {
           "ok": {
             "type": "boolean",
-            "enum": [true]
+            "enum": [
+              true
+            ]
           },
           "command": {
             "type": "string",
@@ -2772,14 +3253,24 @@
           },
           "executed": {
             "type": "boolean",
-            "enum": [true]
+            "enum": [
+              true
+            ]
           },
           "transport": {
             "type": "string",
-            "enum": ["stream-control", "adb"]
+            "enum": [
+              "stream-control",
+              "adb"
+            ]
           }
         },
-        "required": ["ok", "command", "executed", "transport"]
+        "required": [
+          "ok",
+          "command",
+          "executed",
+          "transport"
+        ]
       },
       "DisplayLogcatDto": {
         "type": "object",
@@ -2793,7 +3284,10 @@
             "example": "05-25 20:30:00.000 ..."
           }
         },
-        "required": ["collectedAt", "output"]
+        "required": [
+          "collectedAt",
+          "output"
+        ]
       },
       "DisplayCommandResultDto": {
         "type": "object",
@@ -2844,7 +3338,9 @@
             "example": "Unsupported display action command: foo"
           }
         },
-        "required": ["ok"]
+        "required": [
+          "ok"
+        ]
       },
       "DisplayWebrtcOfferDto": {
         "type": "object",
@@ -2876,7 +3372,9 @@
             "default": false
           }
         },
-        "required": ["sdp"]
+        "required": [
+          "sdp"
+        ]
       },
       "DisplayWebrtcAnswerDto": {
         "type": "object",
@@ -2918,7 +3416,10 @@
         "properties": {
           "eventType": {
             "type": "string",
-            "enum": ["keydown", "keyup"],
+            "enum": [
+              "keydown",
+              "keyup"
+            ],
             "example": "keydown"
           },
           "key": {
@@ -2956,12 +3457,21 @@
         "properties": {
           "action": {
             "type": "string",
-            "enum": ["tap", "swipe", "pointer"],
+            "enum": [
+              "tap",
+              "swipe",
+              "pointer"
+            ],
             "example": "pointer"
           },
           "eventType": {
             "type": "string",
-            "enum": ["down", "move", "up", "cancel"],
+            "enum": [
+              "down",
+              "move",
+              "up",
+              "cancel"
+            ],
             "example": "move"
           },
           "x": {
@@ -3001,6 +3511,482 @@
             "example": 250
           }
         }
+      },
+      "ExternalScreenshotDto": {
+        "type": "object",
+        "properties": {
+          "pngBase64": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pngBase64"
+        ]
+      },
+      "AdbClipboardResultDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Clipboard text"
+          },
+          "supported": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "text",
+          "supported"
+        ]
+      },
+      "AdbClipboardDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Text copied from the host."
+          }
+        }
+      },
+      "AdbLogcatDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "example": "adb"
+          },
+          "collectedAt": {
+            "type": "string",
+            "example": "2026-05-25T20:30:00.000Z"
+          },
+          "output": {
+            "type": "string",
+            "example": "05-25 20:30:00.000 ..."
+          }
+        },
+        "required": [
+          "source",
+          "collectedAt",
+          "output"
+        ]
+      },
+      "AdbScreenshotDto": {
+        "type": "object",
+        "properties": {
+          "mimeType": {
+            "type": "string",
+            "example": "image/png"
+          },
+          "dataUrl": {
+            "type": "string",
+            "example": "data:image/png;base64,iVBORw0KGgo..."
+          },
+          "capturedAt": {
+            "type": "string",
+            "example": "2026-05-25T20:30:00.000Z"
+          }
+        },
+        "required": [
+          "mimeType",
+          "dataUrl",
+          "capturedAt"
+        ]
+      },
+      "AdbTapDto": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "example": 120
+          },
+          "y": {
+            "type": "number",
+            "example": 640
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "AdbSwipeDto": {
+        "type": "object",
+        "properties": {
+          "x1": {
+            "type": "number",
+            "example": 120
+          },
+          "y1": {
+            "type": "number",
+            "example": 900
+          },
+          "x2": {
+            "type": "number",
+            "example": 120
+          },
+          "y2": {
+            "type": "number",
+            "example": 200
+          },
+          "durationMs": {
+            "type": "number",
+            "example": 300
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ]
+      },
+      "AdbInputTextDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "example text"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "AdbKeyDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "ENTER"
+          }
+        },
+        "required": [
+          "key"
+        ]
+      },
+      "AdbRotateDisplayDto": {
+        "type": "object",
+        "properties": {
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "portrait",
+              "landscape",
+              "reverse-portrait",
+              "reverse-landscape"
+            ],
+            "example": "landscape"
+          }
+        },
+        "required": [
+          "orientation"
+        ]
+      },
+      "AdbShellDto": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "example": "pm list packages"
+          },
+          "timeoutMs": {
+            "type": "number",
+            "example": 15000
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "AdbShellResultDto": {
+        "type": "object",
+        "properties": {
+          "stdout": {
+            "type": "string",
+            "example": ""
+          },
+          "stderr": {
+            "type": "string",
+            "example": ""
+          },
+          "exitCode": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "stdout",
+          "stderr",
+          "exitCode"
+        ]
+      },
+      "AdbUiDumpDiagnosticsDto": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "example": "uiautomator dump /data/local/tmp/window.xml"
+          },
+          "compressed": {
+            "type": "boolean",
+            "example": false
+          },
+          "durationMs": {
+            "type": "number",
+            "example": 138
+          },
+          "exitCode": {
+            "type": "number",
+            "nullable": true,
+            "example": 0
+          },
+          "stdout": {
+            "type": "string",
+            "example": "UI hierarchy dumped to: /data/local/tmp/window.xml"
+          },
+          "stderr": {
+            "type": "string",
+            "example": ""
+          },
+          "xmlBytes": {
+            "type": "number",
+            "example": 12543
+          },
+          "rawNodeCount": {
+            "type": "number",
+            "example": 42
+          }
+        },
+        "required": [
+          "command",
+          "compressed",
+          "durationMs",
+          "exitCode",
+          "stdout",
+          "stderr",
+          "xmlBytes",
+          "rawNodeCount"
+        ]
+      },
+      "AdbUiDumpDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "failed"
+            ],
+            "example": "available"
+          },
+          "xml": {
+            "type": "string",
+            "example": "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>"
+          },
+          "error": {
+            "type": "string",
+            "example": "UI hierarchy dump failed."
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/AdbUiDumpDiagnosticsDto"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdbUiDumpDiagnosticsDto"
+            }
+          },
+          "dumpedAt": {
+            "type": "string",
+            "example": "2026-05-25T20:30:00.000Z"
+          }
+        },
+        "required": [
+          "status",
+          "dumpedAt"
+        ]
+      },
+      "AdbTapTextDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Install"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "AdbTapTextResultDto": {
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "example": true
+          },
+          "x": {
+            "type": "number",
+            "nullable": true
+          },
+          "y": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "found",
+          "x",
+          "y"
+        ]
+      },
+      "AdbUiTextDto": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string",
+            "example": "Żappka",
+            "maxLength": 500
+          },
+          "match": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "contains"
+            ]
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "wait",
+              "tap"
+            ]
+          },
+          "timeoutMs": {
+            "type": "number",
+            "example": 10000,
+            "minimum": 1,
+            "maximum": 120000
+          },
+          "intervalMs": {
+            "type": "number",
+            "example": 500,
+            "minimum": 250,
+            "maximum": 10000
+          }
+        },
+        "required": [
+          "text",
+          "match",
+          "operation",
+          "timeoutMs",
+          "intervalMs"
+        ]
+      },
+      "AdbUiTextResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "found",
+              "not_found",
+              "hierarchy_unavailable",
+              "tap_outcome_unknown"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AdbPushFileDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "example": "/sdcard/Download/example.txt"
+          },
+          "contentBase64": {
+            "type": "string",
+            "example": "SGVsbG8="
+          }
+        },
+        "required": [
+          "path",
+          "contentBase64"
+        ]
+      },
+      "AdbPullFileResultDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "example": "/sdcard/Download/example.txt"
+          },
+          "contentBase64": {
+            "type": "string",
+            "example": "SGVsbG8="
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 5
+          }
+        },
+        "required": [
+          "path",
+          "contentBase64",
+          "sizeBytes"
+        ]
+      },
+      "AdbFileDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "example": "/sdcard/Download/example.txt"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "AdbFileExistsResultDto": {
+        "type": "object",
+        "properties": {
+          "exists": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "exists"
+        ]
+      },
+      "AdbListFilesResultDto": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "files"
+        ]
       }
     }
   }

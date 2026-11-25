@@ -1,4 +1,4 @@
-import { configuredStreamProfile } from "./config.js";
+import { configuredStreamProfile, displayRequestPath } from "./config.js";
 import type {
   MediaWorkerMessage,
   ReconnectCause,
@@ -69,7 +69,7 @@ function websocketUrl(config: ViewerConfig): string {
   for (const [key, value] of Object.entries(config.streamDefaults)) {
     streamParams.set(key, config.params.get(key) ?? value);
   }
-  return `${protocol}//${location.host}/rebroid/display/stream?${streamParams.toString()}`;
+  return `${protocol}//${location.host}${displayRequestPath("/rebroid/display/stream")}?${streamParams.toString()}`;
 }
 
 export function createDisplayStream({
@@ -126,7 +126,7 @@ export function createDisplayStream({
         { type: "rebroid-viewer-clipboard", text: payload.text },
         window.location.origin,
       );
-      if (navigator.clipboard && document.visibilityState === "visible") {
+      if (displayRequestPath("/") === "/" && navigator.clipboard && document.visibilityState === "visible") {
         void navigator.clipboard.writeText(payload.text).catch(() => undefined);
       }
       return;

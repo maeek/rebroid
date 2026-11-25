@@ -1,4 +1,5 @@
-import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000008000 } from '../../database/migrations/1800000008000-initialize-sqlite-schema';
+import type { ExternalAttachmentReservationPort } from '../../android-apps/contracts/external-attachment-reservation.port';
 import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
 import { MetricsService } from '../../metrics/metrics.service';
 import {
@@ -21,7 +22,7 @@ it('projects the original prompt and terminal outcome past the first event page'
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [AutomationRunEvent],
-    migrations: [InitializeSqliteSchema1800000005000],
+    migrations: [InitializeSqliteSchema1800000008000],
     migrationsRun: true,
   }).initialize();
   try {
@@ -55,6 +56,7 @@ it('projects the original prompt and terminal outcome past the first event page'
       events,
       database,
       {} as never,
+      { readOwnedAttachmentId: async () => null },
     );
     const history = await repository.listConversationEvents('owner', [
       'run',
@@ -77,7 +79,7 @@ const createRunPersistence = async (status = AutomationRunStatus.Running) => {
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [AutomationRun, AutomationRunEvent],
-    migrations: [InitializeSqliteSchema1800000005000],
+    migrations: [InitializeSqliteSchema1800000008000],
     migrationsRun: true,
   }).initialize();
   const queue = new SerialQueue();
@@ -85,21 +87,67 @@ const createRunPersistence = async (status = AutomationRunStatus.Running) => {
     db.getRepository(AutomationRun),
     queue,
   );
+  const attachments = {
+    readOwnedAttachmentId: jest
+      .fn<
+        ReturnType<ExternalAttachmentReservationPort['readOwnedAttachmentId']>,
+        Parameters<ExternalAttachmentReservationPort['readOwnedAttachmentId']>
+      >()
+      .mockResolvedValue(null),
+  };
   const events = new AutomationRunEventsRepository(
     db.getRepository(AutomationRunEvent),
     db,
     new MetricsService(),
+    attachments,
     queue,
   );
   const run = await db.getRepository(AutomationRun).save({
     ownerUserId: 'owner',
-    targetApplicationId: 'app',
+    targetDeviceId: 'app',
     automationId: 'workflow',
     trigger: AutomationRunTrigger.Manual,
     status,
   });
-  return { db, runs, events, run };
+  return { db, runs, events, run, attachments };
 };
+
+it('pins external attachment identity under the queue reservation', async () => {
+  const { db, events, attachments } = await createRunPersistence();
+  try {
+    attachments.readOwnedAttachmentId.mockImplementation(
+      async (transaction, deviceId, ownerUserId) => {
+        expect(transaction.queryRunner?.isTransactionActive).toBe(true);
+        expect(deviceId).toBe('phone');
+        expect(ownerUserId).toBe('owner');
+        return 'current';
+      },
+    );
+    const target = {
+      automationId: 'workflow',
+      automationTriggerId: null,
+      ownerUserId: 'owner',
+      targetDeviceId: 'phone',
+      targetKind: 'external' as const,
+      targetProfileMode: null,
+      targetProfileName: null,
+      trigger: AutomationRunTrigger.Schedule,
+    };
+    await expect(
+      events.enqueueRun({ ...target, targetAttachmentId: 'previous' }),
+    ).rejects.toThrow('attachment changed');
+    await expect(events.enqueueRun(target)).resolves.toMatchObject({
+      run: { targetAttachmentId: 'current' },
+    });
+    await expect(
+      db.getRepository(AutomationRun).findOneBy({ targetDeviceId: 'phone' }),
+    ).resolves.toMatchObject({
+      targetAttachmentId: 'current',
+    });
+  } finally {
+    await db.destroy();
+  }
+});
 
 it('translates a duplicate target reservation and preserves event constraint failures', async () => {
   const { db, events, run } = await createRunPersistence();
@@ -108,7 +156,7 @@ it('translates a duplicate target reservation and preserves event constraint fai
       automationId: run.automationId,
       automationTriggerId: null,
       ownerUserId: run.ownerUserId,
-      targetApplicationId: run.targetApplicationId,
+      targetDeviceId: run.targetDeviceId,
       targetProfileMode: null,
       targetProfileName: null,
       trigger: run.trigger,
@@ -123,11 +171,11 @@ it('translates a duplicate target reservation and preserves event constraint fai
         VALUES ('fixture', NEW.runId, NEW.ownerUserId, NEW.sequence, 'run.queued', '', '{}');
       END`);
     await expect(
-      events.enqueueRun({ ...input, targetApplicationId: 'available' }),
+      events.enqueueRun({ ...input, targetDeviceId: 'available' }),
     ).rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_UNIQUE' });
     await expect(
       db.query(
-        "SELECT id FROM automation_runs WHERE targetApplicationId = 'available'",
+        "SELECT id FROM automation_runs WHERE targetDeviceId = 'available'",
       ),
     ).resolves.toEqual([]);
   } finally {
@@ -143,7 +191,7 @@ it('rolls back admission when its prompt cannot be written and commits the initi
       automationId: run.automationId,
       automationTriggerId: null,
       ownerUserId: run.ownerUserId,
-      targetApplicationId: 'another-app',
+      targetDeviceId: 'another-app',
       targetProfileMode: null,
       targetProfileName: null,
       trigger: AutomationRunTrigger.Manual,
@@ -156,8 +204,8 @@ it('rolls back admission when its prompt cannot be written and commits the initi
     );
     expect(
       await db.query(
-        'SELECT id FROM automation_runs WHERE targetApplicationId = ?',
-        [input.targetApplicationId],
+        'SELECT id FROM automation_runs WHERE targetDeviceId = ?',
+        [input.targetDeviceId],
       ),
     ).toEqual([]);
     expect(await db.query('SELECT type FROM automation_run_events')).toEqual(

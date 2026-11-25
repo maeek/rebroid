@@ -1,11 +1,14 @@
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 import {
+  BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   OnApplicationBootstrap,
   OnModuleDestroy,
+  Optional,
 } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Automation } from '../entities/automation.entity';
@@ -22,11 +25,17 @@ import type {
   AdmitAutomationTargetWork,
   AutomationRunTargetOptions,
 } from './automation-runner-options';
+import { AutomationRunStartPolicy } from './automation-runner-options';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
 import { RunnableAutomation } from './automation-runnable';
 import { AutomationDefinition } from '@rebroid/automation-core/definition';
 import { MetricsService } from '../../metrics/metrics.service';
 import { getErrorMessage } from '../../common/error-message';
+import {
+  ANDROID_APPS_AUTOMATION,
+  type AndroidAppsAutomationPort,
+} from '../../android-apps/contracts/android-apps-automation.port';
+import { externalDefinitionIssue } from '@rebroid/automation-core/device-capabilities';
 
 const terminalStatuses = new Set<AutomationRunStatus>([
   AutomationRunStatus.Success,
@@ -61,6 +70,9 @@ export class AutomationRunnerService
     private readonly execution: AutomationRunExecutionService,
     private readonly metrics: MetricsService,
     private readonly features: FeatureFlagsService,
+    @Optional()
+    @Inject(ANDROID_APPS_AUTOMATION)
+    private readonly devices?: AndroidAppsAutomationPort,
   ) {}
 
   async onApplicationBootstrap() {
@@ -119,23 +131,46 @@ export class AutomationRunnerService
     options: AutomationRunTargetOptions,
     userMessage?: { prompt: string; clientMessageId?: string },
   ) {
-    const targetApplicationId = options.targetApplicationId;
-    if (!targetApplicationId) {
+    const targetDeviceId = options.targetDeviceId;
+    if (!targetDeviceId) {
       if (runnable.ephemeral)
         this.ephemeralAutomations.delete(runnable.entity.id);
       throw new ConflictException(
-        'A target application is required to run an automation.',
+        'A target device is required to run an automation.',
       );
     }
 
     let run;
     try {
+      const device = await this.devices?.getAutomationDevice?.(targetDeviceId);
+      const isExternal = device?.kind === 'external';
+      if (isExternal) {
+        this.features.assertEnabled('feature.external-devices');
+        if (device.ownerUserId !== runnable.entity.ownerUserId)
+          throw new NotFoundException('Target device was not found.');
+        const issue = externalDefinitionIssue(runnable.definition);
+        if (issue) throw new BadRequestException(issue);
+        if (
+          options.targetProfileName ||
+          options.targetProfileMode ||
+          options.startPolicy === AutomationRunStartPolicy.StartIfNeeded
+        ) {
+          throw new BadRequestException(
+            'External devices require a verified connection and do not accept startup or profile options.',
+          );
+        }
+      }
       run = await this.events.enqueueRun(
         {
           automationId: runnable.entity.id,
           automationTriggerId: options.automationTriggerId ?? null,
           ownerUserId: runnable.entity.ownerUserId,
-          targetApplicationId,
+          targetDeviceId,
+          ...(isExternal && { targetKind: 'external' as const }),
+          ...(isExternal &&
+            options.targetAttachmentId && {
+              targetAttachmentId: options.targetAttachmentId,
+            }),
           targetProfileMode: options.targetProfileMode ?? null,
           targetProfileName: options.targetProfileName ?? null,
           trigger,
@@ -148,7 +183,7 @@ export class AutomationRunnerService
       }
       if (error instanceof AutomationRunTargetConflictError) {
         throw new ConflictException(
-          `An automation run is already active for target application "${targetApplicationId}".`,
+          `An automation run is already active for target device "${targetDeviceId}".`,
         );
       }
       throw error;

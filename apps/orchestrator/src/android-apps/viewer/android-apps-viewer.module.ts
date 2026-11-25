@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DockerModule } from '../../docker/docker.module';
+import { MetricsModule } from '../../metrics/metrics.module';
 import { NetworkPolicyModule } from '../../network-policy/network-policy.module';
 import { SettingsModule } from '../../settings/settings.module';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
@@ -13,6 +14,7 @@ import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
 @Module({
   imports: [
     DockerModule,
+    MetricsModule,
     NetworkPolicyModule,
     SettingsModule,
     AndroidAppsCommonModule,

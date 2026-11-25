@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
@@ -18,6 +18,10 @@ import {
 } from '../entities/automation-run.entity';
 import { SerialQueue } from '../../common/serial-queue';
 import { MetricsService } from '../../metrics/metrics.service';
+import {
+  EXTERNAL_ATTACHMENT_RESERVATION,
+  type ExternalAttachmentReservationPort,
+} from '../../android-apps/contracts/external-attachment-reservation.port';
 import type { AutomationStepResult } from '../runner/automation-runner.types';
 
 const eventPageSize = 1_000;
@@ -31,7 +35,7 @@ function isActiveTargetConflict(error: unknown) {
   return (
     driverError.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
     (driverError.message ===
-      'UNIQUE constraint failed: automation_runs.targetApplicationId' ||
+      'UNIQUE constraint failed: automation_runs.targetDeviceId' ||
       driverError.message ===
         "UNIQUE constraint failed: index 'automation_runs_active_target_unique'")
   );
@@ -40,8 +44,8 @@ function isActiveTargetConflict(error: unknown) {
 type RunTransition =
   | {
       status: AutomationRunStatus.Running;
-      targetProfileMode: string;
-      targetProfileName: string;
+      targetProfileMode: string | null;
+      targetProfileName: string | null;
       startedAt: Date;
       error: null;
     }
@@ -59,7 +63,9 @@ type QueuedRun = Pick<
   | 'automationId'
   | 'automationTriggerId'
   | 'ownerUserId'
-  | 'targetApplicationId'
+  | 'targetDeviceId'
+  | 'targetKind'
+  | 'targetAttachmentId'
   | 'targetProfileMode'
   | 'targetProfileName'
   | 'trigger'
@@ -109,6 +115,8 @@ export class AutomationRunEventsRepository {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly metrics: MetricsService,
+    @Inject(EXTERNAL_ATTACHMENT_RESERVATION)
+    private readonly attachments: ExternalAttachmentReservationPort,
     private readonly queue: SerialQueue = new SerialQueue(),
   ) {}
 
@@ -117,6 +125,23 @@ export class AutomationRunEventsRepository {
     userMessage?: { prompt: string; clientMessageId?: string },
   ) {
     return this.persistEvent(async (manager) => {
+      if (input.targetKind === 'external') {
+        // Read the attachment under the same transaction as the device reservation.
+        const attachmentId = await this.attachments.readOwnedAttachmentId(
+          manager,
+          input.targetDeviceId,
+          input.ownerUserId,
+        );
+        if (
+          input.targetAttachmentId &&
+          attachmentId !== input.targetAttachmentId
+        ) {
+          throw new ConflictException(
+            'The external attachment changed before the run could be queued.',
+          );
+        }
+        input = { ...input, targetAttachmentId: attachmentId };
+      }
       const runs = manager.getRepository(AutomationRun);
       const reservation = runs.create({
         ...input,

@@ -27,6 +27,11 @@ await copyFile(
   join(viewerOutput, "index.html"),
 );
 
+await copyFile(
+  join(root, "src/modules/display/viewer/device.webp"),
+  join(viewerOutput, "assets/device.webp"),
+);
+
 // The viewer loads native browser modules directly from the assets route.
 await writeFile(
   join(viewerOutput, "assets", "stream-message-types.js"),

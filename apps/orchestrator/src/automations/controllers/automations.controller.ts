@@ -142,12 +142,12 @@ export class AutomationsController {
   @ApiOkResponse({ type: AutomationRunDto, isArray: true })
   listAdHocAiRuns(
     @Query('ownerUserId') ownerUserId: string,
-    @Query('targetApplicationId') targetApplicationId: string,
+    @Query('targetDeviceId') targetDeviceId: string,
     @Query('limit') limit?: string,
   ) {
     return this.automations.listAdHocAiRuns(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
       limit ? Number(limit) : undefined,
     );
   }
@@ -155,26 +155,35 @@ export class AutomationsController {
   @RequiresFeature('feature.ai')
   @Get('ai/run-history')
   @ApiQuery({ name: 'limit', required: false, type: String })
+  @ApiQuery({ name: 'attachmentId', required: false, type: String })
   @ApiOkResponse({ type: AutomationAiRunHistoryDto, isArray: true })
   listAdHocAiRunHistory(
     @Query('ownerUserId') ownerUserId: string,
-    @Query('targetApplicationId') targetApplicationId: string,
+    @Query('targetDeviceId') targetDeviceId: string,
     @Query('limit') limit?: string,
+    @Query('attachmentId') attachmentId?: string,
   ) {
     return this.automations.listAdHocAiRunHistory(
       ownerUserId,
-      targetApplicationId,
+      targetDeviceId,
       limit ? Number(limit) : undefined,
+      attachmentId,
     );
   }
 
   @RequiresFeature('feature.ai')
   @Delete('ai/runs')
+  @ApiQuery({ name: 'attachmentId', required: false, type: String })
   clearAdHocAiRuns(
     @Query('ownerUserId') ownerUserId: string,
-    @Query('targetApplicationId') targetApplicationId: string,
+    @Query('targetDeviceId') targetDeviceId: string,
+    @Query('attachmentId') attachmentId?: string,
   ) {
-    return this.automations.clearAdHocAiRuns(ownerUserId, targetApplicationId);
+    return this.automations.clearAdHocAiRuns(
+      ownerUserId,
+      targetDeviceId,
+      attachmentId,
+    );
   }
 
   @RequiresFeature('feature.workflows')
@@ -234,7 +243,7 @@ export class AutomationsController {
   ) {
     return this.automations.getApplicationWorkflowRun(
       query.ownerUserId,
-      query.targetApplicationId,
+      query.targetDeviceId,
       runId,
     );
   }

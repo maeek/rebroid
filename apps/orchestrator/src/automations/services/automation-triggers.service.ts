@@ -1,10 +1,14 @@
 import { FeatureDisabledException } from '../../feature-flags/feature-flags.service';
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
+import type { AutomationDefinition } from '@rebroid/automation-core/definition';
+import { externalDefinitionIssue } from '@rebroid/automation-core/device-capabilities';
 import {
   AutomationTriggersGridPageDto,
   CreateAutomationTriggerDto,
@@ -93,21 +97,31 @@ export class AutomationTriggersService implements OnModuleInit {
 
   async create(dto: CreateAutomationTriggerDto) {
     const ownerUserId = dto.ownerUserId.trim();
-    await this.queries.getEntity(ownerUserId, dto.automationId);
-    await this.targetApplications.assertOwnerAccess(
+    const workflow = await this.queries.getEntity(
       ownerUserId,
-      dto.targetApplicationId,
+      dto.automationId,
+    );
+    const device = await this.targetApplications.assertOwnerAccess(
+      ownerUserId,
+      dto.targetDeviceId,
     );
     const triggerConfig = this.triggerScheduler.normalizeConfig(
       dto.triggerType,
       dto.triggerConfig,
     );
+    if (device?.kind === 'external')
+      this.assertExternalConfiguration(
+        workflow,
+        dto.profileMode,
+        dto.profileName,
+        triggerConfig,
+      );
     const trigger = this.triggers.create({
       ownerUserId,
       name: dto.name.trim(),
       description: dto.description?.trim() || null,
       automationId: dto.automationId,
-      targetApplicationId: dto.targetApplicationId,
+      targetDeviceId: dto.targetDeviceId,
       profileMode: dto.profileMode ?? null,
       profileName: dto.profileName?.trim() || null,
       enabled: dto.enabled !== false,
@@ -132,25 +146,30 @@ export class AutomationTriggersService implements OnModuleInit {
     id: string,
     dto: UpdateAutomationTriggerDto,
   ) {
-    if (
-      dto.automationId !== undefined ||
-      dto.targetApplicationId !== undefined
-    ) {
-      await this.getEntity(ownerUserId, id);
-    }
-    if (dto.automationId !== undefined) {
-      await this.queries.getEntity(ownerUserId, dto.automationId);
-    }
-    if (dto.targetApplicationId !== undefined) {
-      await this.targetApplications.assertOwnerAccess(
-        ownerUserId,
-        dto.targetApplicationId,
-      );
-    }
+    const existing = await this.getEntity(ownerUserId, id);
+    const device = await this.targetApplications.assertOwnerAccess(
+      ownerUserId,
+      dto.targetDeviceId ?? existing.targetDeviceId,
+    );
+    const workflow =
+      device?.kind === 'external' || dto.automationId !== undefined
+        ? await this.queries.getEntity(
+            ownerUserId,
+            dto.automationId ?? existing.automationId,
+          )
+        : undefined;
     const saved = await this.triggers.updateConfiguration(
       ownerUserId,
       id,
       (current) => {
+        if (
+          current.targetDeviceId !== existing.targetDeviceId ||
+          current.automationId !== existing.automationId
+        ) {
+          throw new ConflictException(
+            'The workflow trigger target changed. Refresh and try again.',
+          );
+        }
         const triggerType = dto.triggerType ?? current.triggerType;
         const currentConfig = this.mapper.triggerConfig(current);
         const updatesConfig =
@@ -162,6 +181,18 @@ export class AutomationTriggersService implements OnModuleInit {
             })
           : currentConfig;
         const enabled = dto.enabled ?? current.enabled;
+        if (device?.kind === 'external' && workflow) {
+          this.assertExternalConfiguration(
+            workflow,
+            dto.profileMode === undefined
+              ? current.profileMode
+              : dto.profileMode,
+            dto.profileName === undefined
+              ? current.profileName
+              : dto.profileName,
+            triggerConfig,
+          );
+        }
         return {
           name: dto.name?.trim(),
           description:
@@ -169,7 +200,7 @@ export class AutomationTriggersService implements OnModuleInit {
               ? undefined
               : dto.description?.trim() || null,
           automationId: dto.automationId,
-          targetApplicationId: dto.targetApplicationId,
+          targetDeviceId: dto.targetDeviceId,
           profileMode: dto.profileMode,
           profileName:
             dto.profileName === undefined
@@ -196,6 +227,22 @@ export class AutomationTriggersService implements OnModuleInit {
     this.registerTrigger(saved);
     const latestRuns = await this.runs.latestForTriggers(ownerUserId, id);
     return this.mapper.trigger(saved, latestRuns.get(id));
+  }
+
+  private assertExternalConfiguration(
+    workflow: Automation,
+    profileMode: string | null | undefined,
+    profileName: string | null | undefined,
+    config: ScheduleTriggerConfig | Record<string, unknown>,
+  ) {
+    if (profileMode || profileName || config.startPolicy === 'start-if-needed')
+      throw new BadRequestException(
+        'External triggers use a verified connection without startup or profiles.',
+      );
+    const issue = externalDefinitionIssue(
+      JSON.parse(workflow.definitionJson) as AutomationDefinition,
+    );
+    if (issue) throw new BadRequestException(issue);
   }
 
   async remove(ownerUserId: string, id: string) {
@@ -234,7 +281,7 @@ export class AutomationTriggersService implements OnModuleInit {
   ) {
     return this.runner.enqueue(automation, AutomationRunTrigger.Schedule, {
       automationTriggerId: trigger.id,
-      targetApplicationId: trigger.targetApplicationId,
+      targetDeviceId: trigger.targetDeviceId,
       targetProfileMode: trigger.profileMode,
       targetProfileName: trigger.profileName,
       startPolicy: toAutomationRunStartPolicy(config.startPolicy),

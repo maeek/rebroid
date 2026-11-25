@@ -203,6 +203,34 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         }: z.infer<typeof packageNameSchema>,
         { app, adb, abortSignal, deadline }: AutomationCommandContext,
       ) => {
+        if (adb.launchPackage) {
+          const timeout = AbortSignal.timeout(
+            Math.max(
+              0,
+              Math.min(timeoutMs, (deadline ?? Infinity) - Date.now()),
+            ),
+          );
+          const signal = abortSignal
+            ? AbortSignal.any([abortSignal, timeout])
+            : timeout;
+          const result = await adb.launchPackage(app, packageName, signal);
+          const reason = !result.installed
+            ? 'Package is not installed.'
+            : 'Launcher activity failed.';
+          if (!result.launched && requireSuccess)
+            throw new Error(`${packageName}: ${reason}`);
+          return {
+            summary: result.launched
+              ? `Launched ${packageName}.`
+              : `${packageName}: ${reason}`,
+            outcome: result.launched ? 'succeeded' : 'failed',
+            data: {
+              packageName,
+              ...result,
+              reason: result.launched ? null : reason,
+            },
+          };
+        }
         const installCheck = await checkPackageInstalled(
           app,
           adb,

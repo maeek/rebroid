@@ -10,6 +10,7 @@ export interface AutomationExecutionState {
   readonly target: AndroidAutomationTarget;
   canUseInternet: boolean;
   defaultAiCapabilities?: string[];
+  authorizeTarget?: (signal?: AbortSignal, command?: string) => Promise<void>;
   runId: string;
   trigger: AutomationRunTrigger;
   targetProfileMode: string | null;

@@ -123,7 +123,10 @@ export class AutomationStepExecutorService {
         : undefined;
     try {
       const commandContext = {
-        ...this.applications.automationAdapters(state.canUseInternet),
+        ...this.applications.automationAdapters(
+          state.canUseInternet,
+          state.target,
+        ),
         recordOcrExchange: ocrExchanges?.record,
       };
       const executeCommand: AutomationCommandExecutor = async ({

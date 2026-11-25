@@ -164,7 +164,7 @@ describe('AutomationVisionService', () => {
       registry,
       conditions,
     ).normalize({
-      apiVersion: 'rebroid.io/automation/v1',
+      apiVersion: 'rebroid.io/automation/v2',
       kind: 'AndroidAutomation',
       metadata: { name: 'Check OCR' },
       spec: {

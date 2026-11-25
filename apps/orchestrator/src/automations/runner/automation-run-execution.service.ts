@@ -67,9 +67,15 @@ export class AutomationRunExecutionService {
 
       const { target, ...permissions } = await this.targets.prepareTarget({
         ownerUserId: queuedRun.ownerUserId,
-        targetApplicationId: queuedRun.targetApplicationId,
+        targetDeviceId: queuedRun.targetDeviceId,
         definition: runnable.definition,
-        options: input.targetOptions,
+        options: {
+          ...input.targetOptions,
+          ...(queuedRun.targetKind === 'external' && {
+            targetKind: queuedRun.targetKind,
+            targetAttachmentId: queuedRun.targetAttachmentId,
+          }),
+        },
         abortSignal: input.abortSignal,
         admitTargetWork: input.admitTargetWork,
         onPreparationPhase: runnable.ephemeral
@@ -95,8 +101,10 @@ export class AutomationRunExecutionService {
 
       const run = await this.events.transitionRun(queuedRun.id, {
         status: AutomationRunStatus.Running,
-        targetProfileMode: target.profileMode,
-        targetProfileName: target.profileName || 'default',
+        targetProfileMode:
+          target.kind === 'external' ? null : target.profileMode,
+        targetProfileName:
+          target.kind === 'external' ? null : target.profileName || 'default',
         startedAt: new Date(),
         error: null,
       });
@@ -128,6 +136,10 @@ export class AutomationRunExecutionService {
         },
       );
       if (input.abortSignal.aborted) return;
+      if (!execution.failed && target.kind === 'external') {
+        await state.authorizeTarget?.(input.abortSignal);
+        await this.targets.assertStillCurrent(target, input.abortSignal);
+      }
       await this.finishRun(
         run.id,
         execution.failed
