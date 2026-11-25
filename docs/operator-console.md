@@ -1,7 +1,7 @@
 # Operator console
 
 Rebroid organizes everyday work around apps and automation runs. Administration starts with
-General, Casting, Firewall, and OCR perception when enabled, followed by Feature management and AI.
+General, Casting, External ADB, Firewall, and OCR perception when enabled, followed by Feature management and AI.
 The Docker group keeps Containers, Images, and Networks together. Users & groups contains the
 account and group lists.
 Select System to open System overview, which shows host and container resources. Use its chevron to show
@@ -42,8 +42,17 @@ apply to everyone. Android app defaults are on **Administration → General**.
 ## Casting
 
 Open **Administration → Casting** (`/platform/casting`) to check display service health, view logs,
-restart the display sidecar, or manage viewer sessions. The Display service row in **System → Services**
+restart the display sidecar, or manage app viewer sessions. The Display service row in **System → Services**
 also opens Casting. **View logs** in Connection opens the sidecar's Docker **Logs** tab.
+
+## External ADB
+
+Open **Administration → External ADB** to see broker readiness, USB availability, and external
+device viewer sessions. Platform administrators can choose **Allow network** and enter an IPv4 CIDR.
+One range allows TCP ADB enrollment for multiple devices regardless of port. Registration
+prefills port `5555`. Change it if the device uses a different port. Use **Remove** and confirm
+to disconnect devices that lose access.
+The broker also rejects hosts on its directly attached networks.
 
 ## Feature management
 
@@ -78,8 +87,8 @@ with no registry tag or digest cannot be pulled again.
 - External device details at `/devices/external/[id]` include **Overview**, **Connection**, and permission-aware **Activity**,
   **Diagnostics**, **Workflows**, and **AI agent** views. Viewer and device tooling require an
   eligible verified attachment.
-- **Casting** shows the managed display connection and external ADB broker availability separately.
-  Session rows identify the device type and link to that device.
+- **Casting** opens the managed display connection and app viewer sessions.
+  Session rows link to the corresponding app.
 - `/apps/[id]` opens the resource overview with stored status, configuration, pending runtime changes,
   and relevant destinations. The embedded viewer requests its own display session for running apps
   while the browser tab is visible.
@@ -134,7 +143,7 @@ and clipboard synchronization under the device owner's control. Use the viewer c
 input or manually transfer clipboard text. Select **Device audio** to turn on playback when
 the verified attachment supports it. **Capture screenshot** and **Read Android logs**
 operate on the current attachment and require their corresponding account permissions.
-Live sessions appear under **Administration → Casting**.
+Live external sessions appear under **Administration → External ADB**.
 
 **Disconnect** retires the connection. **Forget device** also removes the registration.
 To remove host-key trust from a phone, revoke debugging authorization on Android.

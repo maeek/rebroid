@@ -6,17 +6,9 @@ server services own authentication, persistence, and upstream calls. Start with 
 
 ## Page structure
 
-```text
-src/app/.../page.tsx
-  → src/features/<feature>/pages/<page>/page-entry.tsx
-      → page-data.server.ts / page-client.tsx
-          → sections/
-              → ui/, model/, hooks/
-```
-
-Route files select an entry and translate parameters. `page-data.server.ts` loads authorized data;
-`page-client.tsx` defines the smallest necessary client boundary. Sections compose the page,
-leaf UI renders controls, and model/hooks files own state and behavior.
+Route files translate parameters and compose feature-owned pages. Load protected data on the
+server and keep the client boundary around the controls that need it. See the
+[general preferences page](../apps/web/src/features/settings/general/pages/preferences-general/page-entry.tsx).
 
 | Code                                                      | Location                             |
 | --------------------------------------------------------- | ------------------------------------ |
@@ -27,10 +19,10 @@ leaf UI renders controls, and model/hooks files own state and behavior.
 | Auth, permissions, persistence, audit, and upstream calls | `src/server`.                        |
 | Routing, layouts, error boundaries, and BFF handlers      | `src/app`.                           |
 
-Import from owning files directly. Do not add app barrels or reach across feature folders;
-promote proven shared behavior deliberately. Shared model/UI/contracts must not import server-owned
-types. Client code may import a server module only to invoke a Server Action whose first directive
-is `'use server'`.
+Import from owning files directly. Keep feature domains independent according to the
+[dependency rules](../.dependency-cruiser.cjs). Shared model, UI and contracts must not import
+server-owned types. Client code may import a server module only to invoke a Server Action whose
+first directive is `'use server'`.
 
 ## Data access
 
@@ -38,12 +30,14 @@ is `'use server'`.
 | ------------------------------------------ | ---------------------------------------------------------------- |
 | Initial page data                          | Authenticated Server Component loader.                           |
 | Refreshable or cross-cutting browser reads | Validated `/api/bff/*` handler and focused server query service. |
-| Feature mutation                           | Authorized Server Action.                                        |
+| Feature mutation                           | Server Action or [BFF Route Handler](../apps/web/src/app/api/bff/platform/android-rendering/route.ts), with server-side authorization. |
 | Upload, download, streaming, or webhook    | Route Handler.                                                   |
 
 Ordinary browser requests never call the orchestrator directly. The server client in
 `src/server/orchestrator` owns upstream authentication, deadlines, request IDs, and error translation.
-Operations return the shared result envelope with a request ID, stable error code, and safe public message.
+For JSON BFF responses, the [route handler wrapper](../apps/web/src/server/http/route-handler.ts)
+attaches the request ID and translates failures into public errors. File responses and streams
+use their native response formats.
 
 Browser-facing settings use the same audience projection for BFF responses and initial page props.
 Loaders can require live settings or accept defaults during an outage.
@@ -52,12 +46,12 @@ byte-bounded pages as WebSocket replay and returns a continuation sequence when 
 The BFF authorizes history reads and issues a WebSocket token when the browser is ready to
 subscribe through the edge. Each view projects the delivered events into its own state.
 
-Use `getCurrentUser()` before protected operations. Check permission, ownership, and input before
-calling upstream services. Shared permission definitions and quotas live in `src/shared/permissions`;
-they provide vocabulary, not a substitute for server authorization. See [web security](web-security.md).
+For session checks, including the password-change flow, follow [web security](web-security.md).
+Check permission, ownership, and input before calling upstream services.
 
-Repositories own SQL and runtime validation of stored data. Web schema changes require the
-[full clean-state reset](operations.md#full-reset); there is no legacy persistence adapter.
+Repositories own SQL and validate stored data. Test prerelease web schema edits with a fresh
+`WEB_DATABASE_PATH`, as the [database tests](../apps/web/src/server/persistence/database.spec.ts) do.
+For an existing installation with incompatible state, follow the [reset procedures](operations.md#stored-state).
 
 ## UI and loading
 

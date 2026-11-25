@@ -6,7 +6,7 @@ the only standing exception. Pure or testable code with one application owner st
 
 Each package manifest describes its purpose and exposes its public imports through `exports`.
 Keep framework adapters, persistence, UI and HTTP execution in their owning applications.
-Co-locate tests with shared behavior. For a DTO or controller change, follow the
+Co-locate tests with shared behavior. When a service's published API changes, follow the
 [OpenAPI contract workflow](../CONTRIBUTING.md#openapi-contracts).
 
 ## Verification
