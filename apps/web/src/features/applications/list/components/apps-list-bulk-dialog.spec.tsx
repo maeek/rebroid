@@ -13,7 +13,7 @@ import { AppsListProvider, type BulkAction } from './apps-list-context'
 import { useAppsListController } from './use-apps-list-controller'
 
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams() }))
-vi.mock('@/hooks/use-polling-query', () => ({ usePollingQuery: () => ({ data: undefined }) }))
+vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: undefined, isFetched: false }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions', () => ({
   requestApplicationStartAction: vi.fn(),

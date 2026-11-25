@@ -7,6 +7,7 @@ import { getAppsListPageData } from './page-data.server'
 const AppsPageContent = async () => {
   const {
     apps,
+    appsLoadedAt,
     canCreate,
     canStart,
     canStop,
@@ -27,6 +28,7 @@ const AppsPageContent = async () => {
       canFilterByOwner={canFilterByOwner}
       canViewSnapshots={canViewSnapshots}
       yourApps={apps}
+      appsLoadedAt={appsLoadedAt}
       currentOwnerUserId={currentOwnerUserId}
       initialSettings={initialSettings}
       orchestratorError={orchestratorError}

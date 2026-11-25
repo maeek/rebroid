@@ -1,4 +1,5 @@
 import { startTransition, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import { getAppsRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import {
@@ -17,7 +18,6 @@ import {
   summarizeBulkDeleteAppsResult,
   summarizeBulkStopAppsResult
 } from '@/features/applications/list/model/apps-list-selection'
-import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { getBff } from '@/lib/http/bff'
@@ -42,19 +42,19 @@ import type { AppsListContextValue, BulkAction, BulkAppProgress, PendingAppActio
 import type { AppGalleryItem, ApplicationGalleryRow } from '@/shared/contracts/application-gallery'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
-const listApplications = () => getBff<ApplicationGalleryRow[]>('/api/bff/devices')
-
 export const useAppsListController = ({
   canStop,
   canDelete,
   currentOwnerUserId,
   yourApps,
+  appsLoadedAt,
   initialSettings
 }: {
   canStop: boolean
   canDelete: boolean
   currentOwnerUserId: string
   yourApps: AppGalleryItem[]
+  appsLoadedAt?: number
   initialSettings: OrchestratorUiSettings
 }) => {
   const refreshOverrideTimeoutMs = 60_000
@@ -96,11 +96,17 @@ export const useAppsListController = ({
     }
   }, [apps])
 
-  const { data: refreshedApps } = usePollingQuery(
-    ['applications', 'list', currentOwnerUserId],
-    () => listApplications(),
-    { intervalMs: refreshIntervalMs }
-  )
+  const { data: refreshedApps, isFetched } = useQuery({
+    queryKey: ['applications', 'list', currentOwnerUserId, appsLoadedAt],
+    queryFn: ({ signal }) => getBff<ApplicationGalleryRow[]>('/api/bff/devices', signal),
+    initialData: () =>
+      appsLoadedAt === undefined
+        ? undefined
+        : yourApps.map(app => ({ ...app, updatedAt: app.updatedAt.toISOString() })),
+    initialDataUpdatedAt: appsLoadedAt,
+    staleTime: refreshIntervalMs,
+    refetchInterval: refreshIntervalMs
+  })
 
   const applyRefresh = useCallback((refreshed: AppGalleryItem[], useRefreshedPresentation = false) => {
     setApps(current => {
@@ -124,8 +130,8 @@ export const useAppsListController = ({
   }, [applyRefresh, yourApps])
 
   useEffect(() => {
-    if (refreshedApps) applyRefresh(refreshedApps.map(toAppGalleryItem))
-  }, [applyRefresh, refreshedApps])
+    if (isFetched && refreshedApps) applyRefresh(refreshedApps.map(toAppGalleryItem))
+  }, [applyRefresh, isFetched, refreshedApps])
 
   const updateApp = (updatedApp: AppGalleryItem, preserveDuringRefresh = false, acknowledgedAfter?: number) => {
     if (preserveDuringRefresh) {

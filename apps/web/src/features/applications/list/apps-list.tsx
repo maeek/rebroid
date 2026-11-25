@@ -14,18 +14,7 @@ import { useAppsListController } from './components/use-apps-list-controller'
 import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
-export const AppsList = ({
-  canCreate,
-  canStart = false,
-  canStop = false,
-  canDelete = false,
-  canFilterByOwner,
-  canViewSnapshots = false,
-  yourApps,
-  currentOwnerUserId,
-  initialSettings,
-  orchestratorError
-}: {
+type AppsListProps = {
   canCreate: boolean
   canStart?: boolean
   canStop?: boolean
@@ -33,10 +22,43 @@ export const AppsList = ({
   canFilterByOwner: boolean
   canViewSnapshots?: boolean
   yourApps: AppGalleryItem[]
+  appsLoadedAt?: number
   currentOwnerUserId: string
   initialSettings: OrchestratorUiSettings
   orchestratorError?: string | null
-}) => {
+}
+
+export const AppsList = ({ orchestratorError, ...props }: AppsListProps) =>
+  orchestratorError ? (
+    <>
+      <PageHeader
+        title='Apps'
+        description='Manage your container apps.'
+      />
+      <PageContent>
+        <PageLoadFailure
+          title='Orchestrator unavailable'
+          description='The web app is still available, but Android app management is temporarily offline.'
+          backAction={{ label: 'Go to overview', href: '/platform' }}
+        />
+      </PageContent>
+    </>
+  ) : (
+    <AppsListContent {...props} />
+  )
+
+const AppsListContent = ({
+  canCreate,
+  canStart = false,
+  canStop = false,
+  canDelete = false,
+  canFilterByOwner,
+  canViewSnapshots = false,
+  yourApps,
+  appsLoadedAt,
+  currentOwnerUserId,
+  initialSettings
+}: Omit<AppsListProps, 'orchestratorError'>) => {
   const {
     visibleApps,
     search,
@@ -52,26 +74,9 @@ export const AppsList = ({
     canDelete,
     currentOwnerUserId,
     initialSettings,
-    yourApps
+    yourApps,
+    appsLoadedAt
   })
-
-  if (orchestratorError) {
-    return (
-      <>
-        <PageHeader
-          title='Apps'
-          description='Manage your container apps.'
-        />
-        <PageContent>
-          <PageLoadFailure
-            title='Orchestrator unavailable'
-            description='The web app is still available, but Android app management is temporarily offline.'
-            backAction={{ label: 'Go to overview', href: '/platform' }}
-          />
-        </PageContent>
-      </>
-    )
-  }
 
   return (
     <AppsListProvider value={contextValue}>

@@ -12,16 +12,16 @@ export const getAppsListPageData = async () => {
   const user = await getCurrentUserContext()
   let orchestratorError: string | null = null
   const appsPromise = listApplicationGallery(user)
-    .then(rows => withStoredAppIcons(rows.map(toAppGalleryItem)))
+    .then(async rows => ({ apps: await withStoredAppIcons(rows.map(toAppGalleryItem)), appsLoadedAt: Date.now() }))
     .catch(async error => {
       const failure = toActionError(error, await getRequestId(), 'Could not load applications.')
       orchestratorError = `${failure.message} Reference: ${failure.requestId}`
-      return []
+      return { apps: [], appsLoadedAt: undefined }
     })
-  const [initialSettings, apps] = await Promise.all([initialSettingsPromise, appsPromise])
+  const [initialSettings, gallery] = await Promise.all([initialSettingsPromise, appsPromise])
 
   return {
-    apps,
+    ...gallery,
     canCreate: hasPermission(user.permissions, 'applications:create'),
     canStart: hasPermission(user.permissions, 'applications:start'),
     canStop: hasPermission(user.permissions, 'applications:stop'),
