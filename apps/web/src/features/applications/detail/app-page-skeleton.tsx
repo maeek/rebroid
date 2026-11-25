@@ -17,7 +17,7 @@ import { AppManageTechnicalDetails } from '@/features/applications/manage/app-ma
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AppStartupTimingsSection } from '@/features/applications/viewer/diagnostics/app-startup-timings'
 import { AppLogsLoading } from '@/features/applications/viewer/logs/app-logs-content'
-import { RuntimeToolsPanelLoading } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
+import { RuntimeToolsPanelLoading } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel-loading'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'

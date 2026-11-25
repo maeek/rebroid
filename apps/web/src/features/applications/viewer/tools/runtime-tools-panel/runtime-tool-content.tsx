@@ -1,12 +1,20 @@
+import dynamic from 'next/dynamic'
 import { draftWorkflowFromAdHocRunAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { suggestAdHocAiPromptsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
-import { AiAgentToolsSection } from './ai-agent/ai-agent-tools-section'
-import { DownloadsToolsSection } from './files/downloads-tools-section'
 import { runtimeInlineSectionClassName, type RuntimeToolId } from './runtime-tool-definitions'
-import { AppWorkflowsSection } from './workflows/app-workflows-section'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+
+const AiAgentToolsSection = dynamic(() =>
+  import('./ai-agent/ai-agent-tools-section').then(module => module.AiAgentToolsSection)
+)
+const DownloadsToolsSection = dynamic(() =>
+  import('./files/downloads-tools-section').then(module => module.DownloadsToolsSection)
+)
+const AppWorkflowsSection = dynamic(() =>
+  import('./workflows/app-workflows-section').then(module => module.AppWorkflowsSection)
+)
 
 export const RuntimeToolContent = ({
   app,
@@ -56,6 +64,7 @@ export const RuntimeToolContent = ({
       <AppWorkflowsSection
         key={app.id}
         appId={app.id}
+        canViewFullTrace={hasPermission(permissions, 'automations:manage')}
       />
     )
   }

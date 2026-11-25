@@ -7,13 +7,11 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
-import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { getBff } from '@/lib/http/bff'
 import { ActionResultError } from '@/shared/actions/action-result'
 import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
-import { hasPermission } from '@/shared/permissions/permissions'
 import { AutomationRunEventsPanel } from '@/shared/ui/automation/automation-run-live-events'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
 import { useWorkflowRunUpdates } from '@/shared/ui/automation/use-workflow-run-updates'
@@ -23,10 +21,18 @@ import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { StateView } from '@/shared/ui/state-view'
 import { workflowRunDuration, workflowRunTriggerLabels } from './app-workflow-run-presentation'
+import { AppWorkflowRunDetailsLoading } from './app-workflows-loading'
 import type { ApplicationWorkflowRun } from '@/shared/contracts/application-workflow-history'
 
-export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; runId: string }) {
-  const { permissions } = useApplicationViewerApp()
+export function AppWorkflowRunDetails({
+  endpoint,
+  runId,
+  canViewFullTrace
+}: {
+  endpoint: string
+  runId: string
+  canViewFullTrace: boolean
+}) {
   const [tab, setTab] = useState('summary')
   const query = useQuery({
     queryKey: ['application-workflow-run', endpoint, runId],
@@ -68,7 +74,7 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
             runId={run.id}
             status={stopping ? 'canceling' : feed.status}
           />
-          {run.automationName && hasPermission(permissions, 'automations:manage') ? (
+          {run.automationName && canViewFullTrace ? (
             <ResourceLink
               href={workflowTraceHref(run.automationId, run.id)}
               aria-label='Open full trace'
@@ -229,20 +235,3 @@ const AppWorkflowRunSummary = ({ run }: { run: ApplicationWorkflowRun }) => {
     </>
   )
 }
-
-export const AppWorkflowRunDetailsLoading = () => (
-  <Section
-    title='Run details'
-    surface='plain'
-    headingSpacing='compact'
-  >
-    <WorkflowRunSummaryPanel
-      compact
-      loading
-      fields={['Run ID', 'Created', 'Started', 'Finished', 'Duration', 'Trigger', 'Profile'].map(label => ({
-        label,
-        value: null
-      }))}
-    />
-  </Section>
-)

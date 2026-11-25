@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { resolveRuntimeFileAccess } from '@/shared/permissions/runtime-files'
 import { StateView } from '@/shared/ui/state-view'
-import { runtimeDownloadsPath } from './downloads-tools-section-model'
 import { RuntimeFileDialogs } from './runtime-file-dialogs'
 import { RuntimeFileInspector } from './runtime-file-inspector'
 import { RuntimeFileList } from './runtime-file-list'
@@ -263,35 +262,3 @@ const RuntimeFiles = ({ appId, scope, canManageFiles }: { appId: string; scope: 
     </>
   )
 }
-
-const noop = () => undefined
-
-export const DownloadsToolsLoading = () => (
-  <div className='grid min-w-0 gap-4'>
-    <RuntimeFileToolbar
-      canManageFiles
-      currentPath={runtimeDownloadsPath}
-      disabled
-      onCreateFolder={noop}
-      onPathChange={noop}
-      onUpload={noop}
-    />
-    <RuntimeFileList
-      canManageFiles
-      loading
-      error={null}
-      files={[]}
-      searchQuery=''
-      sort='name'
-      sortDirection='asc'
-      onDelete={noop}
-      onDownload={noop}
-      onOpen={noop}
-      onPrefetch={noop}
-      onRefresh={noop}
-      onRename={noop}
-      onSearchChange={noop}
-      onSort={noop}
-    />
-  </div>
-)

@@ -10,7 +10,7 @@ import { ViewerClipboard } from '@/features/applications/viewer/display/display-
 import { viewerSettingsFromDefaults } from '@/features/applications/viewer/settings/viewer-settings'
 import { AiAgentPreview } from '@/features/applications/viewer/tools/runtime-tools-panel/ai-agent/ai-agent-preview'
 import { DownloadsToolsSection } from '@/features/applications/viewer/tools/runtime-tools-panel/files/downloads-tools-section'
-import { RuntimeToolPanelLayout } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
+import { RuntimeToolPanelLayout } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tool-panel-layout'
 import { pollingQueryKey } from '@/hooks/use-polling-query'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
@@ -23,7 +23,7 @@ import { AppResourceHome } from './app-resource-home'
 import { appResourcePreviewFeatures, dockedViewerPreviewFeatures, previewApp } from './app-resource-preview-data'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent, AppWorkspaceLayout } from './app-workspace-content'
-import { ApplicationViewerContext, type ViewerStreamSample } from './application-viewer-context'
+import { ApplicationViewerContext } from './application-viewer-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { DisplayViewerProviderValue } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 
@@ -124,7 +124,6 @@ const AppResourcePreviewContent = ({ activity, agent = false, docked = false }: 
     name: search.get('app-name') ?? previewApp.name
   }))
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(defaultOrchestratorUiSettings))
-  const [viewerStreamMetrics, setViewerStreamMetrics] = useState<Record<string, ViewerStreamSample | undefined>>({})
   const selected = search.get('view')
   const virtualDisplay = search.get('virtual-display')
   const viewer = useMemo(
@@ -159,9 +158,7 @@ const AppResourcePreviewContent = ({ activity, agent = false, docked = false }: 
           canViewAuditActivity: true,
           canStartCurrentApp: true,
           viewerSettings,
-          setViewerSettings,
-          viewerStreamMetrics,
-          setViewerStreamMetrics
+          setViewerSettings
         }}
       >
         <Container

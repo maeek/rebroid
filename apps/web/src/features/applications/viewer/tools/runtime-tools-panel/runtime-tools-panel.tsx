@@ -1,20 +1,15 @@
 'use client'
 
-import { useRef, type ReactNode } from 'react'
+import { Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Notice } from '@/components/ui/notice'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
-import { cn } from '@/lib/utils'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
-import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
-import { AiAgentConversationLayout, AiAgentConversationToolbar } from './ai-agent/ai-agent-conversation-layout'
-import { AiAgentTranscript } from './ai-agent/ai-agent-transcript'
-import { DownloadsToolsLoading } from './files/downloads-tools-section'
 import { RuntimeToolContent } from './runtime-tool-content'
-import { getRuntimeTools, runtimeToolPanelClassName, type RuntimeToolId } from './runtime-tool-definitions'
-import { AppWorkflowsLoading } from './workflows/app-workflows-section'
+import { getRuntimeTools, type RuntimeToolId } from './runtime-tool-definitions'
+import { RuntimeToolPanelLayout } from './runtime-tool-panel-layout'
+import { RuntimeToolLoadingContent, RuntimeToolsPanelLoading } from './runtime-tools-panel-loading'
 
 export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
   const router = useRouter()
@@ -38,7 +33,10 @@ export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
 
   return (
     <RuntimeToolPanelLayout toolId={toolId}>
-      {toolId ? (
+      <Suspense
+        key={toolId}
+        fallback={<RuntimeToolLoadingContent toolId={toolId} />}
+      >
         <RuntimeToolContent
           app={app}
           initialAiContextualSuggestionsEnabled={initialSettings.aiContextualSuggestionsEnabled}
@@ -49,64 +47,7 @@ export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
           permissions={permissions}
           toolId={toolId}
         />
-      ) : null}
+      </Suspense>
     </RuntimeToolPanelLayout>
   )
-}
-
-export const RuntimeToolPanelLayout = ({ toolId, children }: { toolId: RuntimeToolId; children: ReactNode }) => (
-  <div className='flex min-h-0 w-full flex-1 flex-col'>
-    <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
-      <div
-        id={toolId ? `runtime-tool-panel-${toolId}` : undefined}
-        aria-label={toolId}
-        className={cn('min-h-0', toolId === 'files' && 'py-4', runtimeToolPanelClassName(toolId))}
-      >
-        {children}
-      </div>
-    </div>
-  </div>
-)
-
-const noop = () => undefined
-
-export const RuntimeToolsPanelLoading = ({ toolId }: { toolId: RuntimeToolId }) => {
-  const transcriptRef = useRef<HTMLDivElement>(null)
-  let content: ReactNode = <Skeleton className='min-h-64 w-full' />
-  if (toolId === 'ai-agent')
-    content = (
-      <AiAgentConversationLayout
-        toolbar={<AiAgentConversationToolbar loading />}
-        transcript={
-          <AiAgentTranscript
-            canSaveWorkflow={false}
-            draftingRunId={null}
-            isLoadingHistory
-            onApproveEscalation={noop}
-            onSaveWorkflow={noop}
-            onTranscriptScroll={noop}
-            transcriptRef={transcriptRef}
-            turns={[]}
-          />
-        }
-        composer={
-          <div inert>
-            <AiPromptComposer
-              value=''
-              placeholder=''
-              rows={2}
-              ariaLabel='Message the device agent'
-              disabled
-              onChange={noop}
-              leadingControl={<Skeleton className='size-8 rounded-full' />}
-              modelControl={<Skeleton className='h-8 w-32' />}
-              actions={<Skeleton className='touch-control size-9 rounded-full' />}
-            />
-          </div>
-        }
-      />
-    )
-  if (toolId === 'files') content = <DownloadsToolsLoading />
-  if (toolId === 'workflows') content = <AppWorkflowsLoading />
-  return <RuntimeToolPanelLayout toolId={toolId}>{content}</RuntimeToolPanelLayout>
 }

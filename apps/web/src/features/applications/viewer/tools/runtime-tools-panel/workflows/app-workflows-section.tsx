@@ -7,13 +7,19 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { AppAutomationRunAction } from '@/features/applications/viewer/actions/app-automation-run-action'
 import { afterClosingBackEntry } from '@/lib/navigation/back-layers'
-import { AppWorkflowRunDetails, AppWorkflowRunDetailsLoading } from './app-workflow-run-details'
+import { AppWorkflowRunDetails } from './app-workflow-run-details'
 import { AppWorkflowRunHistory } from './app-workflow-run-history'
 import type { ApplicationWorkflowRun } from '@/shared/contracts/application-workflow-history'
 
-const noop = () => undefined
-
-export function AppWorkflowsSection({ appId, launch }: { appId: string; launch?: ReactNode }) {
+export function AppWorkflowsSection({
+  appId,
+  canViewFullTrace,
+  launch
+}: {
+  appId: string
+  canViewFullTrace: boolean
+  launch?: ReactNode
+}) {
   const pathname = usePathname()
   const search = useSearchParams()
   const runId = search.get('run')
@@ -101,42 +107,12 @@ export function AppWorkflowsSection({ appId, launch }: { appId: string; launch?:
           </Button>
           <AppWorkflowRunDetails
             key={runId}
+            canViewFullTrace={canViewFullTrace}
             endpoint={endpoint}
             runId={runId}
           />
         </>
       ) : null}
     </div>
-  )
-}
-
-export function AppWorkflowsLoading() {
-  const runId = useSearchParams().get('run')
-  return runId ? (
-    <div className='grid min-w-0 gap-3'>
-      <Button
-        variant='ghost'
-        size='sm'
-        className='justify-self-start'
-        disabled
-      >
-        <IconArrowLeft /> Run history
-      </Button>
-      <AppWorkflowRunDetailsLoading />
-    </div>
-  ) : (
-    <AppWorkflowRunHistory
-      loading
-      href={() => '#'}
-      onOpen={noop}
-      launch={
-        <Button
-          variant='secondary'
-          disabled
-        >
-          Run workflow
-        </Button>
-      }
-    />
   )
 }
