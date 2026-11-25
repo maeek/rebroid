@@ -42,6 +42,15 @@ describe('platform operations presentation', () => {
       '/automations/inventory/traces?run=run'
     )
   })
+  it('shows compact text-only messages when there are no active operations or runs', () => {
+    render(<PlatformOperationsContent snapshot={{ ...snapshot, pendingCount: 0, activeRunCount: 0, activeRuns: [] }} />)
+    const apps = screen.getByRole('region', { name: 'App operations' })
+    const runs = screen.getByRole('region', { name: 'Active workflow runs' })
+    expect(within(apps).getByText('No app operations in progress.')).toBeVisible()
+    expect(within(runs).getByText('No active workflow runs.')).toBeVisible()
+    expect(apps.querySelector('[data-slot="state-illustration"]')).toBeNull()
+    expect(runs.querySelector('[data-slot="state-illustration"]')).toBeNull()
+  })
   it('hides unavailable catalog and run actions without showing a zero', () => {
     render(
       <PlatformOperationsContent snapshot={{ ...snapshot, activeRunCount: null, workflowCatalogAvailable: false }} />
