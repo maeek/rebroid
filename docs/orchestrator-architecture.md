@@ -99,6 +99,8 @@ Sidebar reads return only navigation fields and usually limit running results be
 The application detail page polls for lifecycle state and retrieves configuration when its revision changes.
 Both responses use the current account's ownership and backend-detail permissions.
 Live application log reads use the stored runtime reference. Lifecycle files and Docker streams have bounded tails.
+The Docker container summary reads one inspection for the Logs and Terminal headers and keeps the
+engine start timestamp for terminal identity. The Overview endpoint also resolves related resources.
 ADB log requests also bound the command and cancel it when the sidecar client disconnects.
 The diagnostics summary shares recent sidecar probes across callers and invalidates
 firewall and OCR samples after settings changes. Full diagnostics still probes on request.

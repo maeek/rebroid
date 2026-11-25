@@ -64,10 +64,10 @@ describe('platform destination loading states', () => {
     ['orchestrator', 'Orchestrator', 'SystemServicesOrchestrator'],
     ['ocr', 'OCR perception', 'AdministrationOCR perception'],
     ['firewall', 'Firewall', 'AdministrationFirewall']
-  ] as const)('selects the %s service loader from the destination query', (service, title, breadcrumb) => {
+  ] as const)('selects the %s service loader from the destination query', async (service, title, breadcrumb) => {
     renderLoading(<PlatformServicesPageSkeleton />, `service=${service}`)
 
-    expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent(breadcrumb)
     expect(screen.queryByRole('searchbox', { name: 'Search services' })).toBeNull()
   })

@@ -13,7 +13,8 @@ import {
   RuntimeImageDetailPageLoading,
   RuntimeNetworkDetailPageLoading
 } from '@/features/platform/components/platform-page-skeletons/platform-resource-detail-page-skeleton'
-import { InfrastructureServiceSkeleton } from '@/features/platform/services/infrastructure-service-skeleton'
+import { DockerOverviewLoading } from '@/features/platform/pages/docker-overview/page-loading'
+import { OrchestratorServiceSkeleton } from '@/features/platform/services/infrastructure-service-skeleton'
 import { ActivityPageSkeleton } from '@/features/settings/activity/activity-page-skeleton'
 import { ProviderEditorSkeleton } from '@/features/settings/orchestrator/ai-providers/ai-provider-page-skeletons'
 import { GroupsPageSkeleton, UsersPageSkeleton } from '@/features/settings/users/user-page-skeletons'
@@ -96,7 +97,7 @@ describe('feature-owned page loading states', () => {
     'uses the %s detail geometry without fetching runtime data',
     serviceId => {
       const fetch = vi.spyOn(globalThis, 'fetch')
-      renderLoading(<InfrastructureServiceSkeleton serviceId={serviceId} />)
+      renderLoading(serviceId === 'docker' ? <DockerOverviewLoading /> : <OrchestratorServiceSkeleton />)
       expect(screen.queryByRole('alert')).toBeNull()
       expect(
         screen.getByRole('heading', { name: serviceId === 'docker' ? 'Docker' : 'Orchestrator', level: 1 })

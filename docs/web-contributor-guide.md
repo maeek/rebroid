@@ -39,6 +39,11 @@ For JSON BFF responses, the [route handler wrapper](../apps/web/src/server/http/
 attaches the request ID and translates failures into public errors. File responses and streams
 use their native response formats.
 
+The admin navigation polls [platform health](../apps/web/src/app/api/bff/platform/health/route.ts)
+through the BFF. Container Logs and Terminal use the
+[container summary](../apps/orchestrator/src/docker-maintenance/containers/controllers/docker-maintenance-containers.controller.ts).
+Overview loads Docker relationships and owns the live resource poll.
+
 Browser-facing settings use the same audience projection for BFF responses and initial page props.
 Loaders can require live settings or accept defaults during an outage.
 Workflow traces and device-agent chat share run-event replay. HTTP history uses the same
