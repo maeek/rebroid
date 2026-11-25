@@ -22,6 +22,7 @@ const renderableRoutes = [
   '(standard)/platform/ai/(providers)',
   '(standard)/platform/ai/[providerId]',
   '(standard)/platform/casting',
+  '(standard)/platform/external-adb',
   '(standard)/platform/features',
   '(standard)/platform/console',
   '(standard)/platform/ocr',

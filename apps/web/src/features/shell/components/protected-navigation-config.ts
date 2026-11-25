@@ -77,6 +77,7 @@ export const apkLibraryNavigationItem: NavigationItem = { name: 'APK library', I
 export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
   { name: 'General', Icon: IconAdjustments, href: '/platform/runtime' },
   { name: 'Casting', Icon: IconCast, href: '/platform/casting', healthId: 'display' },
+  { name: 'External ADB', Icon: IconDevices, href: '/platform/external-adb' },
   {
     name: 'Firewall',
     Icon: IconNetwork,

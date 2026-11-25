@@ -19,12 +19,14 @@ export const CastingSessionsSection = ({
   loading = false,
   controller,
   applications,
-  owners
+  owners,
+  emptyDescription = 'Open an app in the viewer to start a session.'
 }: {
   loading?: boolean
   controller: CastingSidecarController
   applications: CastingApplication[]
   owners: Array<{ id: string; name: string }>
+  emptyDescription?: string
 }) => {
   const {
     sessions,
@@ -227,7 +229,7 @@ export const CastingSessionsSection = ({
               <DataGridEmptyState
                 artwork='external-devices'
                 title='No viewer sessions'
-                description='Open a managed device or a verified external device in the viewer to start a session.'
+                description={emptyDescription}
               />
             }
             rowContextMenu={row => {

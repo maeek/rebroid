@@ -95,9 +95,6 @@ const CastingSessionIdentity = ({
       ) : (
         <span>Unassigned device</span>
       )}
-      <span className='text-xs text-foreground-muted'>
-        {session.provider === 'external' ? 'External device' : 'Managed device'}
-      </span>
       {ownerId ? (
         <ResourceLink
           className='block truncate text-xs'

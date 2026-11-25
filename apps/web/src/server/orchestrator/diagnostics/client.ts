@@ -35,14 +35,9 @@ export const orchestratorDiagnosticsClient = {
     )
   },
 
-  async listDisplaySidecarSessions(signal?: AbortSignal, includeManaged = true) {
-    const [managed, external] = await Promise.all([
-      includeManaged ? emptyRequest<DisplaySidecarSession[]>('/platform/display-sidecar/sessions', { signal }) : [],
-      process.env.EXTERNAL_ADB_BROKER_SECRET
-        ? emptyRequest<DisplaySidecarSession[]>(externalViewerSessions, { signal }).catch(() => [])
-        : []
-    ])
-    return [...managed, ...external]
+  listDisplaySidecarSessions(provider: 'managed' | 'external' = 'managed') {
+    const path = provider === 'external' ? externalViewerSessions : '/platform/display-sidecar/sessions'
+    return emptyRequest<DisplaySidecarSession[]>(path)
   },
 
   releaseDisplaySidecarSession(id: string, signal?: AbortSignal, external = false) {

@@ -14,6 +14,7 @@ describe('platform navigation', () => {
     ).toEqual([
       'General',
       'Casting',
+      'External ADB',
       'Firewall',
       'OCR perception',
       'Feature management',

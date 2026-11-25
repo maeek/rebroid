@@ -18,14 +18,16 @@ import type { SortingState } from '@tanstack/react-table'
 export const useCastingSidecarController = ({
   initialHealth,
   initialSessions,
-  externalEnabled = false,
+  provider = 'managed',
+  readHealth = getDisplaySidecarHealthAction,
   applications,
   refreshKey,
   onRefreshComplete
 }: {
   initialHealth: ServiceHealth
   initialSessions: DisplaySidecarSession[]
-  externalEnabled?: boolean
+  provider?: 'managed' | 'external'
+  readHealth?: () => Promise<ServiceHealth>
   applications: CastingApplication[]
   refreshKey: number
   onRefreshComplete?: (succeeded: boolean) => void
@@ -74,17 +76,22 @@ export const useCastingSidecarController = ({
   const updateDisplayState = useCallback(
     async (nextHealth: ServiceHealth) => {
       setHealth(nextHealth)
-      if (nextHealth.ok) setSessions(await listDisplaySidecarSessionsAction())
-      else if (externalEnabled) setSessions(await listDisplaySidecarSessionsAction(false))
+      if (nextHealth.ok || provider === 'external') {
+        setSessions(
+          await (provider === 'external'
+            ? listDisplaySidecarSessionsAction(provider)
+            : listDisplaySidecarSessionsAction())
+        )
+      }
     },
-    [externalEnabled]
+    [provider]
   )
 
   const refresh = useCallback(async () => {
     setBusy('refresh')
     let succeeded = false
     try {
-      await updateDisplayState(await getDisplaySidecarHealthAction())
+      await updateDisplayState(await readHealth())
       succeeded = true
     } catch (error) {
       toast({
@@ -96,7 +103,7 @@ export const useCastingSidecarController = ({
       setBusy(null)
       onRefreshComplete?.(succeeded)
     }
-  }, [onRefreshComplete, updateDisplayState])
+  }, [onRefreshComplete, readHealth, updateDisplayState])
 
   useEffect(() => {
     if (refreshKey > 0 && refreshKey !== lastRefreshKey.current) {
