@@ -2,6 +2,17 @@ import type { ViewerElements, ViewerUi } from "./types.js";
 
 export function createViewerUi(elements: ViewerElements): ViewerUi {
   const { title, copy, status, message, canvas, snapshot, video } = elements;
+  const artwork = message?.querySelector<HTMLImageElement>("img.device");
+  if (artwork) {
+    void artwork.decode().then(
+      () => {
+        artwork.dataset.decoded = "true";
+      },
+      () => {
+        /* The status message remains available if the artwork fails. */
+      },
+    );
+  }
 
   const showStatus = (text: string, nextTitle?: string, nextCopy?: string) => {
     if (nextTitle && title) title.textContent = nextTitle;
