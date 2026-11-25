@@ -31,7 +31,6 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
     this.logDir = config.getOrThrow<string>('app.runtimeLogsDir');
   }
 
-  /** Writes one event line to the app log file. */
   async append(applicationId: string, message: string, context?: unknown) {
     try {
       const line = this.formatLine(message, context);
@@ -45,7 +44,6 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
     }
   }
 
-  /** Writes lifecycle changes to the app log file. */
   async appendLifecycle(applicationId: string, patch: RuntimeLogPatch) {
     const shouldLog =
       patch.status !== undefined ||
@@ -66,7 +64,6 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
     await this.append(applicationId, this.lifecycleMessage(patch), context);
   }
 
-  /** Reads the latest lines from the app log file. */
   async read(applicationId: string, tail = 300) {
     try {
       const lineLimit = normalizeApplicationLogTail(tail);
@@ -105,12 +102,10 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
     }
   }
 
-  /** Deletes the app log file. */
   async remove(applicationId: string) {
     await rm(this.logPath(applicationId), { force: true });
   }
 
-  /** Removes runtime log files older than the requested retention period. */
   async cleanup(retentionDays = 30) {
     await mkdir(this.logDir, { recursive: true });
     const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
@@ -134,7 +129,6 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
     return { removedFiles };
   }
 
-  /** Builds the log file path for one app. */
   private logPath(applicationId: string) {
     return join(
       this.logDir,
@@ -142,14 +136,12 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
     );
   }
 
-  /** Turns one log event into a text line. */
   private formatLine(message: string, context?: unknown) {
     const payload = context === undefined ? '' : ` ${JSON.stringify(context)}`;
 
     return `${new Date().toISOString()} ${message}${payload}`;
   }
 
-  /** Picks the log message for a lifecycle update. */
   private lifecycleMessage(patch: RuntimeLogPatch) {
     if (patch.lastError) {
       return 'Lifecycle failed';

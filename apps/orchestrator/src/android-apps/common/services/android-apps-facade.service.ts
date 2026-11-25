@@ -35,7 +35,6 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     private readonly externalAutomation?: ExternalAutomationDeviceService,
   ) {}
 
-  /** Loads one app. */
   get(id: string): Promise<AndroidApplication> {
     return this.queries.getStored(id);
   }
@@ -87,7 +86,6 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     );
   }
 
-  /** Provides the narrow Android runtime capabilities used by automations. */
   automationAdapters(
     canUseInternet: boolean,
     device?: AndroidAutomationApplication,
@@ -132,7 +130,6 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     return this.runtimeOperations.run(expected, signal, operation);
   }
 
-  /** Starts an app container. */
   start(
     id: string,
     dto: StartAndroidApplicationDto = {},

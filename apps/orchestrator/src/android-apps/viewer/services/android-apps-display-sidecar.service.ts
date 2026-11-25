@@ -106,7 +106,6 @@ export class AndroidAppsDisplaySidecarService {
     }
   }
 
-  /** Executes one viewer action through the display sidecar API. */
   async viewerControl(
     app: AndroidApplication,
     command: ApplicationViewerControlCommand,

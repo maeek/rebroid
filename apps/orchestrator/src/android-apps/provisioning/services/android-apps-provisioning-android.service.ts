@@ -158,7 +158,6 @@ export class AndroidAppsProvisioningAndroidService {
     }
   }
 
-  /** Waits until Android reports that boot is done. */
   async waitForAndroidBoot(app: AndroidApplication, reservationId?: string) {
     this.assertContainerId(app);
     return this.tracker.withCancellation(app.id, (signal) =>
@@ -384,7 +383,6 @@ export class AndroidAppsProvisioningAndroidService {
     );
   }
 
-  /** Checks if this image needs ADB port setup. */
   shouldPrepareRemoteAccess(app: AndroidApplication) {
     return isRedroidRuntime(app.containerImage, app.runtimeKind);
   }
@@ -443,7 +441,6 @@ export class AndroidAppsProvisioningAndroidService {
     });
   }
 
-  /** Turns on remote ADB access for redroid after Android boot. */
   async prepareRemoteAccess(
     app: AndroidApplication,
     reservationId?: string,
@@ -513,7 +510,6 @@ export class AndroidAppsProvisioningAndroidService {
     });
   }
 
-  /** Waits until the sidecar can reach ADB. */
   private async waitForRedroidAdbFromSidecar(
     app: AndroidApplication,
     deadline: OperationDeadline,
@@ -717,7 +713,6 @@ export class AndroidAppsProvisioningAndroidService {
     }
   }
 
-  /** Makes sure the app has a container id first. */
   private assertContainerId(
     app: AndroidApplication,
   ): asserts app is AndroidApplication & {
@@ -728,7 +723,6 @@ export class AndroidAppsProvisioningAndroidService {
     }
   }
 
-  /** Builds the boot error message for a stopped container. */
   private androidBootExitedMessage(
     runtimeState: Awaited<
       ReturnType<DockerContainerLifecyclePort['getContainerRuntimeState']>

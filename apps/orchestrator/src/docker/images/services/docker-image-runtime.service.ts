@@ -53,9 +53,6 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
     );
   }
 
-  /**
-   * Pulls an image and streams raw progress text to an optional callback.
-   */
   async pullImage(
     image: string,
     onProgress?: (message: string) => void,

@@ -66,9 +66,6 @@ export class SettingsService {
     });
   }
 
-  /**
-   * Merges partial updates through normalization so persisted values always stay in range.
-   */
   async updateSettings(dto: UpdateOrchestratorSettingsDto) {
     const updated = await this.store.updateSettings((current) => ({
       ...current,

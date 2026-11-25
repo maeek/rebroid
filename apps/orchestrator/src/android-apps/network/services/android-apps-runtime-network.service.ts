@@ -54,7 +54,6 @@ export class AndroidAppsRuntimeNetworkService {
     await this.viewerNetwork.releaseNetwork(app);
   }
 
-  /** Applies and stores the current network policy result. */
   async reconcilePolicy(
     app: AndroidApplication,
     options: {

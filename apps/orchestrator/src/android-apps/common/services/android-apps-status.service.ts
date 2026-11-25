@@ -11,7 +11,6 @@ import {
 
 @Injectable()
 export class AndroidAppsStatusService {
-  /** Fills the extra status fields shown in the UI. */
   decorateApplication(app: AndroidApplication) {
     app.imagePullProgress = parseImagePullProgress(
       app.statusMessage,
@@ -23,12 +22,10 @@ export class AndroidAppsStatusService {
     return app;
   }
 
-  /** Builds the stopped message for an app. */
   stoppedStatusMessage(app: AndroidApplication) {
     return stoppedStatusMessage(app);
   }
 
-  /** Explains why a container stopped. */
   containerExitedMessage(
     app: AndroidApplication,
     runtimeState: import('../../../docker/docker.types').ContainerRuntimeState,

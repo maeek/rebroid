@@ -430,7 +430,6 @@ export class AndroidAppsViewerNetworkService {
     );
   }
 
-  /** Removes the viewer sidecar from the app network. */
   async releaseNetwork(app: AndroidApplication) {
     const applicationId = app.id;
     if (!applicationId) {
@@ -483,7 +482,6 @@ export class AndroidAppsViewerNetworkService {
     });
   }
 
-  /** Finds the best ADB host for the viewer. */
   async resolveScrcpyAdbHost(app: AndroidApplication) {
     if (!app.containerId) {
       return app.containerName;
@@ -497,7 +495,6 @@ export class AndroidAppsViewerNetworkService {
     );
   }
 
-  /** Prepares the viewer sidecar to reach the app over ADB. */
   async prepareScrcpyAdbTarget(
     app: AndroidApplication,
     adbHost: string,

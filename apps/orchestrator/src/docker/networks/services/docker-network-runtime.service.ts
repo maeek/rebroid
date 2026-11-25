@@ -76,9 +76,6 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
     return inspect.NetworkSettings?.Networks?.[networkName]?.IPAddress || null;
   }
 
-  /**
-   * Returns the gateway IP advertised by the app network, if Docker exposed one.
-   */
   async getNetworkGateway(networkName: string) {
     const network = await this.engine.read(
       () => this.engine.docker.getNetwork(networkName).inspect(),

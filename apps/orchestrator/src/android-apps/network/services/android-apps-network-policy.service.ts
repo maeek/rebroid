@@ -33,7 +33,6 @@ export class AndroidAppsNetworkPolicyService {
     private readonly policyGate: AndroidAppsPolicyGate,
   ) {}
 
-  /** Saves network policy settings and reapplies them. */
   updateNetworkPolicy(
     id: string,
     dto: UpdateNetworkPolicyDto,
@@ -114,7 +113,6 @@ export class AndroidAppsNetworkPolicyService {
     return this.applyStoredPolicy(id);
   }
 
-  /** Reapplies network policy for one app. */
   applyNetworkPolicy(id: string): Promise<AndroidApplication> {
     return this.policyGate.run(id, () => this.applyStoredPolicy(id));
   }
@@ -136,7 +134,6 @@ export class AndroidAppsNetworkPolicyService {
     return this.queries.decorate(app);
   }
 
-  /** Rebuilds the agent rule set from stored apps, pruning stale rules. */
   async reconcileNetworkPolicies() {
     const startedAt = Date.now();
     const apps = await this.queries.listStored({});

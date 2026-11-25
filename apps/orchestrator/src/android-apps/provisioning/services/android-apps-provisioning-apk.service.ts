@@ -46,7 +46,6 @@ export class AndroidAppsProvisioningApkService {
     @Inject(APK_CATALOG) private readonly apks: ApkCatalogPort,
   ) {}
 
-  /** Copies the APK in and runs the install command. */
   async installApk(app: AndroidApplication) {
     if (!app.uploadedApkId)
       throw new ConflictException('Choose an available APK before installing.');
@@ -140,7 +139,6 @@ export class AndroidAppsProvisioningApkService {
     });
   }
 
-  /** Opens the installed APK launcher activity when the runtime is running. */
   async launchInstalledApk(app: AndroidApplication) {
     if (!app.containerId || !app.apkFilePath) {
       await this.logs.append(app.id, 'APK launch skipped', {
@@ -183,7 +181,6 @@ export class AndroidAppsProvisioningApkService {
     });
   }
 
-  /** Checks whether the recorded APK package is installed in Android now. */
   async isInstalled(app: AndroidApplication) {
     if (!app.containerId || !app.apkFilePath) {
       await this.logs.append(app.id, 'APK installed state skipped', {
@@ -254,7 +251,6 @@ export class AndroidAppsProvisioningApkService {
       .filter(Boolean);
   }
 
-  /** Captures the staged file metadata from inside the runtime container. */
   private async inspectStagedApk(containerId: string, apkPath: string) {
     const result = await this.exec.execInContainerWithOutput(containerId, [
       'sh',
@@ -273,7 +269,6 @@ export class AndroidAppsProvisioningApkService {
     };
   }
 
-  /** Reads the declared package name from the APK file when available. */
   private async extractPackageNameFromApk(app: AndroidApplication) {
     if (!app.apkFilePath) {
       return null;

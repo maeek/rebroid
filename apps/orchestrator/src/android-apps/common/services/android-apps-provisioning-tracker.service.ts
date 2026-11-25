@@ -6,12 +6,10 @@ export class AndroidAppsProvisioningTrackerService {
   private readonly cancelledProvisioning = new Set<string>();
   private readonly runtimeWork = new Map<string, Set<AbortController>>();
 
-  /** Clears the cancel flag for one app. */
   reset(applicationId: string) {
     this.cancelledProvisioning.delete(applicationId);
   }
 
-  /** Marks one app provisioning run as cancelled. */
   cancel(applicationId: string) {
     this.cancelledProvisioning.add(applicationId);
     const reason = new Error(`Provisioning cancelled for ${applicationId}`);
@@ -54,7 +52,6 @@ export class AndroidAppsProvisioningTrackerService {
     return this.cancelledProvisioning.has(applicationId);
   }
 
-  /** Stops work if this app was cancelled. */
   ensureActive(applicationId: string) {
     if (this.isCancelled(applicationId)) {
       throw new Error(`Provisioning cancelled for ${applicationId}`);

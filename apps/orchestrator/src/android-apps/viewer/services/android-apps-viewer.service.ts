@@ -32,7 +32,6 @@ export class AndroidAppsViewerService {
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
   ) {}
 
-  /** Builds the viewer session data for scrcpy. */
   async scrcpySession(
     id: string,
     access: {
@@ -130,7 +129,6 @@ export class AndroidAppsViewerService {
     return { adbHost, viewerTarget: viewerTarget!, prepared };
   }
 
-  /** Saves the latest viewer activity time. */
   async recordViewerActivity(
     id: string,
     activity: ApplicationViewerActivityDto,
@@ -143,7 +141,6 @@ export class AndroidAppsViewerService {
     return { id, lastScrcpyActivityAt: observedAt.toISOString() };
   }
 
-  /** Sends one control action to the viewer runtime. */
   async viewerControl(id: string, command: ApplicationViewerControlCommand) {
     const app = await this.getRunningRuntimeApp(id);
     await this.displaySidecar.viewerControl(app, command);
@@ -183,7 +180,6 @@ export class AndroidAppsViewerService {
     return surface;
   }
 
-  /** Releases one experimental virtual display surface. */
   async releaseVirtualDisplay(id: string, surfaceId: string) {
     const app = await this.getRunningRuntimeApp(id);
     const surface = await this.displaySidecar.releaseVirtualSurface(
@@ -194,7 +190,6 @@ export class AndroidAppsViewerService {
     return surface;
   }
 
-  /** Loads one running app for viewer actions. */
   private async getRunningRuntimeApp(id: string) {
     // Viewer bootstrap already probes the runtime and sidecar. Avoid adding a
     // Docker reconciliation read to every iframe refresh and activity ping.

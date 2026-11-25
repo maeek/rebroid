@@ -121,10 +121,6 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     };
   }
 
-  /**
-   * Starts the display sidecar lazily on module init when autostart is enabled.
-   * Startup failures are logged and cached for health responses instead of crashing boot.
-   */
   onModuleInit() {
     if (!this.displaySidecarAutoStart) {
       return;
@@ -195,9 +191,6 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     });
   }
 
-  /**
-   * Runs adb connect inside the sidecar and classifies common connection failures.
-   */
   async connectAdb(
     adbHost: string,
     adbPort: number,
@@ -222,9 +215,6 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     );
   }
 
-  /**
-   * Returns the sidecar IP on a specific app network when it is attached.
-   */
   async getSidecarIp(networkName: string) {
     const sidecar = await this.findSidecar();
     if (!sidecar) {
@@ -238,10 +228,6 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     );
   }
 
-  /**
-   * Reports whether the sidecar exists and is currently running.
-   * Cached startup errors are surfaced when autostart failed earlier.
-   */
   async health(): Promise<ServiceHealth> {
     const apiError = await this.sidecarApi.probeHealth();
     if (!apiError) {
@@ -591,9 +577,6 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     return { container: this.docker.getContainer(existing.Id) };
   }
 
-  /**
-   * Returns a consistent viewer error payload when the sidecar is unavailable.
-   */
   private sidecarUnavailableStatus(): ViewerTargetStatus {
     const message =
       'Display sidecar is not available. Build the sidecar image or disable DISPLAY_SIDECAR_AUTO_START.';
