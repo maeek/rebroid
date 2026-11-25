@@ -1,0 +1,15 @@
+services:
+  external-adb:
+    environment:
+      EXTERNAL_ADB_USB_PORTS:
+    group_add:
+      - "${EXTERNAL_ADB_USB_GID:-1000}"
+    device_cgroup_rules:
+      - "c 189:* rw"
+    volumes:
+      - type: bind
+        source: ${EXTERNAL_ADB_USB_SOURCE:-/dev/bus/usb}
+        target: /dev/bus/usb
+        read_only: true
+        bind:
+          create_host_path: false

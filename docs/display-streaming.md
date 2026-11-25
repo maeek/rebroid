@@ -1,6 +1,6 @@
 # Display streaming
 
-The display sidecar relays ReDroid's scrcpy H.264 video and Opus audio without transcoding.
+The display sidecar relays scrcpy H.264 video and Opus audio from a managed runtime or a verified external device.
 WebRTC is the primary transport. WebSocket playback uses WebCodecs/WebGL2 in Chromium and
 fragmented MP4/MediaSource in Firefox.
 
@@ -8,7 +8,7 @@ fragmented MP4/MediaSource in Firefox.
 
 ```mermaid
 flowchart LR
-  Android["ReDroid"] --> Scrcpy["scrcpy H.264 and Opus"]
+  Android["Android target"] --> Scrcpy["scrcpy H.264 and Opus"]
   Scrcpy --> Source["Session/profile source supervisor"]
   Source --> RTC["WebRTC consumer queue"]
   Source --> WS["WebSocket consumer queue"]
@@ -32,8 +32,8 @@ peer still counts against capacity until Go confirms cleanup or the bridge exits
 display session closes all of its attempts. The sidecar rejects new WebRTC viewers before capture
 when its peer budget is full. Internal session management
 requires a shared secret. Viewer URLs contain a
-session ID. The sidecar uses the same-origin browser session to verify the signed-in owner, active
-container, and capabilities with web before starting WebSocket media, WebRTC, or viewer controls.
+session ID. Before admitting media or controls, the sidecar checks the signed-in owner and capabilities
+with web against the current managed runtime or verified external attachment.
 Active transports recheck access every 10 seconds and close on denial or authorization failure.
 Closing a virtual surface uses an authenticated request scoped to the current application, runtime
 container, and owner. The sidecar selects the surface directly among its active display sessions.
@@ -79,6 +79,8 @@ The TypeScript encoder and Go decoder verify the same binary fixture, including 
 timestamps and configuration, keyframe, and discontinuity flags.
 
 ## Source and recovery invariants
+
+Sessions deliver live media. Adding persistent recordings requires a storage limit and a deletion lifecycle.
 
 - Preserve unsigned source timestamps and flags. Never replace source timing with a configured-FPS clock.
 - Each consumer owns an independent bounded queue: video is capped at three frames or 75 ms;
@@ -147,23 +149,9 @@ If the last consumer detaches, scrcpy stays warm for the existing 30-second idle
 Virtual display captures keep their existing visibility behavior because their Android display
 is tied to capture lifetime. Main-display suspension does not extend Android's inactivity timer.
 
-On desktop, **Minimize player** moves the main display into a floating player that stays open
-across signed-in pages. Press **I** in the viewer when keyboard capture is off. Drag the compact
-display or the handle to snap it smoothly to a window edge with a 24 px inset. Motion respects
-the reduced-motion preference. The compact header appears on hover or keyboard focus in a row above
-the display. Click the compact display to expand it, or drag it to change its dock. The player
-keeps the display aspect ratio and follows that edge when the window resizes. Compact mode mutes playback and blocks input.
-Expanded mode offers a vertical viewer toolbar on the inward side of the dock and clipboard
-according to the account's permissions. The expanded action bar sits below the video and contains
-**Collapse mini-player**. Drag the marked outside corner to resize while preserving aspect
-ratio and viewport bounds. Keyboard users can focus the resize corner and use the arrow keys.
-Reopening the expanded player restores its last resized size within the current window bounds.
-Viewport changes and Android rotation refit the display and its inward-facing toolbar together,
-preserving aspect ratio and the 24 px edge inset. Long toolbars
-scroll within the display height. A player opened on desktop stays mounted if the window is
-subsequently narrowed; opening a new mini-player still requires the desktop breakpoint.
-Minimizing, expanding, and restoring keep the same iframe and media connection. The player uses
-the main display's foreground suspension and scrcpy grace period.
+Moving the main display into or out of the desktop mini-player preserves its iframe and media
+connection. Compact mode mutes playback and blocks input. The expanded player uses the same
+control grants and foreground suspension as the embedded viewer.
 
 MediaSource fragments and presentation callbacks carry a recovery epoch so the browser can discard
 work from an abandoned append queue. PCM is delivered to an AudioWorklet with a bounded ring.
@@ -215,9 +203,8 @@ The forward video socket holds bytes after the dummy handshake until the parser 
 The reverse listener stops accepting connections without waiting for the handed-off sockets.
 Attempt cleanup waits for the listener to drain after destroying those sockets.
 
-Without a dedicated Redroid verification pass, refactoring is limited to pure SPS parsing,
-compatibility-probe parsing, retry classification, and stream-option selection. Changes to
-protected ordering require the manual matrix below, with before/after results in the pull request.
+Changes that affect this ordering require a dedicated Redroid run. Record before and after
+results for the [manual matrix](#manual-verification) in the pull request.
 
 ## Diagnostics
 
@@ -318,47 +305,17 @@ not change deadlines, startup order or source ownership.
 
 ### Idle WebRTC picture-loss feedback
 
-An unchanged Android screen can stop emitting frames after a short repeat burst.
-[Scrcpy v4 requests a 100 ms repeat delay](https://github.com/Genymobile/scrcpy/blob/v4.0/server/src/main/java/com/genymobile/scrcpy/video/SurfaceEncoder.java),
-while [libwebrtc can request a keyframe when decoding times out on a recently active stream](https://webrtc.googlesource.com/src/+/refs/heads/main/video/video_receive_stream2.cc).
-Treating every PLI as encoder failure creates a loop: reset, repeat burst, idle timeout, reset.
-The local Chromium/Go bridge replay reproduced requests at 4.15, 8.43 and 12.62 seconds
-with all 44 frames decoded and zero packet loss or NACKs. This establishes a possible
-cause of the matching production cadence; PLI alone is not proof of packet loss.
-With the acknowledgement gate enabled, the same 16-second replay decoded all 11
-initial frames, ignored one idle PLI and made zero reset requests. A separate replay
-resumed H.264 delta frames after nine seconds of silence: all 22 frames decoded,
-with zero reset requests. These are local browser/bridge results, not host Android
-measurements. Firefox's bundled test browser could not negotiate H.264 in this
-environment, so Firefox and real Redroid validation remain deployment checks.
+An unchanged Android screen can stop emitting frames. A browser may then request a keyframe
+(PLI) although it presented the last frame. Resetting on every idle PLI can sustain a reset loop.
 
-The viewer's existing one-second sampler sends one `video-frame-presented` acknowledgement
-after a picture becomes quiet, using the RTP timestamp from `requestVideoFrameCallback`.
-The reliable data channel terminates this evidence inside its own Go peer, before
-Android control dispatch. The bridge ignores an idle PLI only when that peer has
-acknowledged its exact latest written frame, no frame has been written for two seconds,
-and the acknowledgement is at most three seconds old. Bridge metrics count these as
-`idlePlisIgnored`, while `plis` still counts all received requests.
+The Go bridge can ignore an idle PLI when the same peer recently acknowledged its exact last
+written frame. New frames, configuration changes, discontinuities and accepted resets invalidate
+that evidence. Duplicate acknowledgements cannot extend it. FIR, active-stream loss and missing
+presentation evidence retain normal recovery. Presentation acknowledgements terminate at the peer.
 
-Streaming diagnostics show whether the browser sent the latest frame acknowledgement
-or why it could not send one. The sidecar debug event `webrtc_picture_loss` records
-the bridge decision, frame and acknowledgement ages, acknowledgement counts, and receiver loss counters, at
-most once per second per peer. Compare the event's consumer attempt ID with the
-streaming diagnostics. A browser status of `Sent` confirms data channel submission.
-The bridge event reports whether that evidence matched its latest frame.
-
-New frames, configuration, discontinuities and accepted resets invalidate the evidence.
-Duplicate acknowledgements cannot extend its lifetime. FIR, unacknowledged/lost frames,
-active-stream PLI and browsers without RTP presentation metadata retain normal recovery.
-Acknowledgements are best effort and never queued behind user controls. The source's
-timestamps, startup sequence and reset deadlines are unchanged.
-
-Regression coverage replays the repeat-burst/idle/PLI sequence and verifies that the
-next delta frame is admitted without resetting. Browser helper tests cover quiet-only
-acknowledgement and missing metadata/backpressure; Go loopback tests ensure these
-messages do not reach Android controls. For deployment validation, leave an unchanged
-screen open, then animate and rotate it; verify that idle resets stop and genuine loss
-still recovers. Repeat in Chromium and Firefox, including background/foreground tabs.
+Use the `webrtc_picture_loss` event and `idlePlisIgnored` counter to see what the bridge decided.
+Compare the attempt ID with browser diagnostics. To verify, leave a static screen open, then animate
+and rotate it. Check that idle resets stop and real loss still recovers.
 
 ## Reverse proxies
 
@@ -371,7 +328,20 @@ Compare a direct-sidecar path with the Rebroid edge and any additional proxy bef
 
 ## Manual verification
 
-The live USB, TCP VM, and managed Redroid regression checks are pending on a supported Linux host.
+Live USB, TCP VM and managed Redroid regression checks are pending on a supported Linux host.
+The November 24, 2026 feasibility run used the packaged ADB 29.0.6 and scrcpy 5.0.1 in a Podman VM.
+An API 35 emulator delivered H.264 over ADB forward and stayed asleep when opened passively.
+The loopback fixture demonstrated that a restarted daemon can assign an old numeric transport ID
+to a different peer. This is why operations bind to a verified attachment and daemon incarnation.
+The test environment had no USB bus, and Redroid exited before viewer startup.
+
+To repeat the [transport fixture](../apps/display-sidecar/scripts/adb-transport-spike.mjs) with the built image:
+
+```sh
+docker run --rm --pull=never --platform linux/amd64 --network none -i \
+  --entrypoint node localhost/rebroid/display-sidecar:local --input-type=module \
+  < apps/display-sidecar/scripts/adb-transport-spike.mjs
+```
 
 Verify external displays on the same supported Linux stack as the managed regression.
 Open the viewer on a verified USB phone and an approved TCP VM. Check that opening it does
@@ -381,7 +351,7 @@ Disconnect or replace the target while the viewer is open and confirm that the o
 closes and its original URL cannot open the replacement. Exercise WebRTC and its WebSocket
 fallback on the external ingress path while a managed Redroid viewer is also open.
 Include a locked phone, a refused or revoked prompt, two attached phones, and unplugging during
-queued automation input. Recreate the broker with its key volume retained and try replacing a VM
+queued automation input. Restart the ADB daemon, recreate the broker with its key volume retained, and try replacing a VM
 at the same address. Record whether the old attachment receives input, whether the phone wakes,
 and whether the unaffected viewer keeps streaming. Revoke account access during an active stream
 and confirm that control and media end.

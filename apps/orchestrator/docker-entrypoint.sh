@@ -13,6 +13,10 @@ ensure_secret_file() {
     temporary_file="$(mktemp "${file_path}.XXXXXX")"
     trap 'rm -f "$temporary_file"' 0
     create_secret > "$temporary_file"
+    if [ -n "${2:-}" ]; then
+      chgrp "$2" "$temporary_file"
+      chmod 640 "$temporary_file"
+    fi
     mv -f "$temporary_file" "$file_path"
     trap - 0
   fi
@@ -35,5 +39,14 @@ if [ -z "${ORCHESTRATOR_SHARED_SECRET:-}" ]; then
   export ORCHESTRATOR_SHARED_SECRET="$(cat "$secret_file")"
 fi
 export FIREWALL_AGENT_SHARED_SECRET="${FIREWALL_AGENT_SHARED_SECRET:-$ORCHESTRATOR_SHARED_SECRET}"
+
+export EXTERNAL_ADB_BROKER_URL="${EXTERNAL_ADB_BROKER_URL:-http://external-adb:8000}"
+# The broker mounts only this subdirectory and runs with GID 1000.
+broker_secret_file="${EXTERNAL_ADB_BROKER_SECRET_FILE:-/app/secrets/external-adb/broker-secret}"
+ensure_secret_file "$broker_secret_file" 1000
+if [ -z "${EXTERNAL_ADB_BROKER_SECRET:-}" ]; then
+  EXTERNAL_ADB_BROKER_SECRET="$(cat "$broker_secret_file")"
+  export EXTERNAL_ADB_BROKER_SECRET
+fi
 
 exec "$@"

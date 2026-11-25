@@ -111,7 +111,8 @@ export class SidecarConfigService {
   readonly adbTextOutputMaxBytes =
     environment.ADB_TEXT_OUTPUT_MAX_BYTES ?? 2 * 1024 * 1024;
   readonly adbBinaryOutputMaxBytes =
-    environment.ADB_BINARY_OUTPUT_MAX_BYTES ?? 64 * 1024 * 1024;
+    environment.ADB_BINARY_OUTPUT_MAX_BYTES ??
+    (this.externalAdbEnabled ? 12 : 64) * 1024 * 1024;
   readonly scrcpyTunnelMode = environment.SCRCPY_TUNNEL_MODE;
   readonly scrcpyServerLogLevel =
     environment.SCRCPY_SERVER_LOG_LEVEL ?? "debug";
@@ -133,12 +134,17 @@ export class SidecarConfigService {
     }
 
     const explicitFilePath = environment.DISPLAY_SIDECAR_SHARED_SECRET_FILE;
-    const filePath = [
-      explicitFilePath,
-      "/app/secrets/rebroid-shared-secret",
-      "/app/secrets/display-sidecar-secret",
-      "/data/secrets/display-sidecar-secret",
-    ].find((candidate) => candidate && existsSync(candidate));
+    const candidates = this.externalAdbEnabled
+      ? [explicitFilePath ?? "/run/rebroid-external-adb/broker-secret"]
+      : [
+          explicitFilePath,
+          "/app/secrets/rebroid-shared-secret",
+          "/app/secrets/display-sidecar-secret",
+          "/data/secrets/display-sidecar-secret",
+        ];
+    const filePath = candidates.find(
+      (candidate) => candidate && existsSync(candidate),
+    );
 
     if (filePath) {
       try {

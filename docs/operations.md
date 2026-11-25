@@ -91,65 +91,28 @@ df -i /var/lib/docker
 
 ### Slow display-network attachment
 
-Compare the application event `Android network attachment completed` across starts
-of the same runtime. `dockerMutationQueueMs` measures Rebroid admission;
-`networkConnectMs` measures the awaited Docker request, including client transport.
-A reused attachment has no connect request. Neither metric measures Android boot.
-Use the concurrent boot observations described in
-[Android startup and attachment timing](orchestrator-architecture.md#android-startup-and-attachment-timing)
-to avoid adding overlapping durations.
+Boot observation and network attachment overlap. Correlate events by reservation and runtime
+before comparing durations. [Startup ordering](orchestrator-architecture.md#android-startup-and-attachment-timing)
 
-For a slow request, use its `networkConnect.dispatchedAt` and `settledAt` UTC
-timestamps to collect a narrow Docker daemon window on the Linux host. Substitute
-the observed time range and sidecar name below; these commands only read state:
+| Where the time goes | What to inspect |
+| --- | --- |
+| Android boot | In `android_boot_probe`, compare property readiness and runtime liveness for the same observation. Queue time precedes dispatch. `android_boot_observation_settled` marks the end of boot observation even if attachment is still draining. |
+| Sidecar attachment | In `Android network attachment completed`, compare sidecar preparation, `dockerMutationQueueMs`, `networkConnectMs` and convergence time. A reused attachment issues no connect request. |
+| ADB after boot | `display_sidecar_adb_preparation` records whether the transport was reused or reconnected, which preparation steps ran, and how long they took. |
+
+For guest boot phase detail, enable `REDROID_COLLECT_BOOT_EVENTS=true` on the orchestrator
+and inspect `android_boot_guest_events`. Collection is best effort and independent of readiness.
+
+If the Docker request itself is slow, inspect the daemon log between the recorded dispatch and
+settlement times (set `start_utc` and `end_utc` below). Look for gateway changes, port remapping, firewall lock waits and competing
+network operations. Compare the sidecar’s network membership and published ports before and
+after a controlled start. Limit inspect output to those fields because the full record can contain secrets.
 
 ```bash
-journalctl --unit docker.service --utc --since '2026-11-13 08:43:30 UTC' --until '2026-11-13 08:43:56 UTC' --no-pager --output short-iso-precise
+journalctl --unit docker.service --utc --since "$start_utc" --until "$end_utc"
 docker inspect --format '{{json .NetworkSettings.Networks}}' rebroid-display-sidecar
 docker inspect --format '{{json .NetworkSettings.Ports}}' rebroid-display-sidecar
 ```
-
-Look for `sbJoin: gwep4` gateway changes, port-mapping/proxy errors, firewall lock
-waits, and competing network operations. Inspect output is current state, not a
-historical snapshot, so retain it before and after a subsequent controlled start.
-Do not publish complete container inspections: they may contain environment secrets.
-
-One candidate is default-gateway movement when an app network is attached. The
-previous default deployment published 101 UDP ports on the display sidecar.
-The current default publishes one. Docker can change the gateway when networks are attached;
-[gateway priority](https://docs.docker.com/engine/network/#connecting-to-multiple-networks)
-controls that choice. In the
-[Moby 29.0 gateway selection code](https://github.com/moby/moby/blob/docker-v29.0.0/daemon/libnetwork/sandbox.go#L582-L634),
-otherwise equivalent endpoints with equal priority are ordered by network name.
-This makes `rebroid-net-*` a candidate to replace `rebroid-platform`. It is a
-mechanism to investigate, not proof of why a particular request was slow.
-[Endpoint join](https://github.com/moby/moby/blob/docker-v29.0.0/daemon/libnetwork/endpoint.go#L517-L607)
-updates external connectivity when the gateway changes, and the
-[bridge driver](https://github.com/moby/moby/blob/docker-v29.0.0/daemon/libnetwork/drivers/bridge/bridge_linux.go#L1410-L1478)
-updates port bindings. Verify the deployed daemon version when applying this source
-analysis; a mechanism in 29.0.0 does not establish timing or behavior in every later
-release.
-
-If daemon evidence confirms gateway movement and port remapping, compare an
-isolated canary with the platform network assigned higher gateway priority. Keep
-the image, published ports, host load, and app network unchanged. Check live WebRTC,
-WebSocket, ADB, and firewall isolation as well as attachment duration before changing
-deployment routing. Increasing Rebroid concurrency or caching a missing attachment
-does not eliminate time spent inside an already-dispatched Docker request.
-
-The orchestrator emits Nest startup and service logs and Fastify request logs as one Pino JSON
-record per line. Filter structured service events by their `event` field.
-
-For ADB preparation, look for `display_sidecar_adb_preparation` in the
-orchestrator logs. The event reports the preparation purpose, transport outcome
-(reused, reconnected, or failed), and elapsed milliseconds for each step that ran.
-A healthy transport runs the initial state check. Interactive preparation also
-runs Android display setup. Runtime startup without an attached APK and Android log reads
-can use transport preparation without waking the display or changing its settings.
-The first viewer or interactive command still
-prepares the display. Runtime startup with an attached APK prepares the display
-before launch. The reconnect path adds a TCP probe, connection, and state verification.
-The display sidecar separately logs `viewer_adb_connection` for session creation.
 
 ## Runtime image previews
 
@@ -260,8 +223,11 @@ Turn off the External devices feature and let attachments retire. Stop and remov
 then back up its key volume using restricted access. Delete only the `external-adb-keys` volume
 for the intended Compose project and recreate the service with the main file. Revoke the previous
 debugging authorization on the phones or guests and approve the new broker key on each target.
-Re-enable external devices and verify each attachment. Changing `EXTERNAL_ADB_BROKER_SECRET`
-is a separate service credential rotation and requires recreating the broker, orchestrator, and web.
+Re-enable external devices and verify each attachment. To rotate the generated service credential,
+stop the broker, orchestrator, and web, remove only `external-adb/broker-secret` from the project's
+shared secrets volume, then start those services. The orchestrator generates a replacement.
+Deployments with an explicit service-level credential override rotate it on all three services
+and recreate them together. The default Compose stack reads the generated credential.
 Forgetting an enrollment removes Rebroid's registration. Revoke Android's debugging authorization
 on the device to remove host-key trust.
 

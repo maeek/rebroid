@@ -12,9 +12,6 @@ services:
       DISPLAY_SIDECAR_AUTO_START: "false"
       WEB_INTERNAL_URL: http://web:3101
       OCR_SIDECAR_BASE_URL: http://ocr-sidecar:8100
-      EXTERNAL_ADB_BROKER_URL: http://external-adb:8000
-      EXTERNAL_ADB_BROKER_SECRET:
-      EXTERNAL_ADB_TCP_ENDPOINTS: ${EXTERNAL_ADB_TCP_ENDPOINTS:-}
     volumes:
       - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - orchestrator-data:/app/data
@@ -46,7 +43,6 @@ services:
     depends_on: [orchestrator]
     environment:
       REBROID_TLS_HOSTS:
-      EXTERNAL_ADB_BROKER_SECRET:
     volumes:
       - web-data:/app/data
       - shared-secrets:/app/secrets:ro
@@ -106,34 +102,28 @@ services:
     restart: unless-stopped
     init: true
     user: "1000:1000"
+    depends_on:
+      orchestrator:
+        condition: service_healthy
     environment:
       EXTERNAL_ADB_ENABLED: "true"
-      EXTERNAL_ADB_TCP_ENDPOINTS: ${EXTERNAL_ADB_TCP_ENDPOINTS:-}
-      EXTERNAL_ADB_USB_PORTS: ${EXTERNAL_ADB_USB_PORTS:-}
-      EXTERNAL_ADB_KEYS_DIRECTORY: /app/adb-keys
-      DISPLAY_SIDECAR_SHARED_SECRET: ${EXTERNAL_ADB_BROKER_SECRET:-}
       DISPLAY_WEBRTC_UDP_PORT: ${EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40002}
       DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
-      ADB_BINARY_OUTPUT_MAX_BYTES: "12582912"
     ports:
       - "${EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40002}:${EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40002}/udp"
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    group_add:
-      - "${EXTERNAL_ADB_USB_GID:-1000}"
-    device_cgroup_rules:
-      - "c 189:* rw"
     volumes:
       - external-adb-keys:/app/adb-keys
-      # Mount an empty volume unless the operator explicitly opts in to host USB.
-      - ${EXTERNAL_ADB_USB_SOURCE:-external-adb-no-usb}:/dev/bus/usb:ro
+      - type: volume
+        source: shared-secrets
+        target: /run/rebroid-external-adb
+        read_only: true
+        volume:
+          subpath: external-adb
+          nocopy: true
     networks: [external-adb]
-    healthcheck:
-      test: [CMD, node, -e, "fetch('http://127.0.0.1:8000/health/ready',{signal:AbortSignal.timeout(3000)}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
 
 volumes:
   orchestrator-data:
@@ -142,7 +132,6 @@ volumes:
   shared-secrets:
   web-data:
   external-adb-keys:
-  external-adb-no-usb:
 
 networks:
   platform:

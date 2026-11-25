@@ -2358,7 +2358,7 @@
   },
   "info": {
     "title": "Rebroid Display Sidecar API",
-    "description": "Standalone ADB display, control, and browser streaming sidecar API. WebSocket endpoints are documented in the extraction guide.",
+    "description": "ADB display, device control, and browser streaming.",
     "version": "0.1.0",
     "contact": {}
   },

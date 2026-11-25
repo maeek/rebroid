@@ -5,7 +5,8 @@ see [Contributing](../CONTRIBUTING.md#local-development).
 
 ## Host requirements
 
-- A rootful Docker Engine, Docker Compose, and access to the engine socket.
+- A rootful engine and Compose provider with support for named-volume subdirectory mounts
+  (`volume.subpath`), and access to the engine socket.
 - Android binder support for ReDroid.
 - Network access for initial builds, runtime images, and model downloads.
 - Host firewall support: Docker `DOCKER-USER`, nftables, or rootful Podman with Netavark.
@@ -62,32 +63,61 @@ broker runs its own ADB server, verifies external phones and VMs, and serves the
 It shares a separate Compose network with the orchestrator, web and edge. Its Android host keys
 live in the `external-adb-keys` volume.
 
-To use it, set `EXTERNAL_ADB_BROKER_SECRET` to a separate deployment secret of at least 32
-characters in the Compose environment. The stack passes that value to the broker, orchestrator
-and web, and supplies the broker URL. After starting the stack, enable **External devices** under
+On first startup, the orchestrator generates a dedicated broker credential in
+`shared-secrets/external-adb/broker-secret`. Web reads it from the shared volume. The broker mounts
+only the `external-adb` subdirectory read-only after the orchestrator is healthy. The credential
+survives container recreation. The container images supply the broker URL and credential paths.
+Deployments upgrading from a host-provided `EXTERNAL_ADB_BROKER_SECRET` switch to this file
+when all three services are recreated with the updated images and Compose file.
+
+After starting the stack, enable **External devices** under
 **Administration → Feature management**. Turning the flag off retires active attachments and
 keeps registrations available for cleanup.
 
-For TCP, set `EXTERNAL_ADB_TCP_ENDPOINTS` to a comma-separated list of approved IPv4 addresses
-and ports on a routed device network. The broker rejects targets on its directly attached
-service network. Use a trusted device network or an authenticated tunnel for legacy TCP ADB.
+TCP enrollment defaults to an empty allowlist. To enroll TCP devices, set the same approved
+IPv4 addresses and ports on both services in a Compose override. If you previously set
+`EXTERNAL_ADB_TCP_ENDPOINTS` in your deployment environment, pass it to both services in
+the override. For example, save this as `deploy/compose.tcp.yaml`:
 
-```bash
-docker compose -f deploy/compose.yaml up -d --build
+```yaml
+services:
+  orchestrator:
+    environment:
+      EXTERNAL_ADB_TCP_ENDPOINTS: "${EXTERNAL_ADB_TCP_ENDPOINTS:?Set approved IPv4 addresses and ports}"
+  external-adb:
+    environment:
+      EXTERNAL_ADB_TCP_ENDPOINTS: "${EXTERNAL_ADB_TCP_ENDPOINTS:?Set approved IPv4 addresses and ports}"
 ```
 
-To opt in to host USB on native Linux, set `EXTERNAL_ADB_USB_SOURCE=/dev/bus/usb`.
-Set `EXTERNAL_ADB_USB_PORTS` to the approved port paths reported by native ADB, such as `1-2`.
-Use host udev rules to grant the group identified by `EXTERNAL_ADB_USB_GID` read and write access
-to the intended Android USB nodes. Rerun the same Compose command. The default uses an empty
-volume in place of the USB bus. The test stack keeps USB detached and uses a separate key volume
-and media port. [Android hardware setup](https://developer.android.com/studio/run/device) ·
+```bash
+EXTERNAL_ADB_TCP_ENDPOINTS=192.168.1.20:5555 docker compose -f deploy/compose.yaml -f deploy/compose.tcp.yaml up -d --build
+```
+
+The broker rejects TCP targets on its directly attached service network. Use a trusted device
+network or an authenticated tunnel for legacy TCP ADB.
+
+For host USB on native Linux, add `deploy/compose.usb.yaml`. Set `EXTERNAL_ADB_USB_PORTS`
+to the approved port paths reported by native ADB. Set `EXTERNAL_ADB_USB_GID` to the numeric
+group that has read and write access to the intended Android USB nodes through host udev rules.
+For example, for port `1-2` and group `1002`, run:
+
+```bash
+EXTERNAL_ADB_USB_PORTS=1-2 EXTERNAL_ADB_USB_GID=1002 \
+  docker compose -f deploy/compose.yaml -f deploy/compose.usb.yaml up -d
+```
+
+The override mounts the host's `/dev/bus/usb` read-only and grants the broker access to USB device
+nodes. Include the override on subsequent deployments that use USB. To detach USB, run
+`docker compose -f deploy/compose.yaml up -d external-adb`. Include any TCP or other overrides
+you still use in both commands. [Android hardware setup](https://developer.android.com/studio/run/device) ·
 [Docker device access](https://docs.docker.com/reference/cli/docker/container/run/#using-dynamically-created-devices---device-cgroup-rule)
 
 The broker is a separate instance of the sidecar image. Compose can recreate it while retaining
 the key volume. Each restart invalidates current attachments and requires a new verification.
 The managed display sidecar continues to use its existing container configuration.
-The broker health check probes the ADB executable and checks access to its key directory.
+Both services inherit the display-sidecar image's health check. For the managed sidecar,
+`/health/ready` reports liveness. For a configured broker, it also probes the ADB executable
+and checks access to its key directory.
 Its private `/health/ready` response reports those checks and the optional USB mount separately.
 A missing USB mount leaves TCP available. The readiness probe does not launch the ADB server
 or contact a device. The orchestrator also requires an authenticated feature synchronization
@@ -100,8 +130,8 @@ the broker must observe an unplug and replug on the approved port before verific
 For TCP, confirm a fresh Android prompt or present the verification code from the device or VM
 console as directed in **Devices → Connection**. [Enrollment and verification](operator-console.md#external-android-devices)
 
-The edge routes external viewer assets, media, and controls through nginx at
-`/external-display/`. It publishes UDP port `40002` for external WebRTC. Set
+The edge routes external viewer assets, media, and controls at `/external-display/`.
+The broker publishes UDP port `40002` for external WebRTC. Set
 `EXTERNAL_DISPLAY_WEBRTC_UDP_PORT` if that port is taken. The viewer uses WebSocket when
 WebRTC is disabled or cannot connect. The broker's enrollment and display administration API
 stays on the private network.
@@ -200,7 +230,7 @@ layers, enable WebSocket upgrades and disable media buffering. See
 When upgrading from the UDP range, replace `DISPLAY_WEBRTC_UDP_PORT_RANGE` with
 `DISPLAY_WEBRTC_UDP_PORT` if you use a custom port. For the test stack, use
 `TEST_DISPLAY_WEBRTC_UDP_PORT`. Rebuild and recreate the display sidecar with the
-updated Compose file, and forward only the configured UDP port to the host.
+updated Compose file, and forward its configured UDP port. External WebRTC uses the broker’s separate port.
 
 ## Podman socket
 
@@ -325,39 +355,11 @@ the deployment host.
 
 ### GPU acceleration and scrcpy 5
 
-[Scrcpy 5 hardware decoding](https://github.com/Genymobile/scrcpy/blob/v5.0.1/doc/video.md#hardware-decoding)
-accelerates video playback in the native desktop client. On Linux it uses VA-API with
-an EGL renderer and the GPU's VA-API driver. `--hwdec=auto` is the desktop default and
-can fall back to software; `--hwdec=vaapi` explicitly requires VA-API to work.
-
-Rebroid's Docker display sidecar uses only the Android server from that release. It
-forwards compressed H.264/Opus without decoding or transcoding, so the new desktop
-decoder has no workload here. Both Compose stacks intentionally require no GPU device
-mapping for the display sidecar. Adding `/dev/dri`, `gpus: all`, or VA-API libraries to
-that service does not accelerate the current relay. `--hwdec` is a desktop-client
-option; it is not a scrcpy server option or a Rebroid environment setting.
-
-| Stage | Runs in | Acceleration control |
-| --- | --- | --- |
-| Android rendering and H.264 encoding | Redroid container | Image/host graphics support and Android MediaCodec encoders. `SCRCPY_VIDEO_ENCODER` selects an encoder exposed by Android. |
-| Compressed-media relay and RTP packetization | Display sidecar | No video decoder or transcoder runs here. |
-| Viewer video decoding | User's browser/device | WebSocket WebCodecs requests `prefer-hardware`; WebRTC and MediaSource use the browser's native media stack. |
-
-Browser hardware decoding depends on the viewer machine's GPU, drivers, browser, and
-codec support. A WebCodecs hardware preference is a hint, not confirmation that a GPU
-was selected. See [browser decoding](display-streaming.md#browser-hardware-decoding).
-Android GPU rendering and hardware video encoding are separate capabilities. The
-[Android GPU rendering setting](#android-gpu-rendering-on-linux) controls Android
-graphics only. The scrcpy encoder must be available inside Android.
-
-A **separate native scrcpy desktop client** can use VA-API inside a Linux Docker container
-if the daemon's host/VM exposes a compatible GPU. That client container needs the desktop
-binary, libva and a matching VA-API driver, access and permissions for the relevant GPU
-device nodes, and an authorized Wayland or X11 display connection supporting EGL. Docker
-Compose supports explicit [device mappings](https://docs.docker.com/reference/compose-file/services/#devices)
-and supplementary groups for those permissions. This is a separate graphical-client
-deployment, outside Rebroid's browser viewer; it has not been validated by this project's
-Compose tests. GPU passthrough alone is insufficient.
+Android renders and encodes video in the managed runtime. The display sidecar forwards compressed
+packets to the browser, which decodes them. The sidecar image needs no GPU mapping for this path.
+Scrcpy’s `--hwdec` configures its standalone desktop player. For browser decoder behavior see
+[browser hardware decoding](display-streaming.md#browser-hardware-decoding). For guest graphics
+and encoder selection see [Android GPU rendering](#android-gpu-rendering-on-linux).
 
 ## Updates and image transfer
 

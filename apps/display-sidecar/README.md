@@ -1,8 +1,8 @@
 # Display sidecar
 
 NestJS service for viewer sessions, ADB controls, and scrcpy H.264/Opus streaming, with a Go/Pion
-WebRTC bridge and an embedded browser viewer. One instance serves one host; session state is
-bounded and held in memory.
+WebRTC bridge and an embedded browser viewer. Compose runs separate instances for managed
+runtimes and external devices. Each holds its own bounded session state in memory.
 
 See the [architecture overview](../../docs/architecture.md) and
 [display protocol and recovery rules](../../docs/display-streaming.md).
@@ -18,10 +18,6 @@ Follow the [local setup](../../CONTRIBUTING.md#local-development), then run from
 The script builds the service/viewer and starts port `8000`. Local ADB/scrcpy access must be available.
 The image bundles checksum-verified scrcpy 5.0.1 and the WebRTC bridge. Use the
 [Compose deployment](../../docs/deployment.md) for complete runtime wiring.
-Only scrcpy's Android server is copied from the release archive. The sidecar relays
-encoded media; the viewer's browser decodes it. Scrcpy 5 desktop hardware decoding
-does not require GPU passthrough to this sidecar. See
-[GPU acceleration](../../docs/deployment.md#gpu-acceleration-and-scrcpy-5).
 
 ## Configuration and access
 
@@ -37,16 +33,17 @@ does not require GPU passthrough to this sidecar. See
 | `DISPLAY_SESSION_MAX_ACTIVE`                                           | Session capacity, default 64.                            |
 | `SCRCPY_VIDEO_ENCODER`                                                 | Explicit encoder chosen through host/image benchmarking. |
 
-Internal APIs require a shared secret. Compose mounts the orchestrator's generated secret read-only
-at `/app/secrets/rebroid-shared-secret`. Limit the unauthenticated override to isolated development.
+Internal APIs require a shared secret. The managed sidecar reads `/app/secrets/rebroid-shared-secret`.
+The external ADB broker reads its dedicated credential at `/run/rebroid-external-adb/broker-secret`.
+Compose mounts both read-only. Limit the unauthenticated override to isolated development.
 Viewer URLs carry a display session ID. The sidecar verifies the same-origin account session,
 runtime identity, and capabilities with web before attachment and while transports are active.
 New virtual displays and WebRTC offers require enabled, synchronized state for
 `feature.display-virtual` and `feature.display-webrtc` respectively. The viewer uses WebSocket
 when WebRTC is unavailable under the synchronized feature settings.
 
-The process currently runs as root for device and secret-volume access. Changing that requires
-coordinated host/volume permissions, not an isolated image edit. Secrets are mounted at runtime.
+The managed sidecar runs as root in Compose. The external ADB broker runs as UID 1000 with
+its own key volume and opt-in USB access. [Broker deployment](../../docs/deployment.md#external-android-devices)
 
 ## Verification
 

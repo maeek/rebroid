@@ -134,12 +134,8 @@ read_or_create_secret() {
   export "$env_name=$(cat "$file_path")"
 }
 
-read_shared_orchestrator_secret() {
-  if [ -n "${ORCHESTRATOR_SHARED_SECRET:-}" ]; then
-    return
-  fi
-
-  secret_file="${ORCHESTRATOR_SHARED_SECRET_FILE:-/app/secrets/rebroid-shared-secret}"
+read_shared_secret() {
+  secret_file="$1"
   attempts=0
   while [ ! -s "$secret_file" ] && [ "$attempts" -lt 30 ]; do
     attempts=$((attempts + 1))
@@ -147,11 +143,11 @@ read_shared_orchestrator_secret() {
   done
 
   if [ ! -s "$secret_file" ]; then
-    echo "Orchestrator shared secret file is unavailable at $secret_file." >&2
+    echo "Shared secret file is unavailable at $secret_file." >&2
     exit 1
   fi
 
-  export ORCHESTRATOR_SHARED_SECRET="$(cat "$secret_file")"
+  cat "$secret_file"
 }
 
 export ORCHESTRATOR_API_URL="${ORCHESTRATOR_API_URL:-http://orchestrator:4100}"
@@ -160,7 +156,14 @@ export WEB_DEVICE_ICONS_PATH="${WEB_DEVICE_ICONS_PATH:-/app/data/device-icons}"
 
 ensure_runtime_permissions
 ensure_tls_certificate
-read_shared_orchestrator_secret
+if [ -z "${ORCHESTRATOR_SHARED_SECRET:-}" ]; then
+  ORCHESTRATOR_SHARED_SECRET="$(read_shared_secret "${ORCHESTRATOR_SHARED_SECRET_FILE:-/app/secrets/rebroid-shared-secret}")"
+  export ORCHESTRATOR_SHARED_SECRET
+fi
+if [ -z "${EXTERNAL_ADB_BROKER_SECRET:-}" ]; then
+  EXTERNAL_ADB_BROKER_SECRET="$(read_shared_secret "${EXTERNAL_ADB_BROKER_SECRET_FILE:-/app/secrets/external-adb/broker-secret}")"
+  export EXTERNAL_ADB_BROKER_SECRET
+fi
 read_or_create_secret NEXTAUTH_SECRET "${NEXTAUTH_SECRET_FILE:-/app/data/nextauth-secret}"
 read_or_create_secret MFA_ENCRYPTION_KEY "${MFA_ENCRYPTION_KEY_FILE:-/app/data/mfa-encryption-key}"
 

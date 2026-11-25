@@ -49,12 +49,17 @@ services:
     image: rebroid/display-sidecar:test
     environment:
       DISPLAY_WEBRTC_UDP_PORT: ${TEST_EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40102}
-      EXTERNAL_ADB_USB_PORTS: ""
     ports: !override
       - "${TEST_EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40102}:${TEST_EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40102}/udp"
     volumes:
       - external-adb-test-keys:/app/adb-keys
-      - external-adb-test-no-usb:/dev/bus/usb:ro
+      - type: volume
+        source: shared-test-secrets
+        target: /run/rebroid-external-adb
+        read_only: true
+        volume:
+          subpath: external-adb
+          nocopy: true
 
 volumes:
   orchestrator-test-data:
@@ -63,7 +68,6 @@ volumes:
   shared-test-secrets:
   web-test-data:
   external-adb-test-keys:
-  external-adb-test-no-usb:
 
 networks:
   platform:

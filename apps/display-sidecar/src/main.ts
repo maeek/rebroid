@@ -47,9 +47,7 @@ async function bootstrap() {
   if (config.enableApiDocs) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle("Rebroid Display Sidecar API")
-      .setDescription(
-        "Standalone ADB display, control, and browser streaming sidecar API. WebSocket endpoints are documented in the extraction guide.",
-      )
+      .setDescription("ADB display, device control, and browser streaming.")
       .setVersion("0.1.0")
       .addApiKey(
         {
