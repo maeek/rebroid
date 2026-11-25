@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { IconTerminal2 } from '@tabler/icons-react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
+import { afterClosingBackEntry } from '@/lib/navigation/back-layers'
 import { LogsConsole } from '@/shared/ui/logs/logs-console'
 import { AppLogsControls } from './app-logs-controls'
 import { useApplicationLogs } from './use-application-logs'
@@ -33,33 +35,23 @@ export const AppLogsDialog = ({
 }: AppLogsDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = open ?? internalOpen
+  const openFromLink = useSearchParams().get('logs') === '1'
+  const appId = app?.id
   const { source, log, isLive, isLoading, sourceUnavailable, changeSource, loadLogs, setIsLive } = useApplicationLogs({
     app,
     enabled: isOpen,
     loadWhenEnabled: true
   })
 
-  const setDialogOpen = useCallback(
-    (nextOpen: boolean) => {
-      onOpenChange?.(nextOpen)
-
-      if (open === undefined) {
-        setInternalOpen(nextOpen)
-      }
-    },
-    [onOpenChange, open]
-  )
+  const setDialogOpen = (nextOpen: boolean) => {
+    onOpenChange?.(nextOpen)
+    if (open === undefined) setInternalOpen(nextOpen)
+  }
+  const openLinkedDialog = useEffectEvent(() => setDialogOpen(true))
 
   useEffect(() => {
-    if (!app || typeof window === 'undefined') {
-      return
-    }
-
-    const searchParams = new URL(window.location.href).searchParams
-    if (searchParams.get('logs') === '1') {
-      setDialogOpen(true)
-    }
-  }, [app, setDialogOpen])
+    if (appId && openFromLink) openLinkedDialog()
+  }, [appId, openFromLink])
 
   return (
     <Dialog
@@ -68,6 +60,13 @@ export const AppLogsDialog = ({
         setDialogOpen(nextOpen)
         if (!nextOpen) {
           setIsLive(false)
+          const closedFrom = new URL(window.location.href)
+          if (closedFrom.searchParams.get('logs') !== '1') return
+          afterClosingBackEntry(() => {
+            if (window.location.href !== closedFrom.href) return
+            closedFrom.searchParams.delete('logs')
+            window.history.replaceState(null, '', closedFrom)
+          })
         }
       }}
     >
