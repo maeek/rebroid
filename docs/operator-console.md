@@ -67,17 +67,29 @@ with no registry tag or digest cannot be pulled again.
 
 ## App lifecycle
 
-- `/apps` shows app failures and in-progress lifecycle operations above the inventory.
-- `/app/[id]` opens the resource overview with stored status, configuration, pending runtime changes,
+- **Apps** (`/apps`) lists managed Android container apps and their lifecycle status.
+  Choose **Create app** to provision a managed app. The gallery supports search, filters, and app
+  bulk actions.
+- **Devices** (`/devices`) lists external USB phones and TCP VMs. Choose **Register device** to
+  enroll a device owned by your account. The page distinguishes missing broker configuration, a
+  disabled feature flag, and a failed broker readiness check. Administrators can grant
+  **Enroll external devices** and **Use external devices** separately in group permissions.
+  Both are off for standard users. Registration opens the device's **Connection** view.
+- External device details include **Overview**, **Connection**, and permission-aware **Activity**,
+  **Diagnostics**, **Workflows**, and **AI agent** views. Viewer and device tooling require an
+  eligible verified attachment.
+- **Casting** shows the managed display connection and external ADB broker availability separately.
+  Session rows identify the device type and link to that device.
+- `/apps/[id]` opens the resource overview with stored status, configuration, pending runtime changes,
   and relevant destinations. The embedded viewer requests its own display session for running apps
   while the browser tab is visible.
-- Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `network`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/apps/[id]`.
+- Resource destinations share `/apps/[id]?view=<section>`, including `configuration`, `network`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/devices/[id]`.
 - The resource navigation is one row, with permission-based destinations kept consistent across views.
 - In **Configuration**, choose an image or select **Remove icon**, then click **Save** to apply the icon change.
 - The RAM and CPU fields in **Configuration**, **Create app**, and group quotas show the Docker host's
   total RAM and logical CPU count. Account quotas still apply when setting app limits.
   The orchestrator caches the totals after the first successful read and refreshes them after restart.
-- **Create app** checks the editable timeout, RAM, and CPU fields before creating an app.
+- **Create app** checks the editable timeout, RAM, and CPU fields before provisioning.
   **Configuration** saves only changed settings. Clear a saved RAM or CPU limit to restore its default.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
 - `?view=diagnostics` exposes permitted logs and backend details. Foreign-owned app interaction
@@ -99,6 +111,36 @@ Rebroid replaces the app container and its network and starts it with the active
 profiles and app settings are kept. Changes stored only in the old container are lost.
 Recreate requires ownership and permission to start and stop the app.
 
+## External Android devices
+
+Open **Devices → All devices**, then choose **Register device**. Accounts with
+**Enroll external devices** permission can register an approved TCP address and port. Only
+administrators can enroll USB phones. Select **Find USB devices** to choose a phone connected
+to an approved port on the Rebroid host. USB access belongs to the administrator who enrolled it.
+After registration, select **Connect** from the device’s **Connection** view. Connecting and
+using the device require **Use external devices** permission.
+
+For TCP, select **Check connection** in the registration dialog to see whether the broker can
+reach the approved port. A reachable port still needs ADB verification after registration.
+
+For USB, approve debugging on the handset. If it already trusts the broker, unplug it and use
+**Check connection** before plugging it back into the same port. Check again and confirm the
+phone. For a preconfigured TCP phone, compare the broker fingerprint with a fresh Android
+approval prompt. For a VM or an already trusted TCP target, use **Verification details** and
+place the one-time code in the indicated file from the guest console. **Check connection**
+refreshes the current state. An interrupted attachment requires a new attempt and verification.
+
+After verification, the owner can select **Open viewer**. Opening the viewer leaves screen power
+and clipboard synchronization under the device owner's control. Use the viewer controls to send
+input or manually transfer clipboard text. Select **Device audio** to turn on playback when
+the verified attachment supports it. **Capture screenshot** and **Read Android logs**
+operate on the current attachment and require their corresponding account permissions.
+Live sessions appear under **Administration → Casting**.
+
+**Disconnect** retires the connection. **Forget device** also removes the registration.
+To remove host-key trust from a phone, revoke debugging authorization on Android.
+[External ADB deployment](deployment.md#external-android-devices)
+
 ## Container terminal
 
 Under **Docker → Containers**, open a running managed Android container and select **Terminal**.
@@ -115,7 +157,7 @@ account-session revocation, runtime changes, five minutes without input, or afte
 Use the app's **Network** tab to change where Android can connect. **Approved destinations only**
 includes Rebroid's managed destinations and any additional IPv4 addresses or CIDR ranges in the
 editable list. Paste entries separated by commas or new lines, or delete entries to remove them.
-**Unrestricted** requires internet access permission. **Create app** saves the list with the app.
+**Unrestricted** requires internet access permission. **Create app** saves the list with the device.
 
 **Save network access** saves the policy and attempts enforcement for a running app. A stopped app
 uses the saved policy on its next start. If the firewall cannot confirm enforcement, the Network
@@ -134,12 +176,18 @@ controls or drag to reorder steps. Switch to **YAML** to edit the same draft as 
 broken references before saving or exporting from Visual. You can open YAML to repair broken
 references. In YAML, wait for validation before saving, exporting, or applying edited text to Visual.
 
-To run a saved workflow on a device, open the app's **Workflows** view and select **Run workflow**.
-The accepted run opens immediately. **Summary** shows the queue, Android preparation, and the
-current step as the run progresses. **Events** shows the recorded timeline for the same run.
-For recurring runs, open **Triggers → New trigger**, then choose a workflow, target app, profile,
-and schedule. Enable **Start app if needed** when the trigger has permission to start a stopped app.
-Using **Run now** shows queueing in that trigger's row, then links to the accepted run.
+For a managed device, open **Workflows** on that device and select **Run workflow**. The accepted run
+opens immediately with a summary and event timeline. For a USB phone or TCP VM, open its verified
+viewer and select a workflow in **Run workflow**.
+
+For recurring runs, open **Triggers → New trigger** and choose a workflow, target device, and
+schedule. Managed targets offer a profile and **Start app if needed**. External targets require a
+verified connection when the run is queued. Reconnecting creates a new attachment, so a run queued
+for the old attachment fails. Using **Run now** links to the accepted run.
+
+Workflow exports use `rebroid.io/automation/v2`. To update a v1 YAML export, change its version,
+replace `targetApplicationId` with `targetDeviceId`, and rename run-context keys such as
+`app.id` to `device.id`. Package and profile context is available for managed targets.
 
 Schedules saved with an advanced cron expression show that expression in workflow trigger and
 maintenance task editors. Edits to other fields preserve it. Use **Replace schedule** to choose
@@ -150,6 +198,12 @@ a new schedule with the standard controls.
 The workflow editor and AI workflow drafting use the registered commands permitted for your
 account. Network policy steps manage restrictions and the CIDR allowlist. Deny-list steps
 are unavailable.
+
+Verified external devices support authorized screenshots and observations, taps, swipes, key and
+text entry, explicit package launch, and supported viewer and clipboard controls. Rebroid validates
+all branches of the workflow against the external target before dispatch. Files, raw ADB shell,
+network changes, managed profiles, and startup require managed targets. The external AI viewer
+can send screen images and recognized text to the AI providers selected for the task.
 
 `android.waitForText` and `android.tapText` match enabled Android UI labels or accessibility
 descriptions with tappable bounds. Both use case-sensitive exact matching by default and treat

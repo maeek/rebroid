@@ -38,6 +38,14 @@ Submodules are code boundaries, not separate deployments. Docker consumers use t
 in `docker/contracts`. Automations use `ANDROID_APPS_AUTOMATION` from `android-apps/contracts`.
 Ports declare independent capabilities; they must not derive their types from concrete services.
 
+## Device catalog
+
+The `/api/v1/devices` contract identifies every managed device by its durable ID, owner, and
+`managed` kind. Its runtime image kind can be `redroid` or `generic`. The operation list describes
+what the managed provider offers. Permissions, feature flags, and runtime health govern each request.
+Catalog reads use SQLite state. The viewer authorization projection includes the stored runtime ID
+only when the current managed runtime is marked running.
+
 ## Application lifecycle
 
 Creating, starting, recreating the runtime, installing an APK, or removing an app reserves one persisted lifecycle job.
@@ -125,7 +133,7 @@ prunes snapshots for apps that are no longer eligible and temporary
 files left by an interrupted write. An existing thumbnail remains available after an orchestrator restart if the same
 Android runtime is still running.
 
-`GET /api/bff/applications/{id}/runtime/snapshot` returns the WebP data URL and capture time in the standard operation
+`GET /api/bff/devices/{id}/runtime/snapshot` returns the WebP data URL and capture time in the standard operation
 result. The web backend requires a current account with the screenshot permission. The orchestrator compares the
 account ID from the authenticated web service against the app owner. A missing thumbnail or ownership mismatch
 returns 404. Responses use `Cache-Control: private, no-store`.

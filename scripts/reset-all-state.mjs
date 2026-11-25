@@ -13,21 +13,8 @@ const localStatePaths = [
   resolve(root, "apps/web/data"),
   resolve(root, "apps/orchestrator/data"),
   resolve(root, "apps/orchestrator/uploads"),
+  resolve(root, "apps/display-sidecar/data/external-adb-keys"),
 ];
-
-const activeContainers = dockerIds([
-  "container",
-  "ls",
-  "--quiet",
-  "--filter",
-  "name=rebroid-",
-]);
-
-if (execute && activeContainers.length > 0) {
-  throw new Error(
-    "Rebroid containers are still running. Stop the complete stack before resetting state.",
-  );
-}
 
 const composeVolumeNames = [
   "orchestrator-data",
@@ -35,6 +22,8 @@ const composeVolumeNames = [
   "web-data",
   "shared-secrets",
   "firewall-agent-run",
+  "external-adb-keys",
+  "external-adb-no-usb",
 ];
 const volumes = dockerIds(["volume", "ls", "--format", "{{.Name}}"]).filter(
   (name) =>
@@ -43,6 +32,20 @@ const volumes = dockerIds(["volume", "ls", "--format", "{{.Name}}"]).filter(
 const managedContainers = managedIds("container");
 const managedNetworks = managedIds("network");
 const managedVolumes = managedIds("volume");
+const volumesToRemove = [...new Set([...volumes, ...managedVolumes])];
+
+const hasRunningContainer = (filter) =>
+  dockerIds(["container", "ls", "--quiet", "--filter", filter]).length > 0;
+
+if (
+  execute &&
+  (hasRunningContainer("label=com.rebroid.managed=true") ||
+    volumesToRemove.some((volume) => hasRunningContainer(`volume=${volume}`)))
+) {
+  throw new Error(
+    "Rebroid containers are still running. Stop the complete stack before resetting state.",
+  );
+}
 
 removeLocalState(
   localStatePaths.map((path) => ({ path, directory: true })),
@@ -50,11 +53,7 @@ removeLocalState(
 );
 removeResources("container", managedContainers, ["--force"]);
 removeResources("network", managedNetworks);
-removeResources(
-  "volume",
-  [...new Set([...volumes, ...managedVolumes])],
-  ["--force"],
-);
+removeResources("volume", volumesToRemove, ["--force"]);
 
 if (!execute) {
   console.log(

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const engine = process.env.CONTAINER_ENGINE || "docker";
@@ -9,6 +10,13 @@ for (const name of [
   "REBROID_PORT",
   "DISPLAY_WEBRTC_UDP_PORT",
   "TEST_DISPLAY_WEBRTC_UDP_PORT",
+  "EXTERNAL_ADB_BROKER_SECRET",
+  "EXTERNAL_ADB_TCP_ENDPOINTS",
+  "EXTERNAL_ADB_USB_SOURCE",
+  "EXTERNAL_ADB_USB_PORTS",
+  "EXTERNAL_ADB_USB_GID",
+  "EXTERNAL_DISPLAY_WEBRTC_UDP_PORT",
+  "TEST_EXTERNAL_DISPLAY_WEBRTC_UDP_PORT",
   "CONTAINER_ENGINE_SOCKET",
 ]) {
   delete defaultEnvironment[name];
@@ -111,7 +119,10 @@ function checkStack({ services }, httpsPort, mediaPort, engineSocket) {
   assert(
     secretServices.every((service) =>
       Object.keys(service.environment ?? {}).every(
-        (name) => !name.includes("SHARED_SECRET"),
+        (name) =>
+          !/^(ORCHESTRATOR|DISPLAY_SIDECAR|FIREWALL_AGENT)_SHARED_SECRET/.test(
+            name,
+          ),
       ),
     ),
   );
@@ -175,5 +186,110 @@ checkStack(
   "4444",
   "42001",
   "/run/podman/podman.sock",
+);
+function checkBroker({ services }, port, usbSource, keyVolume) {
+  const broker = services["external-adb"];
+  const brokerSecret = broker.environment.DISPLAY_SIDECAR_SHARED_SECRET;
+  assert.equal(broker.user, "1000:1000");
+  assert.equal(broker.environment.EXTERNAL_ADB_ENABLED, "true");
+  assert.equal(broker.image, services["display-sidecar"].image);
+  assert.deepEqual(broker.build, services["display-sidecar"].build);
+  assert.deepEqual(broker.cap_drop, ["ALL"]);
+  assert(!broker.privileged);
+  assert.equal(broker.init, true);
+  assert.match(broker.healthcheck.test.join(" "), /\/health\/ready/);
+  assert.equal(broker.ports.length, 1);
+  assert.equal(broker.ports[0].protocol, "udp");
+  assert.equal(broker.ports[0].target, port);
+  assert.deepEqual(Object.keys(broker.networks), ["external-adb"]);
+  assert.equal(
+    services.edge.depends_on["external-adb"].condition,
+    "service_started",
+  );
+  for (const service of [services.edge, services.orchestrator, services.web]) {
+    assert(Object.hasOwn(service.networks, "external-adb"));
+  }
+  for (const service of [services.orchestrator, services.web]) {
+    assert.equal(
+      service.environment.EXTERNAL_ADB_BROKER_SECRET ?? "",
+      brokerSecret,
+    );
+  }
+  assert.equal(
+    services.orchestrator.environment.EXTERNAL_ADB_BROKER_URL,
+    "http://external-adb:8000",
+  );
+  assert.equal(
+    services.orchestrator.environment.EXTERNAL_ADB_TCP_ENDPOINTS,
+    broker.environment.EXTERNAL_ADB_TCP_ENDPOINTS,
+  );
+  assert.equal(broker.volumes.length, 2);
+  assert.equal(
+    broker.volumes.find(({ target }) => target === "/app/adb-keys")?.source,
+    keyVolume,
+  );
+  assert(broker.volumes.every(({ source }) => source !== "shared-secrets"));
+  const usb = broker.volumes.find(({ target }) => target === "/dev/bus/usb");
+  assert.equal(usb.source, usbSource);
+  assert.equal(usb.type, usbSource.startsWith("/") ? "bind" : "volume");
+  assert(usb.read_only);
+  assert(
+    !services["display-sidecar"].volumes.some(
+      ({ target }) => target === "/dev/bus/usb",
+    ),
+  );
+}
+checkBroker(production, 40002, "external-adb-no-usb", "external-adb-keys");
+assert.equal(
+  production.services["external-adb"].environment.DISPLAY_SIDECAR_SHARED_SECRET,
+  "",
+);
+checkBroker(test, 40102, "external-adb-test-no-usb", "external-adb-test-keys");
+const testWithHostUsb = loadCompose(testFiles, {
+  EXTERNAL_ADB_USB_SOURCE: "/dev/bus/usb",
+  EXTERNAL_ADB_USB_PORTS: "1-2",
+});
+checkBroker(testWithHostUsb, 40102, "external-adb-test-no-usb", "external-adb-test-keys");
+assert.equal(testWithHostUsb.services["external-adb"].environment.EXTERNAL_ADB_USB_PORTS, "");
+
+const tcp = loadCompose(productionFiles, {
+  EXTERNAL_ADB_BROKER_SECRET: "compose-test-external-device-secret",
+  EXTERNAL_ADB_TCP_ENDPOINTS: "192.168.1.20:5555",
+  EXTERNAL_DISPLAY_WEBRTC_UDP_PORT: "42002",
+});
+checkBroker(tcp, 42002, "external-adb-no-usb", "external-adb-keys");
+assert.equal(
+  tcp.services["external-adb"].environment.EXTERNAL_ADB_TCP_ENDPOINTS,
+  "192.168.1.20:5555",
+);
+
+const usb = loadCompose(productionFiles, {
+  EXTERNAL_ADB_USB_SOURCE: "/dev/bus/usb",
+  EXTERNAL_ADB_USB_GID: "1002",
+  EXTERNAL_ADB_USB_PORTS: "1-2",
+});
+checkBroker(usb, 40002, "/dev/bus/usb", "external-adb-keys");
+assert.deepEqual(usb.services["external-adb"].group_add, ["1002"]);
+assert.deepEqual(usb.services["external-adb"].device_cgroup_rules, [
+  "c 189:* rw",
+]);
+assert.equal(
+  usb.services["external-adb"].environment.EXTERNAL_ADB_USB_PORTS,
+  "1-2",
+);
+
+const edgeFile = (name) =>
+  readFileSync(new URL(`../deploy/edge/${name}`, import.meta.url), "utf8");
+assert.match(
+  edgeFile("Dockerfile"),
+  /COPY external-display\.conf \/opt\/rebroid-edge\/external-display\.conf/,
+);
+assert.match(
+  edgeFile("nginx.conf.template"),
+  /include \/opt\/rebroid-edge\/external-display\.conf;/,
+);
+assert.match(
+  edgeFile("external-display.conf"),
+  /proxy_pass http:\/\/external-adb:8000;/,
 );
 console.log("Compose wiring checks passed.");

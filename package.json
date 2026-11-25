@@ -11,6 +11,7 @@
     "deadcode": "knip --no-exit-code",
     "deadcode:packages": "knip --workspace 'packages/*'",
     "dev": "turbo run dev --parallel",
+    "dev:external-adb": "./apps/display-sidecar/dev.sh --external-adb",
     "fallow:web:audit": "corepack pnpm dlx fallow --root . --workspace apps/web audit",
     "fallow:web:dead-code": "corepack pnpm dlx fallow --root . --workspace apps/web --only dead-code",
     "fallow:web:dupes": "corepack pnpm dlx fallow --root . --workspace apps/web --only dupes --dupes-mode mild",

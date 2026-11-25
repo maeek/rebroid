@@ -18,6 +18,7 @@ Start with the [project README](../README.md) to install Rebroid and open your f
 | --- | --- |
 | [Contributing](../CONTRIBUTING.md) | Local development, verification, dependency updates, and pull requests |
 | [Architecture](architecture.md) | Service responsibilities, request and media flows, state ownership, and feature configuration |
+| [Android device implementation plan](android-device-implementation-plan.md) | Proposed support for managed runtimes, USB phones, and TCP-connected Android devices across the console and services |
 | [Orchestrator architecture](orchestrator-architecture.md) | Lifecycle jobs, running app snapshots, startup timing, firewall reconciliation, and workflow execution |
 | [Web contributor guide](web-contributor-guide.md) | Page structure, browser and server boundaries, and code placement |
 | [Web design system](web-design-system.md) | Navigation, controls, feedback, loading states, and accessibility |

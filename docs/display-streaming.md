@@ -371,6 +371,21 @@ Compare a direct-sidecar path with the Rebroid edge and any additional proxy bef
 
 ## Manual verification
 
+The live USB, TCP VM, and managed Redroid regression checks are pending on a supported Linux host.
+
+Verify external displays on the same supported Linux stack as the managed regression.
+Open the viewer on a verified USB phone and an approved TCP VM. Check that opening it does
+not wake a sleeping screen or copy the device clipboard. Exercise explicit input, clipboard,
+screenshot, and logcat as the owner, then repeat with the corresponding grants removed.
+Disconnect or replace the target while the viewer is open and confirm that the old viewer
+closes and its original URL cannot open the replacement. Exercise WebRTC and its WebSocket
+fallback on the external ingress path while a managed Redroid viewer is also open.
+Include a locked phone, a refused or revoked prompt, two attached phones, and unplugging during
+queued automation input. Recreate the broker with its key volume retained and try replacing a VM
+at the same address. Record whether the old attachment receives input, whether the phone wakes,
+and whether the unaffected viewer keeps streaming. Revoke account access during an active stream
+and confirm that control and media end.
+
 Use a native Linux rootful engine with binder support. Record host, engine, Android image,
 scrcpy version, requested/effective profiles, relevant logs, and observed results.
 

@@ -59,6 +59,12 @@ backend identifiers, endpoints, filesystem paths, and diagnostics. Raw upstream 
 secrets must not appear in responses, logs, or client bundles.
 Platform health and service diagnostics are available to platform administrators only.
 
+The external broker runs separately from the managed display sidecar. It keeps its Android host
+key in its own volume and uses a dedicated shared secret for internal API calls. USB and TCP
+enrollment require the enrollment privilege, and viewing or automation requires the owner's
+use privilege and a current verified attachment. The public edge exposes the external viewer
+paths. Broker readiness responses exclude keys, paths, endpoints, and device serials.
+
 The `docker:open-terminal` privilege is derived from built-in Administrators membership.
 Group policy cannot delegate it. The orchestrator validates the terminal WebSocket Origin
 and asks the private web backend to check the live account session before upgrading. It
@@ -94,8 +100,10 @@ Administrative account and group commands recheck the actor when admitted to the
 The web service validates the proposed change before revocation and commits pending revocation
 with the access change. The display sidecar closes sessions for the affected owners through an
 authenticated command. A failed pre-commit revocation blocks the account change. Pending
-revocation survives a restart and retries in the background. Self-service password and MFA changes
-commit the same revocation job with the credential change. Signing out a browser session revokes its
+revocation survives a restart and retries in the background for each viewer provider. Managed
+viewer grants resume after managed revocation succeeds, even while external revocation is pending.
+Self-service password and MFA changes commit the same revocation job with the credential change.
+Signing out a browser session revokes its
 own access. Its viewer connections close at the next sidecar authorization check, which runs every
 10 seconds. Viewers attached from other authorized browsers can stay connected.
 

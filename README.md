@@ -40,6 +40,10 @@ On the host, open [https://localhost:3443](https://localhost:3443). Use the [HTT
 
 [See the Create app form](docs/images/create-app.webp)
 
+The console lists managed containers under **Apps**. Enroll external USB phones and TCP VMs
+from **Devices** after enabling the feature in the main Compose deployment.
+[External Android device setup](docs/deployment.md#external-android-devices)
+
 The viewer accepts ReDroid 13 through 16. Check the [display and audio compatibility notes](docs/deployment.md#redroid-display-streaming-support) before choosing another image.
 
 > **Pre-release.** A schema change can require a clean database. Review the [stored state guide](docs/operations.md#stored-state) before upgrading an existing deployment.

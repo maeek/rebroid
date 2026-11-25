@@ -93,6 +93,12 @@ http {
       return 404;
     }
 
+    location ^~ /rebroid/external-adb {
+      return 404;
+    }
+
+    include /opt/rebroid-edge/external-display.conf;
+
     location ^~ /api/internal/viewer/ {
       return 404;
     }

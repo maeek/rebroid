@@ -11,6 +11,7 @@ RUN apk add --no-cache gettext-envsubst \
   && chown -R 1000:1000 /opt/rebroid-edge /tmp/nginx
 
 COPY nginx.conf.template /opt/rebroid-edge/nginx.conf.template
+COPY external-display.conf /opt/rebroid-edge/external-display.conf
 COPY --chmod=755 docker-entrypoint.sh /opt/rebroid-edge/docker-entrypoint.sh
 
 USER 1000:1000

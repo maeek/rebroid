@@ -7,7 +7,14 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": [
+        "EXTERNAL_ADB_BROKER_URL",
+        "EXTERNAL_ADB_BROKER_SECRET",
+        "EXTERNAL_ADB_TCP_ENDPOINTS",
+        "EXTERNAL_ADB_DEV_UDP_PORT",
+        "EXTERNAL_ADB_KEYS_DIRECTORY"
+      ]
     },
     "format:check": {
       "outputs": []

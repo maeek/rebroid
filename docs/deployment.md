@@ -55,6 +55,57 @@ because the orchestrator uses it to find the container for ADB network attachmen
 
 ## Configuration
 
+### External Android devices
+
+The main Compose stack starts an `external-adb` service from the display-sidecar image. This
+broker runs its own ADB server, verifies external phones and VMs, and serves their viewer sessions.
+It shares a separate Compose network with the orchestrator, web and edge. Its Android host keys
+live in the `external-adb-keys` volume.
+
+To use it, set `EXTERNAL_ADB_BROKER_SECRET` to a separate deployment secret of at least 32
+characters in the Compose environment. The stack passes that value to the broker, orchestrator
+and web, and supplies the broker URL. After starting the stack, enable **External devices** under
+**Administration → Feature management**. Turning the flag off retires active attachments and
+keeps registrations available for cleanup.
+
+For TCP, set `EXTERNAL_ADB_TCP_ENDPOINTS` to a comma-separated list of approved IPv4 addresses
+and ports on a routed device network. The broker rejects targets on its directly attached
+service network. Use a trusted device network or an authenticated tunnel for legacy TCP ADB.
+
+```bash
+docker compose -f deploy/compose.yaml up -d --build
+```
+
+To opt in to host USB on native Linux, set `EXTERNAL_ADB_USB_SOURCE=/dev/bus/usb`.
+Set `EXTERNAL_ADB_USB_PORTS` to the approved port paths reported by native ADB, such as `1-2`.
+Use host udev rules to grant the group identified by `EXTERNAL_ADB_USB_GID` read and write access
+to the intended Android USB nodes. Rerun the same Compose command. The default uses an empty
+volume in place of the USB bus. The test stack keeps USB detached and uses a separate key volume
+and media port. [Android hardware setup](https://developer.android.com/studio/run/device) ·
+[Docker device access](https://docs.docker.com/reference/cli/docker/container/run/#using-dynamically-created-devices---device-cgroup-rule)
+
+The broker is a separate instance of the sidecar image. Compose can recreate it while retaining
+the key volume. Each restart invalidates current attachments and requires a new verification.
+The managed display sidecar continues to use its existing container configuration.
+The broker health check probes the ADB executable and checks access to its key directory.
+Its private `/health/ready` response reports those checks and the optional USB mount separately.
+A missing USB mount leaves TCP available. The readiness probe does not launch the ADB server
+or contact a device. The orchestrator also requires an authenticated feature synchronization
+before reporting the broker as available. Edge startup requires only that the broker process
+has started, so broker readiness cannot block managed viewing.
+
+Only administrators can enroll USB phones, and each USB registration is private to its owner.
+Approve only the broker key you expect on Android. For a phone that already trusts the broker,
+the broker must observe an unplug and replug on the approved port before verification.
+For TCP, confirm a fresh Android prompt or present the verification code from the device or VM
+console as directed in **Devices → Connection**. [Enrollment and verification](operator-console.md#external-android-devices)
+
+The edge routes external viewer assets, media, and controls through nginx at
+`/external-display/`. It publishes UDP port `40002` for external WebRTC. Set
+`EXTERNAL_DISPLAY_WEBRTC_UDP_PORT` if that port is taken. The viewer uses WebSocket when
+WebRTC is disabled or cannot connect. The broker's enrollment and display administration API
+stays on the private network.
+
 Most runtime defaults, APK limits, inactivity timeouts, and maintenance settings are managed in the UI.
 These Compose variables control deployment wiring:
 

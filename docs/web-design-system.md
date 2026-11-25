@@ -161,10 +161,17 @@ Use `Surface` levels `panel`, `band`, `floating`, or `control` with semantic ton
 
 Empty and error states use `StateView` at the scope of the missing content. Section states stay
 compact and left-aligned; page states use bounded spacing; only immersive viewer states fill their
-parent. Page-level unavailable, missing-resource, and unexpected-error states use the shared local
-`StateIllustration` artwork: a disconnected server, a searched-for resource, and an interrupted page.
-Keep illustrations static, decorative, and neutral across light, dark, and OLED themes. Section and
-grid feedback keeps a small icon. Use a concise title, reason, and relevant next step. Avoid decorative
+parent. Empty and failure states use individual, transparent lossless WebP renders in the graphite
+device style of External devices. Use `StateIllustration` with a subject appropriate to the
+resource. Search and filter misses share the magnifying glass, service outages the disconnected
+server, and unexpected failures the interrupted window. Use page size (288 px, 368 px from
+the small breakpoint) for a primary dataset or page failure, panel size for an embedded grid or
+viewer, and inline size for compact section states. Keep notifications and service banners on their small
+status glyphs. Preserve the original graphite shading, soft reflections and fine rim highlights.
+Tint existing indicator lenses with the Appearance accent. Reserve the Android mark
+for device and APK subjects. Center stacked illustrations by the visual weight of the subject.
+Keep inline artwork aligned to its slot and artwork decorative in every theme.
+Use a concise title, reason, and relevant next step. Avoid decorative
 circles, nested cards, viewport-height placeholders inside sections, and raw internal error text.
 Unavailable/error states use an alert and preserve request references; empty and not-applicable
 states are informational. Preserve the page title and use a level-two feedback heading beneath it.
@@ -483,17 +490,17 @@ slightly raised charcoal in dark, and near-black in OLED) with the heading insid
 16px between stacked fields. Use `gap-x-form-column` (32px) between side-by-side fields or field groups within a section.
 FormField groups the label and description above the control, with a 4px label-to-description gap and a 12px gap before the control. Use its shared 20px label line height rather than feature-specific margins. Validation errors remain below vertical controls; preserve their ARIA associations.
 
-On phones, Create app uses the breadcrumb as its visible title and places the submit action at
-the end of the row when it fits. The Apps index and Create app share the mobile top inset and
+On phones, the managed device creation form uses the breadcrumb as its visible title and places the submit action at
+the end of the row when it fits. The Apps index and managed app creation form share the mobile top inset and
 use a 40 px primary button with a 44 px touch target. The loading view keeps the same header
 with submission disabled.
-Create app enables submission once the name has at least two characters after trimming and the draft
+Managed device creation enables submission once the name has at least two characters after trimming and the draft
 passes client-side validation. Show corrections beside the affected fields as the user edits.
-Create app keeps the draft on submission failure and focuses a persistent notice above the form.
+Keep the draft on submission failure and focus a persistent notice above the form.
 The notice explains the next step and shows the request ID for server failures. Use structured
 validation fields to show corrections at their controls and expand any collapsed group containing an error.
 Service outages belong in the notice. An unconfirmed create request stays on the form and directs
-the user to All apps before retrying. Only a confirmed app ID opens the resource page.
+the user to All apps before retrying. Only a confirmed device ID opens the resource page.
 
 Application identity places the APK and icon pickers in matching preview rows. Stack them in
 narrow sections and put them side by side when both have room. Support dropping an APK and
@@ -631,6 +638,7 @@ and uses MultiSelectCombobox for uploaded files. Keep manual uploads behind a fl
 using FileUploadField, a relative context path, and visible progress. Deduplicate missing paths into one
 build-blocking notice and group warnings separately. Preserve all existing validation and upload bounds.
 
+Before submission, center the illustrated empty state directly on the workspace canvas.
 Show the current build phase and completed steps without implying elapsed-time percentages.
 During build submission, show uploaded context files in Build status until the build job is accepted. Only a real
 build renders logs, using LogsConsole with a stable output height and an optional follow-output control.
@@ -878,11 +886,13 @@ and reset the event inspector when switching applications.
 
 ## App discovery
 
-Apps uses compact horizontal cards with the icon beside the name and quiet status text. Use a
+The Apps gallery uses compact horizontal cards with the icon beside the name and quiet status text. Use a
 responsive, bounded tile width and consistent icon/name/status geometry. Use the shared
-search/selection workspace for discovery and bulk actions; keep Create app
-in the header and a visible keyboard-accessible menu on each tile. Search names, package, image,
-owner, and IDs; combine it with status and sorting. Bulk actions target selected visible results only.
+search and selection workspace. Keep **Create app** in the header and a visible keyboard-accessible
+menu on each tile. Search names, package, image, owner, and IDs. Combine search with status and sorting.
+Show app status as text. Offer bulk actions supported by every selected visible app.
+An empty external inventory uses the shared page state with decorative artwork and a single
+**Register device** link. Place the action in the header when the inventory has entries.
 Expose failed apps through status filtering instead of repeating their errors above the gallery.
 Loading reuses the gallery toolbar, grid, and tile content.
 On hover or keyboard focus, running app cards and desktop sidebar shortcuts show the latest available screenshot
@@ -896,7 +906,7 @@ name is already taken in the destination account, **Copy to my apps** uses an av
 Overview puts a bounded Recently opened row before operational summaries. Use the authenticated
 per-user visit history in visit order; exclude deleted and inaccessible apps and do not substitute
 unvisited running apps. Use the same card, grid, owner labels, Configuration action, and **Copy to my apps**
-action as All apps. Loading uses the same card and grid. Empty and unavailable histories retain
+action as All apps for managed tiles. Loading uses the same card and grid. Empty and unavailable histories retain
 access to All apps.
 Sidebar app shortcuts keep their highlight while the context menu is open. Right-click or long-press
 to open app actions or remove a shortcut from recent history. Removing a running shortcut hides it

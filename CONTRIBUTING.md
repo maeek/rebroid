@@ -51,14 +51,37 @@ Start each service in its own terminal, infrastructure first:
 | Display sidecar | `http://localhost:8000`.            |
 | Firewall agent  | `/tmp/rebroid-firewall/agent.sock`. |
 
-The web script requires its four configured credentials, binds to loopback, and does not require
-`NEXTAUTH_URL`. For LAN testing, set `DEV_HOST=0.0.0.0` and include the browser origin in
-`NEXT_ALLOWED_DEV_ORIGINS`.
+The web script requires its four configured credentials, binds to loopback by default, and does not
+require `NEXTAUTH_URL`. For LAN testing, set `DEV_HOST=0.0.0.0` in `apps/web/.env.local` and add the
+laptop's LAN IP to `NEXT_ALLOWED_DEV_ORIGINS`. Set `DEV_HTTPS_KEY` and `DEV_HTTPS_CERT` to the key and
+certificate paths relative to `apps/web` or to absolute paths. The certificate should cover the LAN IP,
+`localhost`, and `127.0.0.1`. Open `https://<LAN-IP>:3000` on a device that trusts the certificate's
+issuing CA.
 
 The orchestrator dev script disables firewall bootstrap so API/UI work can start on hosts without
 a working firewall backend. Enforcement still requires the supported Linux host and privileges.
 OCR development is described in its [workspace README](apps/ocr-sidecar/README.md).
 For running the full container stack, use the [deployment guide](docs/deployment.md).
+
+### External ADB development
+
+`pnpm dev` starts the managed display sidecar and also starts an external ADB broker when a
+local HTTP broker URL and shared secret are configured. The broker runs in a separate process
+with its own ADB server and keys.
+
+1. In `apps/orchestrator/.env`, set `EXTERNAL_ADB_BROKER_URL=http://127.0.0.1:8001`,
+   `WEB_INTERNAL_URL=https://127.0.0.1:3000`, and `EXTERNAL_ADB_BROKER_SECRET` to a new secret of
+   at least 32 characters. Put the same broker secret in `apps/web/.env.local`. Restart any
+   running web and orchestrator processes after changing their environment.
+2. Run `pnpm dev` from the repository root. For the URL above, check
+   `http://127.0.0.1:8001/health/live` to confirm the broker is listening.
+3. In the console, turn on **External devices** under **Administration → Feature management**.
+   Open **Devices → All devices** in the sidebar. The authenticated broker check works without an
+   attached Android device.
+
+Use this setup for console and API development on macOS, including the broker availability check.
+Use the [main Compose stack on Linux](docs/deployment.md#external-android-devices) for live Android
+connections and viewer testing. For broker-only debugging, run `pnpm dev:external-adb`.
 
 ## Code ownership
 

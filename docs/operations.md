@@ -179,8 +179,21 @@ keep their original names and contents.
 
 The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema
 changes require a clean database. The commands below delete data when `--execute` is supplied.
-Preview the reported paths and resources first. The account-session schema requires a fresh web
-database. Older web databases are rejected at startup.
+The Android device cutover changes both the orchestrator and web schemas. Use a clean stack on a
+dedicated engine for rehearsal. Stop writes and take a restorable backup before resetting an
+existing installation. Preview the reported paths and resources and have the operator review them
+before executing the reset. Older database schemas are rejected at startup.
+The web service stores device icons under `data/device-icons`. Set `WEB_DEVICE_ICONS_PATH` to
+override the directory.
+The Compose broker owns the separate `external-adb-keys` volume. To keep the configured
+host identity when resetting or replacing the stack, retain that volume. Deleting it requires
+authorizing the new broker key on Android again.
+
+Verified external devices share the owner's open-device quota with managed Redroid devices. An
+external connection reserves a slot while awaiting approval or verification. Disconnecting or
+expiring the attempt releases the slot once the broker confirms detachment. The owner session limit
+and deployment inactivity setting bound idle external attachments. Expiry detaches ADB and leaves
+the phone or VM powered on.
 
 These scripts discover base-stack volumes by name and managed resources by label on the current
 Docker engine. Execution completes resource discovery and validates local removal paths before deleting state.
@@ -194,7 +207,8 @@ credentials. Managed Android containers, networks, and profile volumes are separ
 
 This removes the orchestrator database, uploads/build contexts, and Rebroid-managed runtime
 containers, networks, volumes, and managed images. It preserves web data, shared secrets,
-and the orchestrator settings file.
+the orchestrator settings file, and external ADB keys. External device registrations stored in
+the orchestrator database must be enrolled again.
 
 ```bash
 docker compose -f deploy/compose.yaml stop orchestrator
@@ -210,8 +224,10 @@ can override discovery. The next startup creates the current schema.
 ### Full reset
 
 Use this when web state also needs a clean schema. It removes local web/orchestrator state,
-uploads, managed runtime resources, and Compose state volumes, including web accounts and
-generated secrets. External environment files and bind-mounted secrets are preserved.
+uploads, app profile data, device registrations, and Compose state volumes. This includes web
+accounts, device icons and history, generated secrets, and the broker's ADB keys. The reset also
+removes the default local development broker key directory. Environment files and bind-mounted
+secrets are preserved.
 
 ```bash
 docker compose -f deploy/compose.yaml down
@@ -223,6 +239,36 @@ docker compose -f deploy/compose.yaml up -d
 Stop local development processes as well. `docker compose down -v` removes the selected
 project's Compose volumes, including web state and generated credentials. The full reset script
 also handles local state and discovers labeled runtime resources outside Compose.
+
+### Android device rollout and rollback
+
+Deploy the web, orchestrator, display image, edge, and main Compose configuration from the same
+revision. The broker and managed display service use the same image with separate configuration
+and storage. Verify a fresh installation with the external feature off, then configure and enable
+the broker and confirm the private readiness check and Casting status. Use the test Compose overlay
+or a dedicated engine to keep the rehearsal away from an existing deployment's named resources.
+
+Keep a restorable copy of the previous service images, Compose configuration, database volumes,
+uploads, managed profile data, and secrets. Roll back the services and their matching state
+together. Verify the backup can be restored before deleting the original volumes. Complete the
+[native Linux streaming matrix](display-streaming.md#manual-verification) before declaring
+physical USB, TCP VM, or managed Redroid viewing verified.
+
+### External ADB key rotation
+
+Turn off the External devices feature and let attachments retire. Stop and remove the broker container,
+then back up its key volume using restricted access. Delete only the `external-adb-keys` volume
+for the intended Compose project and recreate the service with the main file. Revoke the previous
+debugging authorization on the phones or guests and approve the new broker key on each target.
+Re-enable external devices and verify each attachment. Changing `EXTERNAL_ADB_BROKER_SECRET`
+is a separate service credential rotation and requires recreating the broker, orchestrator, and web.
+Forgetting an enrollment removes Rebroid's registration. Revoke Android's debugging authorization
+on the device to remove host-key trust.
+
+The orchestrator's Prometheus endpoint reports attachment operation durations and counts by
+transport, operation, and outcome. It also counts stale viewer and automation requests and managed
+viewer admissions. Compare managed admission results with the streaming matrix during rollout.
+The metric labels omit serials, endpoints, accounts, and attachment IDs.
 
 ## Google Play image patching
 

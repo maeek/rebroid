@@ -45,12 +45,25 @@ services:
   ocr-sidecar:
     image: rebroid/ocr-sidecar:test
 
+  external-adb:
+    image: rebroid/display-sidecar:test
+    environment:
+      DISPLAY_WEBRTC_UDP_PORT: ${TEST_EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40102}
+      EXTERNAL_ADB_USB_PORTS: ""
+    ports: !override
+      - "${TEST_EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40102}:${TEST_EXTERNAL_DISPLAY_WEBRTC_UDP_PORT:-40102}/udp"
+    volumes:
+      - external-adb-test-keys:/app/adb-keys
+      - external-adb-test-no-usb:/dev/bus/usb:ro
+
 volumes:
   orchestrator-test-data:
   orchestrator-test-uploads:
   firewall-agent-test-run:
   shared-test-secrets:
   web-test-data:
+  external-adb-test-keys:
+  external-adb-test-no-usb:
 
 networks:
   platform:
