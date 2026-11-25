@@ -278,6 +278,7 @@ export const ProviderModelsGrid = ({
           loading={loading ? { rowCount: 4 } : false}
           emptyState={
             <DataGridEmptyState
+              artwork='models'
               title='No models added'
               description='Add a model from this provider to make it available for automation.'
             />

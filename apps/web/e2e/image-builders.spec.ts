@@ -19,6 +19,8 @@ for (const width of [390, 768, 1440, 2048]) {
       await openBuilder(page, mode, width)
       await expect(page.getByRole('navigation', { name: 'Image builder' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Build image', exact: true })).toHaveCount(1)
+      await expect(page.getByRole('heading', { name: 'No build started' })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Build status' })).toHaveCount(0)
       const field = page.getByRole('textbox', { name: 'Target image', exact: true }).locator('../..')
       const label = await field.locator('label').boundingBox()
       const input = await field.getByRole('textbox').boundingBox()

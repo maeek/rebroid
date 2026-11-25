@@ -5,7 +5,7 @@ export const ApplicationReference = ({
   id,
   name,
   ownerUsername,
-  href = `/app/${encodeURIComponent(id)}`,
+  href = `/apps/${encodeURIComponent(id)}`,
   className
 }: {
   id: string

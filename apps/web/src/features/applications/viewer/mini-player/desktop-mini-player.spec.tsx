@@ -11,7 +11,7 @@ it('offers compact and expanded actions without replacing the player frame', () 
     <TooltipProvider>
       <DesktopMiniPlayer
         name='Maps'
-        viewerHref='/viewer/apps/maps'
+        viewerHref='/viewer/devices/maps'
         expanded={expanded}
         canExpand={canExpand}
         inlineStyle={inlineStyle}
@@ -29,7 +29,7 @@ it('offers compact and expanded actions without replacing the player frame', () 
   expect(screen.queryByRole('button', { name: 'Expand mini-player' })).not.toBeInTheDocument()
   expect(screen.queryByRole('img', { name: 'Muted' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Resize mini-player' })).not.toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Open viewer' })).toHaveAttribute('href', '/viewer/apps/maps')
+  expect(screen.getByRole('link', { name: 'Open viewer' })).toHaveAttribute('href', '/viewer/devices/maps')
   const frame = screen.getByTestId('player-frame')
   expect(screen.queryByRole('button', { name: 'Toolbar' })).not.toBeInTheDocument()
   const card = screen.getByRole('region', { name: 'Maps mini-player' })
@@ -74,7 +74,7 @@ it('snaps a drag from the collapsed display to the nearest edge and keeps the ed
     <TooltipProvider>
       <DesktopMiniPlayer
         name='Maps'
-        viewerHref='/viewer/apps/maps'
+        viewerHref='/viewer/devices/maps'
         expanded={false}
         canExpand
         onExpandedChange={onExpandedChange}
@@ -148,7 +148,7 @@ it('resizes the expanded display with a fixed aspect ratio and places tools inwa
     <TooltipProvider>
       <DesktopMiniPlayer
         name='Maps'
-        viewerHref='/viewer/apps/maps'
+        viewerHref='/viewer/devices/maps'
         expanded
         canExpand
         aspectRatio={0.5}

@@ -88,7 +88,13 @@ export const mutateAdministratorUsersFile = async <Value>(
     const { value, affectedOwners } = await mutation(file)
     let revocation: ViewerRevocationJob | undefined
     if (affectedOwners?.length) {
-      await revokeViewerSessionsForUsers(affectedOwners, AbortSignal.timeout(20_000))
+      const signal = AbortSignal.timeout(20_000)
+      await Promise.all([
+        revokeViewerSessionsForUsers(affectedOwners, signal),
+        process.env.EXTERNAL_ADB_BROKER_SECRET
+          ? revokeViewerSessionsForUsers(affectedOwners, signal, 'external')
+          : undefined
+      ])
       revocation = createViewerRevocationJob(affectedOwners, requestId)
     }
     writeUsersFileToDatabase(file, revocation)

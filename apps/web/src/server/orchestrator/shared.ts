@@ -5,7 +5,7 @@ export const revalidateApplicationList = () => {
 }
 
 export const revalidateApplicationDetail = (id: string) => {
-  revalidatePath(`/app/${id}`)
+  revalidatePath(`/apps/${id}`)
 }
 
 export const revalidateOrchestratorPages = () => {

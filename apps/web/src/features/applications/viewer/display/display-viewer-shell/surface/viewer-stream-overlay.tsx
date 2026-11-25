@@ -27,6 +27,7 @@ export const ViewerStreamOverlay = ({
         <StateView
           className='py-4'
           kind='error'
+          artworkSize='panel'
           scope='immersive'
           headingLevel={2}
           title='Live display paused'

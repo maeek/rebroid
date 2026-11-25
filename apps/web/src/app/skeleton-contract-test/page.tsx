@@ -204,7 +204,7 @@ export default async function SkeletonContractPage({
             id: 'run-queued',
             automationId: 'workflow-1',
             workflowName: 'Inventory scan',
-            targetApplicationId: 'preview-app',
+            targetDeviceId: 'preview-app',
             createdAt: '2026-11-12T12:30:00Z',
             status: 'queued'
           },
@@ -212,7 +212,7 @@ export default async function SkeletonContractPage({
             id: 'run-running',
             automationId: 'workflow-2',
             workflowName: 'Order sync',
-            targetApplicationId: 'preview-app',
+            targetDeviceId: 'preview-app',
             createdAt: '2026-11-12T12:00:00Z',
             status: 'running'
           }
@@ -242,7 +242,7 @@ export default async function SkeletonContractPage({
           items: [
             {
               ...previewWorkflowGridRow,
-              targetApplicationIds: [applicationPreview.id],
+              targetDeviceIds: [applicationPreview.id],
               tags: [{ name: 'Inventory', color: '#2563eb' }],
               lastStatus: 'failed',
               lastRunAt: '2026-11-07T10:00:00Z',
@@ -252,7 +252,7 @@ export default async function SkeletonContractPage({
           total: 1,
           page: 1,
           pageSize: 20,
-          facets: { tags: [], targetApplicationIds: [applicationPreview.id] }
+          facets: { tags: [], targetDeviceIds: [applicationPreview.id] }
         }}
         gridQuery={{}}
       />

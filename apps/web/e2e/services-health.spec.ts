@@ -43,7 +43,7 @@ test('Firewall shows the connection above network policies and saves connection 
   await expect(policies.getByRole('table')).toBeVisible()
   await expect(policies.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
     'href',
-    '/app/preview-app?view=network'
+    '/apps/preview-app?view=network'
   )
   expect((await policies.boundingBox())!.y).toBeGreaterThan((await connection.boundingBox())!.y)
   const endpoint = connection.getByRole('textbox', { name: 'Endpoint' })

@@ -1,5 +1,6 @@
 export const permissionCategories = {
   'application-lifecycle': 'Application lifecycle',
+  'external-devices': 'External devices',
   'apk-management': 'APK management',
   'runtime-configuration': 'Runtime configuration',
   'network-access': 'Network access',
@@ -9,6 +10,19 @@ export const permissionCategories = {
 } as const
 
 export const permissionDefinitions = [
+  {
+    id: 'devices:enroll-external',
+    category: 'external-devices',
+    name: 'Enroll external devices',
+    description: 'Discover approved USB devices and register and verify external Android devices for this account.'
+  },
+  {
+    id: 'devices:use-external',
+    category: 'external-devices',
+    name: 'Use external devices',
+    description:
+      'Connect to external devices you own and use their viewer and automation tools with the required permissions.'
+  },
   {
     id: 'applications:create',
     category: 'application-lifecycle',

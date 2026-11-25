@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react'
 import { StateView, type StateViewAction } from '@/shared/ui/state-view'
+import type { StateArtwork } from '@/shared/ui/state-illustration'
 
 export const DataGridEmptyContext = createContext<{
   hasSearch: boolean
@@ -15,12 +16,16 @@ export const DataGridEmptyState = ({
   title = 'No items yet',
   description = 'Items will appear here when they are available.',
   actions,
+  artwork,
+  artworkSize,
   filtered: filteredOverride,
   onReset,
   headingLevel
 }: {
   title?: string
   description?: string
+  artwork?: StateArtwork
+  artworkSize?: 'page' | 'panel'
   actions?: StateViewAction[]
   filtered?: boolean
   onReset?: () => void
@@ -39,6 +44,8 @@ export const DataGridEmptyState = ({
   return (
     <StateView
       scope='grid'
+      artwork={filtered ? 'search' : artwork}
+      artworkSize={artworkSize}
       headingLevel={headingLevel}
       kind={filtered ? 'no-results' : 'empty'}
       title={filtered ? 'No matching results' : title}

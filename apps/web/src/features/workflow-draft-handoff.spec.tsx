@@ -50,7 +50,7 @@ const turn = {
     automationId: 'automation-1',
     automationTriggerId: null,
     ownerUserId: 'owner-1',
-    targetApplicationId: 'app-1',
+    targetDeviceId: 'app-1',
     targetProfileMode: null,
     targetProfileName: null,
     trigger: 'manual',
@@ -126,7 +126,7 @@ describe('ChatTurnSaveWorkflowAction', () => {
 
   it('opens a completed run’s draft in the workflow editor immediately and keeps it through a retry', async () => {
     const definition: AutomationDefinition = {
-      apiVersion: 'rebroid.io/automation/v1',
+      apiVersion: 'rebroid.io/automation/v2',
       kind: 'AndroidAutomation',
       metadata: { name: 'Open Android Settings' },
       spec: { steps: [{ id: 'settings', uses: 'debug.log', with: { message: 'Settings is open.' } }] }

@@ -225,6 +225,8 @@ export const ServicesGrid = ({
         loading={loading ? { rowCount: loadingRowCount } : false}
         emptyState={
           <DataGridEmptyState
+            artwork='network'
+            artworkSize='page'
             title='No services available'
             description='Services will appear here when they are available.'
           />

@@ -5,9 +5,10 @@ export const AppsListEmptyState = ({ canCreate }: { canCreate: boolean }) => (
     scope='grid'
     headingLevel={2}
     kind='empty'
+    artworkSize='page'
     title='No Android apps yet'
     description={
-      canCreate ? 'Create an app to set up an isolated Android device.' : 'No apps are available for your account.'
+      canCreate ? 'Create an app to run Android in a managed container.' : 'No apps are available for your account.'
     }
   />
 )

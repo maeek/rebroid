@@ -71,7 +71,7 @@ export const filterSessions = (
     const owner = sessionOwnerId(session, app)
     if (ownerId !== 'all' && owner !== ownerId) return false
     if (!query) return true
-    return [session.id, session.applicationId, app?.name, owner, session.status]
+    return [session.id, session.applicationId, session.deviceName ?? app?.name, owner, session.status]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()

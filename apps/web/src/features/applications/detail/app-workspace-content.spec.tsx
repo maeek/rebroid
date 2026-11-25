@@ -30,7 +30,7 @@ describe('app tools workspace', () => {
     const navigation = within(screen.getByRole('navigation', { name: 'App sections' }))
     expect(navigation.getByRole('link', { name: 'Diagnostics' })).toHaveAttribute(
       'href',
-      '/app/preview-app?view=diagnostics'
+      '/apps/preview-app?view=diagnostics'
     )
     expect(screen.getAllByText('Runtime content')).toHaveLength(1)
     expect(screen.queryByRole('tablist')).toBeNull()

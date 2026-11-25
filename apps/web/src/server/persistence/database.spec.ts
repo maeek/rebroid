@@ -58,7 +58,7 @@ describe('fresh web database', () => {
       'groups',
       'login_rate_limits',
       'mfa_setup_tokens',
-      'recent_applications',
+      'recent_devices',
       'users',
       'web_maintenance_jobs',
       'web_settings'
@@ -171,19 +171,19 @@ describe('fresh web database', () => {
       actorLabel: 'Operator',
       category: 'application',
       action: 'application.start',
-      resourceType: 'application',
+      resourceType: 'device',
       resourceId: 'app-a'
     })
     appendAuditEvent({
       actorLabel: 'Operator',
       category: 'application',
       action: 'application.start',
-      resourceType: 'application',
+      resourceType: 'device',
       resourceId: 'app-b'
     })
     appendAuditEvent({ actorLabel: 'Operator', category: 'auth', action: 'auth.login.success' })
     expect(
-      listAuditEvents({ search: 'Start application', resourceType: 'application', resourceId: 'app-a' }).events.map(
+      listAuditEvents({ search: 'Start application', resourceType: 'device', resourceId: 'app-a' }).events.map(
         event => event.resourceId
       )
     ).toEqual(['app-a'])

@@ -130,6 +130,7 @@ export const AppStartupTimingsSection = ({
       ) : !error ? (
         <StateView
           kind='empty'
+          artwork='activity'
           title='No startup events recorded'
           description='No milestones are available for this startup.'
         />

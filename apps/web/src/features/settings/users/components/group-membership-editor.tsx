@@ -117,6 +117,7 @@ export const GroupMembershipEditor = ({
           loading={loading && { rowCount: 3 }}
           emptyState={
             <DataGridEmptyState
+              artwork='accounts'
               title='No groups assigned'
               description='Use Edit membership to assign groups and grant access.'
             />

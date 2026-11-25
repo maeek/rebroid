@@ -633,7 +633,7 @@ test('trigger setup groups searchable targets and schedule without nested cards'
     await page.goto('/skeleton-contract-test?editor=triggers')
     await page.getByRole('button', { name: 'New trigger', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'New trigger', exact: true })
-    const app = dialog.getByRole('combobox', { name: /^Target app/ })
+    const app = dialog.getByRole('combobox', { name: /^Target device/ })
     await app.fill('Reports')
     await page.getByRole('option', { name: /Reports worker/ }).click()
     await expect(app).toHaveValue('Reports worker')

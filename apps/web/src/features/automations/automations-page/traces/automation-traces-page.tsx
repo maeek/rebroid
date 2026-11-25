@@ -5,6 +5,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getBff } from '@/lib/http/bff'
 import { ActionResultError } from '@/shared/actions/action-result'
 import { activeWorkflowRunsHref } from '@/shared/model/active-workflow-runs-href'
+import { appResourceHref } from '@/shared/model/applications/app-resource-links'
+import { externalDeviceHref } from '@/shared/model/applications/external-device-links'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
 import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-summary-panel'
@@ -55,7 +57,7 @@ export function AutomationTracesPage({
   ]
   if (selectedRunId !== undefined) {
     const runLabel = automation?.name ?? 'Workflow run'
-    const target = selectedRun && applications.find(app => app.id === selectedRun.targetApplicationId)
+    const target = selectedRun && applications.find(app => app.id === selectedRun.targetDeviceId)
     return (
       <StandardPage>
         <PageHeader
@@ -82,7 +84,11 @@ export function AutomationTracesPage({
           description={
             target && selectedRun ? (
               <ResourceLink
-                href={`/app/${encodeURIComponent(target.id)}?view=workflows&run=${encodeURIComponent(selectedRun.id)}`}
+                href={
+                  selectedRun.targetKind === 'external'
+                    ? externalDeviceHref(target.id, 'workflows')
+                    : `${appResourceHref(target.id, 'workflows')}&run=${encodeURIComponent(selectedRun.id)}`
+                }
               >
                 {target.name}
               </ResourceLink>
@@ -93,9 +99,16 @@ export function AutomationTracesPage({
           {loading ? (
             <WorkflowRunSummaryPanel
               loading
-              fields={['Run ID', 'Target app', 'Profile', 'Trigger', 'Created', 'Started', 'Finished', 'Duration'].map(
-                label => ({ label, value: null })
-              )}
+              fields={[
+                'Run ID',
+                'Target device',
+                'Profile',
+                'Trigger',
+                'Created',
+                'Started',
+                'Finished',
+                'Duration'
+              ].map(label => ({ label, value: null }))}
             />
           ) : null}
           {selectedRun ? (

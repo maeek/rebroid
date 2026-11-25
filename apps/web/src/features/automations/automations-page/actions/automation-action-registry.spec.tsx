@@ -127,7 +127,7 @@ describe('automation builder serialization', () => {
     const model = { visionProviderId: 'provider-1', visionModelId: 'model-1' }
     const region = { left: 0.2, top: 0.3, width: 0.4, height: 0.5 }
     const form = definitionToForm({
-      apiVersion: 'rebroid.io/automation/v1',
+      apiVersion: 'rebroid.io/automation/v2',
       kind: 'AndroidAutomation',
       metadata: { name: 'Locate Żappka' },
       spec: {

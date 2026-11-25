@@ -51,7 +51,7 @@ describe('application action URL selectors', () => {
     const runtimeKey = 'a'.repeat(64)
     await expect(recordViewerActivityAction(appId, runtimeKey)).resolves.toMatchObject({ ok: true })
     expect(fetchUpstream).toHaveBeenCalledExactlyOnceWith(
-      `http://orchestrator.test/api/v1/apps/${appId}/viewer/activity`,
+      `http://orchestrator.test/api/v1/devices/${appId}/viewer/activity`,
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ ownerUserId: 'owner-1', runtimeKey })
@@ -78,7 +78,7 @@ describe('application action URL selectors', () => {
     await expect(getApplicationLogsAction(appId, source)).rejects.toMatchObject({ code: 'validation' })
     expect(fetchUpstream).toHaveBeenCalledTimes(1)
     expect(fetchUpstream).toHaveBeenCalledWith(
-      `http://orchestrator.test/api/v1/apps/${appId}/viewer-runtime`,
+      `http://orchestrator.test/api/v1/devices/${appId}/viewer-runtime`,
       expect.anything()
     )
   })
@@ -88,7 +88,7 @@ describe('application action URL selectors', () => {
       output: 'Owned application log'
     })
     expect(fetchUpstream).toHaveBeenLastCalledWith(
-      `http://orchestrator.test/api/v1/apps/${appId}/runtime/logs/container?tail=15`,
+      `http://orchestrator.test/api/v1/devices/${appId}/runtime/logs/container?tail=15`,
       expect.anything()
     )
   })
@@ -127,7 +127,7 @@ describe('application action URL selectors', () => {
     await orchestratorAppLifecycleClient.deleteSavedProfile(appId, 'profile #?')
 
     expect(fetchUpstream).toHaveBeenCalledWith(
-      `http://orchestrator.test/api/v1/apps/${appId}/lifecycle/profiles/profile%20%23%3F`,
+      `http://orchestrator.test/api/v1/devices/${appId}/lifecycle/profiles/profile%20%23%3F`,
       expect.anything()
     )
   })

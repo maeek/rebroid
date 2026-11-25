@@ -6,16 +6,21 @@ import { enforceRuntimeQuotas } from '@/server/orchestrator/applications/resourc
 import {
   assertAutomationPermission,
   assertDefinitionPermissions,
+  assertExternalCommandPermission,
   assertRunProfilePermission
 } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
+import { listExternalWorkflowDevices } from '@/server/orchestrator/automations/workflow-device-options'
+import { externalDeviceClient } from '@/server/orchestrator/external-devices/client'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
 export const authorizeAutomationExecution = async (input: {
   ownerUserId: string
   definition: AutomationDefinition
-  targetApplicationId: string
+  targetDeviceId: string
+  attachmentId?: string
+  command?: string
   profileMode?: string | null
   profileName?: string | null
   operation: 'attach' | 'start'
@@ -30,9 +35,26 @@ export const authorizeAutomationExecution = async (input: {
     quotas: account.effectiveQuotas
   }
   assertAutomationPermission(user, 'automations:run')
-  const defaultAiCapabilities = await assertDefinitionPermissions(user, input.definition)
+  const external = input.attachmentId !== undefined
+  const defaultAiCapabilities = external
+    ? await assertDefinitionPermissions(user, input.definition, true)
+    : await assertDefinitionPermissions(user, input.definition)
+  if (input.attachmentId) {
+    if (input.operation !== 'attach' || input.profileMode || input.profileName) {
+      throw new PublicActionError('Verified external devices support attachment only.', {
+        code: 'forbidden',
+        status: 403
+      })
+    }
+    if (input.command) assertExternalCommandPermission(user, input.command)
+    await externalDeviceClient.attachment(input.targetDeviceId, input.attachmentId, {
+      userId: account.id,
+      administrator: account.isPlatformAdmin
+    })
+    return { maxOpenApps: user.quotas.maxOpenApps, canUseInternet: false, defaultAiCapabilities }
+  }
   assertRunProfilePermission(user, input)
-  const app = await orchestratorAppCatalogClient.getApplication(input.targetApplicationId)
+  const app = await orchestratorAppCatalogClient.getApplication(input.targetDeviceId)
   if (app.ownerUserId !== account.id)
     throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
   if (input.operation === 'start') {
@@ -40,14 +62,18 @@ export const authorizeAutomationExecution = async (input: {
     const quotas = await enforceRuntimeQuotas(app.runtime, user.quotas)
     const limit = quotas.maxOpenApps
     if (limit !== null) {
-      const [apps, runs] = await Promise.all([
+      const [apps, runs, externalDevices] = await Promise.all([
         orchestratorAppCatalogClient.listApplicationGallery(account.id),
-        orchestratorAutomationsClient.listActiveRuns(account.id)
+        orchestratorAutomationsClient.listActiveRuns(account.id),
+        listExternalWorkflowDevices({ ...user, isPlatformAdmin: account.isPlatformAdmin }, true)
       ])
-      const reserved = new Set(runs.map(run => run.targetApplicationId))
+      const reserved = new Set(runs.map(run => run.targetDeviceId))
       for (const item of apps) {
         if (item.ownerUserId === account.id && (item.status === 'running' || item.status === 'provisioning'))
           reserved.add(item.id)
+      }
+      for (const device of externalDevices) {
+        if (device.connection.attemptId) reserved.add(device.id)
       }
       reserved.add(app.id)
       if (reserved.size > limit)

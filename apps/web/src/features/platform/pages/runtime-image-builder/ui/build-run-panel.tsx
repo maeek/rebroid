@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { IconCheck, IconHammer } from '@tabler/icons-react'
+import { IconCheck } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { StateTransition } from '@/components/ui/state-transition'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import { ResourceLink } from '@/shared/ui/resource-link'
+import { StateView } from '@/shared/ui/state-view'
 import type { UploadProgress } from '../model/dockerfile-context-types'
 import type { ContainerImageBuildJob } from '@/shared/contracts/platform'
 
@@ -38,6 +39,20 @@ export const BuildRunPanel = ({
   children?: ReactNode
   loading?: boolean
 }) => {
+  if (!loading && !starting && !job) {
+    return (
+      <StateView
+        kind='empty'
+        scope='page'
+        headingLevel={2}
+        artwork='build'
+        artworkSize='panel'
+        title='No build started'
+        description='Review the configuration and build checks, then choose Build image.'
+      />
+    )
+  }
+
   let tone: 'neutral' | 'success' | 'danger' = 'neutral'
   if (job?.status === 'succeeded') tone = 'success'
   if (job?.status === 'failed') tone = 'danger'
@@ -149,18 +164,7 @@ export const BuildRunPanel = ({
                 ) : null}
               </StateTransition>
             </>
-          ) : (
-            <div className='flex min-h-28 items-start gap-4 py-2'>
-              <IconHammer className='mt-1 size-6 shrink-0 text-foreground-muted' />
-              <div className='grid gap-2'>
-                <p className='text-sm font-medium'>No build started</p>
-                <p className='max-w-md text-sm leading-6 text-foreground-muted'>
-                  Review the configuration and build checks, then choose Build image. Status, output, and the finished
-                  image will appear here.
-                </p>
-              </div>
-            </div>
-          )}
+          ) : null}
         </>
       )}
     </PlatformResourceSection>

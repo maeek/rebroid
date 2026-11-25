@@ -17,7 +17,7 @@ test('trigger creation supports contextual resource search and reusable tags wit
     await workflow.press('Enter')
     await expect(workflow).toHaveValue('Daily inventory check')
     await expect(workflow).toHaveAccessibleDescription(/warehouse-workflow/)
-    const app = dialog.getByRole('combobox', { name: /^Target app/ })
+    const app = dialog.getByRole('combobox', { name: /^Target device/ })
     await app.fill('reports-app')
     await page.getByRole('option', { name: /Reports worker/ }).click()
     await expect(app).toHaveAccessibleDescription(/reports-app/)

@@ -45,7 +45,7 @@ describe('related container references', () => {
         relation='application'
       />
     )
-    expect(screen.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute('href', '/app/app-id')
+    expect(screen.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute('href', '/apps/app-id')
     expect(screen.getByText('Unmanaged', { exact: true })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Unmanaged' })).toBeNull()
   })

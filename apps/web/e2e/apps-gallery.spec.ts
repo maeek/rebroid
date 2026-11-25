@@ -15,12 +15,12 @@ const recentApps = [
 ]
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/bff/apps/gallery', route => route.fulfill({ json: actionOk(galleryPreviewApplications) }))
+  await page.route('**/api/bff/devices', route => route.fulfill({ json: actionOk(galleryPreviewApplications) }))
 })
 
 test('gallery hover previews show full portrait and landscape screenshots', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.route('**/api/bff/apps/gallery', route =>
+  await page.route('**/api/bff/devices', route =>
     route.fulfill({
       json: actionOk(
         galleryPreviewApplications.map(app =>
@@ -115,7 +115,7 @@ test('gallery search, status, menus and visible selection work together without 
   await page.getByRole('button', { name: 'Actions for Inventory worker', exact: true }).click()
   await expect(page.getByRole('menuitem', { name: 'Configuration' })).toHaveAttribute(
     'href',
-    '/app/gallery-app-0?view=configuration'
+    '/apps/gallery-app-0?view=configuration'
   )
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Actions for Inventory worker', exact: true })).toBeFocused()
@@ -189,7 +189,7 @@ test('the in-progress URL includes stopping apps alongside provisioning and remo
     if (index === 3) return { ...app, status: 'removing', lifecycleStage: 'removing' }
     return app
   })
-  await page.route('**/api/bff/apps/gallery', route => route.fulfill({ json: actionOk(apps) }))
+  await page.route('**/api/bff/devices', route => route.fulfill({ json: actionOk(apps) }))
   await page.goto('/skeleton-contract-test?editor=apps-gallery&status=working')
   const tiles = page.locator('[data-app-tile]')
   await expect(tiles).toHaveCount(3)
@@ -346,7 +346,7 @@ test('gallery and its loader fit small and large screens in every theme', async 
 test('overview recent shortcuts preserve visit order and handle empty or unavailable history', async ({ page }) => {
   let apps = recentApps
   let unavailable = false
-  await page.route('**/api/bff/applications/recent', route =>
+  await page.route('**/api/bff/devices/recent', route =>
     route.fulfill({
       status: unavailable ? 503 : 200,
       json: unavailable
@@ -374,10 +374,10 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
   const galleryTile = (await page.locator('[data-app-tile]').first().boundingBox())!
   await page.goto('/skeleton-contract-test?editor=overview')
   const recent = page.getByRole('region', { name: 'Recently opened', exact: true })
-  const shortcuts = recent.locator('a[href^="/app/"]')
+  const shortcuts = recent.locator('a[href^="/apps/"]')
   await expect(shortcuts).toHaveCount(2)
   await expect(shortcuts.first()).toContainText('Warehouse scanner')
-  await expect(shortcuts.first()).toHaveAttribute('href', '/app/recent-2')
+  await expect(shortcuts.first()).toHaveAttribute('href', '/apps/recent-2')
   const overviewTile = (await recent.locator('[data-app-tile]').first().boundingBox())!
   expect(overviewTile.width).toBe(galleryTile.width)
   expect(overviewTile.height).toBe(galleryTile.height)
@@ -389,7 +389,7 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
   await expect(menu.getByRole('menuitem', { name: 'Copy to my apps' })).toBeVisible()
   await expect(menu.getByRole('menuitem', { name: 'Configuration' })).toHaveAttribute(
     'href',
-    '/app/recent-1?view=configuration'
+    '/apps/recent-1?view=configuration'
   )
   await page.keyboard.press('Escape')
   await expect(menu).toBeHidden()
@@ -404,9 +404,9 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
   }
   apps = []
   await page.reload()
-  await expect(recent).toContainText('Apps you open will appear here')
+  await expect(recent).toContainText('Apps and devices you open will appear here')
   unavailable = true
   await page.reload()
-  await expect(recent).toContainText('Recently opened apps could not be loaded', { timeout: 15_000 })
+  await expect(recent).toContainText('Recently opened devices could not be loaded', { timeout: 15_000 })
   await expect(recent.getByRole('link', { name: 'All apps' })).toHaveAttribute('href', '/apps')
 })

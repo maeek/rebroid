@@ -134,6 +134,8 @@ export const GroupsSection = ({
             minWidth='38rem'
             emptyState={
               <DataGridEmptyState
+                artwork='accounts'
+                artworkSize='page'
                 title='No groups yet'
                 description='Create a group to manage shared permissions and quotas.'
               />

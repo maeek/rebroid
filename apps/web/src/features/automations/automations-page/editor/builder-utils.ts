@@ -118,7 +118,7 @@ const defaultConditionExpression = (): AutomationConditionExpression => ({
     {
       conditions: [
         {
-          value: { source: 'runContext', key: 'targetApplicationId' },
+          value: { source: 'runContext', key: 'targetDeviceId' },
           operator: 'exists'
         }
       ]
@@ -282,7 +282,7 @@ const buildDefinition = ({
   const trimmedDescription = description.trim()
 
   return {
-    apiVersion: 'rebroid.io/automation/v1',
+    apiVersion: 'rebroid.io/automation/v2',
     kind: 'AndroidAutomation',
     metadata: {
       name: name.trim() || 'Automation',

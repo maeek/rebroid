@@ -70,6 +70,7 @@ describe('FeaturesPage', () => {
       'feature.ai',
       'feature.workflows',
       'feature.resource-quota',
+      'feature.external-devices',
       'feature.display-webrtc'
     ] as const
     const unorderedManifest = { ...manifest, features: keys.map(key => createFeature({ key })) }
@@ -85,6 +86,7 @@ describe('FeaturesPage', () => {
       'OCR perception',
       'Virtual displays',
       'WebRTC streaming',
+      'External devices',
       'Image builder',
       'Firewall enforcement',
       'Resource quota'

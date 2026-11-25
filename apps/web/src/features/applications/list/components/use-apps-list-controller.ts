@@ -42,7 +42,7 @@ import type { AppsListContextValue, BulkAction, BulkAppProgress, PendingAppActio
 import type { AppGalleryItem, ApplicationGalleryRow } from '@/shared/contracts/application-gallery'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
-const listApplications = () => getBff<ApplicationGalleryRow[]>('/api/bff/apps/gallery')
+const listApplications = () => getBff<ApplicationGalleryRow[]>('/api/bff/devices')
 
 export const useAppsListController = ({
   canStop,
@@ -228,7 +228,7 @@ export const useAppsListController = ({
     return filterGalleryApps(scopedApps, search, statusFilter)
   }, [currentOwnerUserId, sortedApps, search, statusFilter, ownershipFilter])
   const visibleSelectedIds = retainVisibleSelectedIds(visibleApps, selectedIds)
-  const { activeBulkApps, allSelected, deletableSelectedApps, stoppableSelectedApps } = deriveAppsListSelection({
+  const { activeBulkApps, deletableSelectedApps, stoppableSelectedApps } = deriveAppsListSelection({
     apps: visibleApps,
     selectedIds: visibleSelectedIds,
     currentOwnerUserId,
@@ -236,6 +236,7 @@ export const useAppsListController = ({
     canDelete,
     bulkAction
   })
+  const allSelected = visibleApps.length > 0 && visibleSelectedIds.size === visibleApps.length
 
   const toggleSelectAll = () => {
     if (allSelected) {
@@ -243,7 +244,7 @@ export const useAppsListController = ({
       return
     }
 
-    setSelectedIds(new Set(visibleApps.map(app => app.id)))
+    setSelectedIds(new Set(visibleApps.map(device => device.id)))
   }
 
   const finishBulkAction = (requestedApps: AppGalleryItem[], results: PromiseSettledResult<unknown>[]) => {
@@ -361,7 +362,7 @@ export const useAppsListController = ({
   }
 
   return {
-    availableApps: visibleApps,
+    visibleApps,
     search,
     setSearch,
     statusFilter,

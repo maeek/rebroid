@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import { describe, expect, it, vi } from 'vitest'
+import DevicesLayout from '@/app/(protected)/(standard)/devices/layout'
 import { requireFeature } from './features'
 import { OrchestratorRequestError } from './request'
 import { orchestratorSettingsClient } from './settings/client'
@@ -38,5 +39,10 @@ describe('feature availability failures', () => {
   it('still denies a feature that is absent from a successfully loaded registry', async () => {
     vi.mocked(orchestratorSettingsClient.getFeatures).mockResolvedValueOnce({ revision: 1, features: [] })
     await expect(requireFeature('feature.firewall')).rejects.toThrow('not-found')
+  })
+
+  it('blocks direct Devices routes when the feature is absent', async () => {
+    vi.mocked(orchestratorSettingsClient.getFeatures).mockResolvedValueOnce({ revision: 1, features: [] })
+    await expect(DevicesLayout({ children: 'Device registration' })).rejects.toThrow('not-found')
   })
 })

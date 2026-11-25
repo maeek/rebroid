@@ -295,6 +295,8 @@ export const ApkLibraryPageClient = ({
             }}
             emptyState={
               <DataGridEmptyState
+                artwork='package'
+                artworkSize='page'
                 title='No APKs'
                 description='Uploaded APKs appear here after inspection.'
               />

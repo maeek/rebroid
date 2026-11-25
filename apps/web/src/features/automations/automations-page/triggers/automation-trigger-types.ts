@@ -8,7 +8,8 @@ export type TriggerFormState = {
   name: string
   description: string
   automationId: string
-  targetApplicationId: string
+  targetDeviceId: string
+  external?: boolean
   profileMode: ApplicationProfileMode
   profileName: string
   enabled: boolean

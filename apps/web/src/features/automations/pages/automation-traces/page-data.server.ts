@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
-import { listApplicationNames } from '@/server/orchestrator/applications/application-gallery-query'
 import { isWorkflowRun, workflowCatalogIsDisabled } from '@/server/orchestrator/automations/active-workflow-runs-query'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
+import { listWorkflowDeviceNames } from '@/server/orchestrator/automations/workflow-device-options'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -39,7 +39,7 @@ export const loadAutomationTracesPageData = async (id: string, selectedRunId?: s
     return undefined
   }
   const [applications, runs, selectedRun] = await Promise.all([
-    listApplicationNames(user),
+    listWorkflowDeviceNames(user),
     selectedRunId === undefined ? orchestratorAutomationsClient.listRunHistory(user.ownerUserId, id, 50) : [],
     loadSelectedRun()
   ])

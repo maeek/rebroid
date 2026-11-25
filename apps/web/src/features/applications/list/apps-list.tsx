@@ -1,10 +1,9 @@
 'use client'
-import { Button } from '@/components/ui/button'
-import { Section } from '@/components/ui/section'
 import { AppGalleryGrid } from '@/shared/ui/app-icon/app-gallery-grid'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { PageLoadFailure } from '@/shared/ui/page/page-load-failure'
+import { StateView } from '@/shared/ui/state-view'
 import { AppsGalleryToolbar } from './components/apps-gallery-toolbar'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
@@ -39,7 +38,7 @@ export const AppsList = ({
   orchestratorError?: string | null
 }) => {
   const {
-    availableApps,
+    visibleApps,
     search,
     setSearch,
     statusFilter,
@@ -61,7 +60,7 @@ export const AppsList = ({
       <>
         <PageHeader
           title='Apps'
-          description='Create, monitor, and manage isolated Android applications.'
+          description='Manage your container apps.'
         />
         <PageContent>
           <PageLoadFailure
@@ -90,9 +89,9 @@ export const AppsList = ({
         >
           {!hasApps ? (
             <AppsListEmptyState canCreate={canCreate} />
-          ) : availableApps.length ? (
+          ) : visibleApps.length ? (
             <AppGalleryGrid>
-              {availableApps.map(app => (
+              {visibleApps.map(app => (
                 <AppsListItem
                   key={app.id}
                   app={app}
@@ -106,23 +105,25 @@ export const AppsList = ({
               ))}
             </AppGalleryGrid>
           ) : (
-            <Section
-              surface='panel'
+            <StateView
+              kind='no-results'
+              scope='grid'
+              artworkSize='page'
+              headingLevel={2}
               title='No matching apps'
               description='Try a different search or clear the filters.'
-            >
-              <Button
-                variant='ghost'
-                className='w-fit'
-                onClick={() => {
-                  setSearch('')
-                  setStatusFilter('all')
-                  setOwnershipFilter('all')
-                }}
-              >
-                Clear search and filters
-              </Button>
-            </Section>
+              actions={[
+                {
+                  label: 'Clear search and filters',
+                  variant: 'ghost',
+                  onClick: () => {
+                    setSearch('')
+                    setStatusFilter('all')
+                    setOwnershipFilter('all')
+                  }
+                }
+              ]}
+            />
           )}
         </AppsGalleryToolbar>
       </PageContent>

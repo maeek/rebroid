@@ -1,4 +1,5 @@
 import { StatusBadge } from '@/components/ui/status-badge'
+import { externalDeviceHref } from '@/shared/model/applications/external-device-links'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { formatTimestamp, sessionOwnerId } from './casting-sidecar-utils'
 import type { CastingApplication } from './casting-sidecar-utils'
@@ -16,10 +17,10 @@ export const createCastingSessionColumns = ({
   {
     id: 'application',
     accessorFn: session => session.applicationId ?? '',
-    header: 'Application and user',
+    header: 'Device and user',
     size: 352,
     enableHiding: false,
-    meta: { compactSlot: 'title', label: 'Application and user', skeleton: { kind: 'stacked' } },
+    meta: { compactSlot: 'title', label: 'Device and user', skeleton: { kind: 'stacked' } },
     cell: ({ row }) => (
       <CastingSessionIdentity
         session={row.original}
@@ -83,13 +84,20 @@ const CastingSessionIdentity = ({
       {session.applicationId ? (
         <ResourceLink
           className='block truncate font-medium'
-          href={`/app/${session.applicationId}?view=configuration`}
+          href={
+            session.provider === 'external'
+              ? externalDeviceHref(session.applicationId, 'connection')
+              : `/apps/${session.applicationId}?view=configuration`
+          }
         >
-          {app?.name ?? session.applicationId}
+          {session.deviceName ?? app?.name ?? session.applicationId}
         </ResourceLink>
       ) : (
-        <span>Unassigned application</span>
+        <span>Unassigned device</span>
       )}
+      <span className='text-xs text-foreground-muted'>
+        {session.provider === 'external' ? 'External device' : 'Managed device'}
+      </span>
       {ownerId ? (
         <ResourceLink
           className='block truncate text-xs'

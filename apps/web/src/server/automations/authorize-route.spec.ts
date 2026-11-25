@@ -29,7 +29,7 @@ describe('private execution authorization endpoint', () => {
         headers: { 'x-orchestrator-secret': 'secret' },
         body: JSON.stringify({
           ownerUserId: 'u',
-          targetApplicationId: 'a',
+          targetDeviceId: 'a',
           definition: { spec: { steps: [] } },
           operation: 'start'
         })
@@ -46,7 +46,7 @@ describe('private execution authorization endpoint', () => {
         headers: { 'x-orchestrator-secret': 'secret' },
         body: JSON.stringify({
           ownerUserId: 'u',
-          targetApplicationId: 'a',
+          targetDeviceId: 'a',
           definition: { spec: { steps: [] } },
           startPolicy: 'start-if-needed'
         })
@@ -70,7 +70,7 @@ describe('private execution authorization endpoint', () => {
           headers: { 'x-orchestrator-secret': 'secret', ...headers },
           body: JSON.stringify({
             ownerUserId: 'u',
-            targetApplicationId: 'a',
+            targetDeviceId: 'a',
             definition: { spec: { steps: [] } },
             operation: 'attach'
           })

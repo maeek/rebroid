@@ -14,7 +14,7 @@ vi.mock('@/server/orchestrator/automations/client', () => ({
   orchestratorAutomationsClient: { listActiveRuns: vi.fn() }
 }))
 const admin = { id: 'owner', effectivePermissions: {} } as Awaited<ReturnType<typeof requireAdmin>>
-const runFields = { targetApplicationId: 'app', createdAt: '2026-01-01T00:00:00.000Z' }
+const runFields = { targetDeviceId: 'app', createdAt: '2026-01-01T00:00:00.000Z' }
 beforeEach(() => {
   vi.mocked(requireAdmin).mockResolvedValue(admin)
   vi.mocked(loadFeatureFlags).mockResolvedValue(null)

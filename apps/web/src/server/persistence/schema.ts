@@ -1,4 +1,4 @@
-export const webSchemaVersion = 5
+export const webSchemaVersion = 7
 
 export const freshWebSchema = `
   CREATE TABLE groups (
@@ -41,11 +41,11 @@ export const freshWebSchema = `
     updated_at TEXT NOT NULL
   );
 
-  CREATE TABLE recent_applications (
+  CREATE TABLE recent_devices (
     user_id TEXT NOT NULL,
-    application_id TEXT NOT NULL,
+    device_id TEXT NOT NULL,
     opened_at INTEGER NOT NULL,
-    PRIMARY KEY (user_id, application_id)
+    PRIMARY KEY (user_id, device_id)
   );
 
   CREATE TABLE audit_events (
@@ -94,21 +94,22 @@ export const freshWebSchema = `
 
   CREATE TABLE web_maintenance_jobs (
     id TEXT PRIMARY KEY NOT NULL,
-    kind TEXT NOT NULL CHECK (kind IN ('viewer-revocation', 'app-deletion')),
-    application_id TEXT UNIQUE,
+    kind TEXT NOT NULL CHECK (kind IN ('viewer-revocation', 'device-deletion', 'external-device-deletion')),
+    device_id TEXT UNIQUE,
     user_ids_json TEXT,
     request_id TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     next_attempt_at INTEGER NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0,
-    CHECK ((kind = 'viewer-revocation' AND user_ids_json IS NOT NULL AND application_id IS NULL) OR
-           (kind = 'app-deletion' AND application_id IS NOT NULL AND user_ids_json IS NULL))
+    CHECK ((kind = 'viewer-revocation' AND user_ids_json IS NOT NULL AND device_id IS NULL) OR
+           (kind IN ('device-deletion', 'external-device-deletion') AND
+            device_id IS NOT NULL AND user_ids_json IS NULL))
   );
 
   CREATE INDEX web_maintenance_jobs_due ON web_maintenance_jobs(next_attempt_at, id);
-  CREATE INDEX recent_applications_application_id ON recent_applications(application_id);
-  CREATE INDEX recent_applications_user_opened_at
-    ON recent_applications(user_id, opened_at DESC);
+  CREATE INDEX recent_devices_device_id ON recent_devices(device_id);
+  CREATE INDEX recent_devices_user_opened_at
+    ON recent_devices(user_id, opened_at DESC);
   CREATE INDEX audit_events_created_at ON audit_events(created_at DESC);
   CREATE INDEX audit_events_category_created_at ON audit_events(category, created_at DESC);
   CREATE INDEX audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);

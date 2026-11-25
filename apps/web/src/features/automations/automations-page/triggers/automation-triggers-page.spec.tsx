@@ -57,14 +57,14 @@ describe('Triggers editor workflow', () => {
     expect(screen.getByRole('button', { name: 'New trigger' })).toBeEnabled()
     expect(runAutomationTriggerAction).toHaveBeenCalledExactlyOnceWith(previewTrigger.id)
 
-    const { automationId, createdAt, id: automationTriggerId, ownerUserId, targetApplicationId } = previewTrigger
+    const { automationId, createdAt, id: automationTriggerId, ownerUserId, targetDeviceId } = previewTrigger
     await act(() => {
       request.resolve({
         id: 'accepted-run',
         automationId,
         automationTriggerId,
         ownerUserId,
-        targetApplicationId,
+        targetDeviceId,
         targetProfileMode: 'persistent',
         targetProfileName: 'default',
         trigger: 'manual',
@@ -86,7 +86,7 @@ describe('Triggers editor workflow', () => {
   })
 
   it.each([
-    [true, 'Create app', '/apps/create'],
+    [true, 'Create app', '/apps/new'],
     [false, 'View apps', '/apps']
   ])('offers the missing app prerequisite with create permission %s', (canCreateApp, label, href) => {
     render(
@@ -96,7 +96,7 @@ describe('Triggers editor workflow', () => {
         initialAutomations={[previewWorkflowOption]}
         canCreateApp={canCreateApp}
         gridQuery={{}}
-        triggersPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
+        triggersPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetDeviceIds: [] } }}
       />
     )
     expect(screen.getByRole('heading', { level: 2, name: 'No triggers yet' })).toBeVisible()
@@ -136,7 +136,7 @@ describe('Triggers editor workflow', () => {
         expect.objectContaining({
           name: 'Nightly check',
           description: 'Check stock overnight.',
-          targetApplicationId: applicationPreview.id,
+          targetDeviceId: applicationPreview.id,
           profileMode: 'persistent',
           profileName: 'default',
           enabled: true,
@@ -158,7 +158,7 @@ describe('Triggers editor workflow', () => {
     fireEvent.click(await screen.findByRole('option', { name: /Reconcile warehouse/ }))
     expect(within(dialog).getByText(/Reconcile warehouse inventory/)).toBeVisible()
 
-    const app = within(dialog).getByRole('combobox', { name: /Target app/ })
+    const app = within(dialog).getByRole('combobox', { name: /Target device/ })
     fireEvent.click(app)
     fireEvent.input(app, { target: { value: 'reports-app' } })
     fireEvent.click(await screen.findByRole('option', { name: /Reports worker/ }))
@@ -181,7 +181,7 @@ describe('Triggers editor workflow', () => {
       expect(createAutomationTriggerAction).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           automationId: 'warehouse-workflow',
-          targetApplicationId: 'reports-app',
+          targetDeviceId: 'reports-app',
           tags: [
             { name: 'smoke', color: '#64748b' },
             { name: 'Release QA', color: '#64748b' }
@@ -216,7 +216,7 @@ describe('Triggers editor workflow', () => {
           total: 1,
           page: 1,
           pageSize: 20,
-          facets: { tags: [], targetApplicationIds: [] }
+          facets: { tags: [], targetDeviceIds: [] }
         }}
         gridQuery={{}}
       />
@@ -244,7 +244,7 @@ describe('Triggers editor workflow', () => {
           total: 1,
           page: 1,
           pageSize: 20,
-          facets: { tags: [], targetApplicationIds: [] }
+          facets: { tags: [], targetDeviceIds: [] }
         }}
         gridQuery={{}}
       />
@@ -252,7 +252,7 @@ describe('Triggers editor workflow', () => {
     expect(screen.getByRole('link', { name: applicationPreview.name })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Morning inventory' }))
     const dialog = within(await screen.findByRole('dialog', { name: 'Edit trigger' }))
-    const target = dialog.getByRole('combobox', { name: /Target app/ })
+    const target = dialog.getByRole('combobox', { name: /Target device/ })
     expect(target).toHaveAccessibleDescription(/no longer available/)
     const save = dialog.getByRole('button', { name: 'Save changes' })
     expect(save).toBeDisabled()
@@ -262,7 +262,7 @@ describe('Triggers editor workflow', () => {
     fireEvent.click(save)
     await waitFor(() =>
       expect(updateAutomationTriggerAction).toHaveBeenCalledExactlyOnceWith(previewTrigger.id, {
-        targetApplicationId: 'owned'
+        targetDeviceId: 'owned'
       })
     )
   })
@@ -281,7 +281,7 @@ describe('Triggers editor workflow', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create trigger' }))
     expect(within(dialog).getByRole('button', { name: 'Creating…' })).toBeDisabled()
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()
-    expect(within(dialog).getByRole('combobox', { name: /Target app/ })).toBeDisabled()
+    expect(within(dialog).getByRole('combobox', { name: /Target device/ })).toBeDisabled()
     fireEvent.keyDown(dialog, { key: 'Escape' })
     expect(dialog).toBeVisible()
     await act(async () => {

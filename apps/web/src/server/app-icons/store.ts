@@ -7,16 +7,16 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { logger } from '@/server/observability/logger'
 
 const safeId = (appId: string) => appId.replace(/[^a-zA-Z0-9_-]/g, '')
-const configuredRootPath = () => process.env.WEB_APP_ICONS_PATH?.trim()
+const configuredRootPath = () => process.env.WEB_DEVICE_ICONS_PATH?.trim()
 const storagePath = (fileName: string) => {
   const root = configuredRootPath()
   return root
     ? join(/*turbopackIgnore: true*/ root, fileName)
-    : join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'app-icons', fileName)
+    : join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'device-icons', fileName)
 }
 const iconPath = (appId: string) => storagePath(`${safeId(appId)}.json`)
 const iconUrl = (appId: string, revision?: string) =>
-  `/api/app-icons/${encodeURIComponent(appId)}${revision ? `?v=${revision}` : ''}`
+  `/api/device-icons/${encodeURIComponent(appId)}${revision ? `?v=${revision}` : ''}`
 
 type StoredIconMetadata = {
   icon?: unknown

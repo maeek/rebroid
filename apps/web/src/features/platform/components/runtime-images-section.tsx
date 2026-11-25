@@ -180,6 +180,8 @@ export const RuntimeImagesSection = ({
             }}
             emptyState={
               <DataGridEmptyState
+                artwork='inventory'
+                artworkSize='page'
                 title='No images'
                 description='No images are available in the current Docker inventory.'
               />

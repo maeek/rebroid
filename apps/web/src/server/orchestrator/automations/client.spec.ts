@@ -26,7 +26,7 @@ describe('automation owner boundary', () => {
   })
   it('preserves the trusted owner in creation and run bodies', async () => {
     await client.create('actor', { ownerUserId: 'victim', yaml: 'test' } as never)
-    await client.run('actor', 'workflow', { ownerUserId: 'victim', targetApplicationId: 'app' } as never)
+    await client.run('actor', 'workflow', { ownerUserId: 'victim', targetDeviceId: 'app' } as never)
     await client.createTrigger('actor', { ownerUserId: 'victim' } as never)
     await client.runAdHocAi('actor', { ownerUserId: 'victim' } as never)
     for (const [, , body] of vi.mocked(jsonRequest).mock.calls) expect(body).toMatchObject({ ownerUserId: 'actor' })

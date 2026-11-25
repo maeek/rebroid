@@ -10,11 +10,13 @@ import { chatTurnFromRun, type ChatTurn } from './ai-agent-chat-utils'
 
 export const useAiAgentHistory = ({
   appId,
+  attachmentId,
   conversationVersionRef,
   runSequencesRef,
   setTurns
 }: {
   appId: string
+  attachmentId?: string
   conversationVersionRef: RefObject<number>
   runSequencesRef: RefObject<Map<string, number>>
   setTurns: Dispatch<SetStateAction<ChatTurn[]>>
@@ -34,7 +36,9 @@ export const useAiAgentHistory = ({
     const loadHistory = async () => {
       setStatus('loading')
       try {
-        const history = await listAdHocAiAutomationRunHistoryAction(appId, 20)
+        const history = attachmentId
+          ? await listAdHocAiAutomationRunHistoryAction(appId, 20, attachmentId)
+          : await listAdHocAiAutomationRunHistoryAction(appId, 20)
         const loadedTurns = history.map(item => chatTurnFromRun(item.run, item.events))
         if (cancelled || version !== conversationVersionRef.current) return
         const orderedTurns = sortChatTurnsByRunCreatedAt(loadedTurns)
@@ -54,7 +58,7 @@ export const useAiAgentHistory = ({
     return () => {
       cancelled = true
     }
-  }, [appId, attempt, conversationVersionRef, runSequencesRef, setTurns])
+  }, [appId, attachmentId, attempt, conversationVersionRef, runSequencesRef, setTurns])
 
   return { historyStatus: status, retryHistory }
 }

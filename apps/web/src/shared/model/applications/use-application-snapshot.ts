@@ -10,7 +10,7 @@ export const useApplicationSnapshot = (appId: string) => {
   const { data, isError, isPending } = useQuery({
     queryKey: ['applications', 'runtime-snapshot', appId],
     queryFn: ({ signal }) =>
-      getBff<ApplicationRuntimeSnapshot>(`/api/bff/applications/${encodeURIComponent(appId)}/runtime/snapshot`, signal),
+      getBff<ApplicationRuntimeSnapshot>(`/api/bff/devices/${encodeURIComponent(appId)}/runtime/snapshot`, signal),
     gcTime: 0,
     staleTime: refreshIntervalMs,
     refetchInterval: refreshIntervalMs,

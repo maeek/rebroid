@@ -21,7 +21,7 @@ export const CreateAppPageEntry = async ({
         <PlatformRouteUnavailable
           requestId={requestId}
           title='Create app'
-          description='Configure a new Android application.'
+          description='Configure a new managed Android device.'
           section={{ label: 'Apps', href: '/apps' }}
         />
       )}

@@ -76,6 +76,7 @@ export const DisplayViewerFrame = ({
   keyboardCaptureEnabled,
   onStreamStatus,
   onStreamMetrics,
+  onClipboard,
   surfaceId,
   isActive = true,
   compact = false,
@@ -86,6 +87,7 @@ export const DisplayViewerFrame = ({
   keyboardCaptureEnabled: boolean
   onStreamStatus?: (status: ViewerStreamStatus) => void
   onStreamMetrics?: (metrics: ViewerStreamMetricsV4) => void
+  onClipboard?: (text: string) => void
   surfaceId?: string
   isActive?: boolean
   compact?: boolean
@@ -182,6 +184,22 @@ export const DisplayViewerFrame = ({
         onStreamMetrics?.(event.data)
         return
       }
+      if (
+        event.origin === viewerOrigin &&
+        isFrameSource &&
+        isActive &&
+        !compact &&
+        event.data &&
+        typeof event.data === 'object' &&
+        'type' in event.data &&
+        event.data.type === 'rebroid-viewer-clipboard' &&
+        'text' in event.data &&
+        typeof event.data.text === 'string' &&
+        event.data.text.length <= 64 * 1024
+      ) {
+        onClipboard?.(event.data.text)
+        return
+      }
 
       if (event.origin !== viewerOrigin || event.source !== window.parent || !isActive || compact) return
       if (!isKeyboardCaptureMessage(event.data)) {
@@ -212,6 +230,7 @@ export const DisplayViewerFrame = ({
     onActivate,
     onMinimizeShortcut,
     onStreamMetrics,
+    onClipboard,
     onStreamStatus,
     postKeyboardCapturePreference,
     surfaceId

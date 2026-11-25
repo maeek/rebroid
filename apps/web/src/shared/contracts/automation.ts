@@ -36,7 +36,7 @@ export interface AutomationsGridQuery {
   pageSize?: number
   q?: string
   tag?: string
-  targetApplicationId?: string
+  targetDeviceId?: string
   status?: AutomationLastStatus
   lastRun?: AutomationsGridLastRunFilter
   sort?: string
@@ -53,7 +53,7 @@ export interface AutomationTriggersGridPage {
   pageSize: number
   facets: {
     tags: string[]
-    targetApplicationIds: string[]
+    targetDeviceIds: string[]
   }
 }
 
@@ -86,7 +86,9 @@ export interface AutomationRun {
   automationId: string
   automationTriggerId: string | null
   ownerUserId: string
-  targetApplicationId: string
+  targetDeviceId: string
+  targetKind?: 'managed' | 'external'
+  targetAttachmentId?: string | null
   targetProfileMode: string | null
   targetProfileName: string | null
   trigger: AutomationRunTrigger
@@ -104,7 +106,8 @@ export interface AutomationRun {
 export type SaveAutomationInput = Pick<OrchestratorApiSchemas['CreateAutomationDto'], 'yaml'>
 
 export interface RunAutomationInput {
-  targetApplicationId: string
+  targetDeviceId: string
+  attachmentId?: string
   profileMode?: string | null
   profileName?: string | null
   startPolicy?: AutomationStartPolicy
@@ -147,7 +150,7 @@ export interface AutomationTrigger {
   name: string
   description: string | null
   automationId: string
-  targetApplicationId: string
+  targetDeviceId: string
   profileMode: string | null
   profileName: string | null
   enabled: boolean
@@ -167,7 +170,7 @@ export interface SaveAutomationTriggerInput {
   name: string
   description?: string | null
   automationId: string
-  targetApplicationId: string
+  targetDeviceId: string
   profileMode?: string | null
   profileName?: string | null
   enabled?: boolean

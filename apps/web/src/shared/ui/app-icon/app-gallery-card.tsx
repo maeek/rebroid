@@ -111,8 +111,8 @@ const AppGalleryLink = ({
         asChild
         className='gap-2'
       >
-        <Link href={appResourceHref(app.id, 'configuration')}>
-          <IconSettings className='size-4' /> Configuration
+        <Link href={app.connectionHref ?? appResourceHref(app.id, 'configuration')}>
+          <IconSettings className='size-4' /> {app.connectionHref ? 'Connection' : 'Configuration'}
         </Link>
       </DropdownMenuItem>
       {actions}
@@ -121,7 +121,7 @@ const AppGalleryLink = ({
   const link = (
     <ContextMenuTrigger asChild>
       <Link
-        href={appResourceHref(app.id)}
+        href={app.href ?? appResourceHref(app.id)}
         aria-label={`${app.ownerDisplayName ? 'View' : 'Open'} ${label}`}
         onClick={event => {
           if (contextOpen) event.preventDefault()

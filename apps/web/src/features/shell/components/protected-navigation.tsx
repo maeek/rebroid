@@ -10,7 +10,9 @@ import { NavigationRail } from './navigation-rail-group'
 import {
   administrationEntries,
   apkLibraryNavigationItem,
-  appSections,
+  appsNavigationItem,
+  canBrowseDevices,
+  externalDevicesNavigationItem,
   isNavigationDestinationActive,
   automationSections,
   overviewSections,
@@ -53,6 +55,8 @@ export const ProtectedNavigation = ({
   const reservedRowCount = reserveRecentApps ? Math.max(0, navigationAppsLimit - recentApps.length) : 0
   const isAdmin = initialUser.isPlatformAdmin
   const { isFeatureEnabled } = useFeatureFlags()
+  const externalDevicesEnabled = isFeatureEnabled('feature.external-devices')
+  const canOpenExternalDevices = canBrowseDevices(initialUser, externalDevicesEnabled)
   const styles = variantStyles[variant]
 
   const isActivePath = (href: string, exact = false) => isNavigationDestinationActive(pathname, href, exact)
@@ -99,33 +103,32 @@ export const ProtectedNavigation = ({
       <SectionHeader
         title='Apps'
         variant={variant}
-        actionHref={initialUser.canCreateApp ? '/apps/create' : undefined}
+        actionHref={initialUser.canCreateApp ? '/apps/new' : undefined}
         actionLabel='Create app'
         onNavigate={onNavigate}
       />
       <ul className={styles.list}>
-        {appSections.map(({ name, Icon, href }) => (
-          <NavLink
-            key={name}
-            href={href}
-            label={name}
-            Icon={Icon}
-            isActive={pathname === href}
-            variant={variant}
-            onNavigate={onNavigate}
-          />
-        ))}
-        {recentApps.map(app => (
-          <RecentAppLink
-            key={app.id}
-            app={app}
-            variant={variant}
-            isActive={pathname === `/app/${app.id}` || pathname.startsWith(`/app/${app.id}/`)}
-            onNavigate={onNavigate}
-            onClose={onClose}
-            onStarted={() => void refreshRecentApps()}
-          />
-        ))}
+        <NavLink
+          href={appsNavigationItem.href}
+          label={appsNavigationItem.name}
+          Icon={appsNavigationItem.Icon}
+          isActive={pathname === appsNavigationItem.href}
+          variant={variant}
+          onNavigate={onNavigate}
+        />
+        {recentApps
+          .filter(app => !app.connectionHref)
+          .map(app => (
+            <RecentAppLink
+              key={app.id}
+              app={app}
+              variant={variant}
+              isActive={isActivePath(app.href ?? `/apps/${app.id}`)}
+              onNavigate={onNavigate}
+              onClose={onClose}
+              onStarted={() => void refreshRecentApps()}
+            />
+          ))}
         {Array.from({ length: reservedRowCount }, (_, index) => (
           <li
             key={index}
@@ -141,6 +144,40 @@ export const ProtectedNavigation = ({
           </li>
         ))}
       </ul>
+      {canOpenExternalDevices ? (
+        <>
+          <SectionHeader
+            title='Devices'
+            variant={variant}
+            actionHref={initialUser.canEnrollExternalDevices && externalDevicesEnabled ? '/devices/new' : undefined}
+            actionLabel='Register device'
+            onNavigate={onNavigate}
+          />
+          <ul className={styles.list}>
+            <NavLink
+              href={externalDevicesNavigationItem.href}
+              label={externalDevicesNavigationItem.name}
+              Icon={externalDevicesNavigationItem.Icon}
+              isActive={pathname === externalDevicesNavigationItem.href}
+              variant={variant}
+              onNavigate={onNavigate}
+            />
+            {recentApps
+              .filter(app => app.connectionHref)
+              .map(app => (
+                <RecentAppLink
+                  key={app.id}
+                  app={app}
+                  variant={variant}
+                  isActive={pathname === app.href}
+                  onNavigate={onNavigate}
+                  onClose={onClose}
+                  onStarted={() => void refreshRecentApps()}
+                />
+              ))}
+          </ul>
+        </>
+      ) : null}
 
       <Visible when={initialUser.canManageWorkflows === true && isFeatureEnabled('feature.workflows')}>
         <SectionHeader

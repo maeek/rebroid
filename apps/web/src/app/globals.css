@@ -125,6 +125,7 @@
   --shape-feature: 1.25rem;
   --elevation-control: 0 1px 2px rgb(15 23 42 / 0.08);
   --elevation-panel: inset 0 1px 0 rgb(255 255 255 / 0.03);
+  --elevation-sign-in: 0 22px 68px -8px rgb(15 23 42 / 0.14);
   --elevation-floating: 0 18px 48px -24px rgb(15 23 42 / 0.3);
   --elevation-floating-control: 0 2px 8px rgb(15 23 42 / 0.13);
   --elevation-emphasis: 0 12px 36px -20px hsl(var(--primary) / 0.45);
@@ -190,6 +191,7 @@
   --shape-feature: 1.25rem;
   --elevation-control: 0 1px 2px rgb(0 0 0 / 0.24);
   --elevation-panel: inset 0 1px 0 rgb(255 255 255 / 0.035);
+  --elevation-sign-in: 0 22px 68px -8px rgb(0 0 0 / 0.3);
   --elevation-floating: 0 20px 52px -24px rgb(0 0 0 / 0.65);
   --elevation-floating-control: 0 2px 8px rgb(0 0 0 / 0.24);
   --elevation-emphasis: 0 12px 36px -20px hsl(var(--primary) / 0.5);
@@ -256,6 +258,7 @@
   --shape-feature: 1.25rem;
   --elevation-control: none;
   --elevation-panel: none;
+  --elevation-sign-in: none;
   --elevation-floating: none;
   --elevation-floating-control: none;
   --elevation-emphasis: none;
@@ -455,6 +458,7 @@
   --radius-feature: var(--shape-feature);
   --shadow-control: var(--elevation-control);
   --shadow-panel: var(--elevation-panel);
+  --shadow-sign-in: var(--elevation-sign-in);
   --shadow-floating: var(--elevation-floating);
   --shadow-floating-control: var(--elevation-floating-control);
   --shadow-emphasis: var(--elevation-emphasis);

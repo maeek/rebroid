@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getStoredAppIcon } from '@/server/app-icons/store'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { externalDeviceClient } from '@/server/orchestrator/external-devices/client'
+import { loadFeatureFlags } from '@/server/orchestrator/features'
 import { getVisibleOwnerDisplayNames } from '@/server/users/owner-display-names'
 import { listRecentlyOpenedApps, listVisibleRecentApps } from './service'
 import { listDismissedRecentAppIds, listStoredRecentApps } from './store'
@@ -12,6 +14,8 @@ vi.mock('@/server/orchestrator/applications/catalog-client', () => ({
   orchestratorAppCatalogClient: { listApplicationNavigation: vi.fn() }
 }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
+vi.mock('@/server/orchestrator/external-devices/client', () => ({ externalDeviceClient: { list: vi.fn() } }))
+vi.mock('@/server/orchestrator/features', () => ({ loadFeatureFlags: vi.fn() }))
 vi.mock('@/server/users/owner-display-names', async importOriginal => ({
   ...(await importOriginal<typeof import('@/server/users/owner-display-names')>()),
   getVisibleOwnerDisplayNames: vi.fn()
@@ -44,6 +48,20 @@ beforeEach(() => {
 })
 
 describe('authorized recent application reads', () => {
+  it('skips external recent inventory while the feature is disabled', async () => {
+    vi.stubEnv('EXTERNAL_ADB_BROKER_SECRET', 'test-broker-secret')
+    try {
+      const user = await getCurrentUserContext()
+      vi.mocked(getCurrentUserContext).mockResolvedValue({ ...user, permissions: { 'devices:use-external': true } })
+      vi.mocked(loadFeatureFlags).mockResolvedValue({ revision: 1, features: [] })
+
+      expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
+      expect(externalDeviceClient.list).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('authenticates before reading history, application metadata, or icons', async () => {
     vi.mocked(getCurrentUserContext).mockRejectedValue(new Error('Unauthorized'))
 

@@ -17,7 +17,7 @@ export const useOpenAppAsMe = () => {
         title: 'App copy requested',
         description: 'Rebroid is preparing a separate app in your account.'
       })
-      router.push(`/app/${cloned.id}`)
+      router.push(`/apps/${cloned.id}`)
       onOpened?.()
     }, 'Could not copy app')
 

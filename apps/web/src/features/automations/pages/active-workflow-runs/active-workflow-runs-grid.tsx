@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { externalDeviceHref } from '@/shared/model/applications/external-device-links'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
@@ -45,12 +46,18 @@ export const ActiveWorkflowRunsGrid = ({
       },
       {
         id: 'target',
-        header: 'Target app',
+        header: 'Target device',
         size: 200,
-        meta: { label: 'Target app', compactSlot: 'details', skeleton: { kind: 'text' } },
+        meta: { label: 'Target device', compactSlot: 'details', skeleton: { kind: 'text' } },
         cell: ({ row: { original: run } }) => (
-          <ResourceLink href={`/app/${encodeURIComponent(run.targetApplicationId)}`}>
-            {targets[run.targetApplicationId] ?? 'Open app'}
+          <ResourceLink
+            href={
+              run.targetKind === 'external'
+                ? externalDeviceHref(run.targetDeviceId)
+                : `/apps/${encodeURIComponent(run.targetDeviceId)}`
+            }
+          >
+            {targets[run.targetDeviceId] ?? 'Open device'}
           </ResourceLink>
         )
       },
@@ -83,7 +90,7 @@ export const ActiveWorkflowRunsGrid = ({
   )
   const query = appliedSearch.trim().toLowerCase()
   const matches = runs.filter(run =>
-    [run.workflowName ?? '', run.id, targets[run.targetApplicationId] ?? run.targetApplicationId].some(value =>
+    [run.workflowName ?? '', run.id, targets[run.targetDeviceId] ?? run.targetDeviceId].some(value =>
       value.toLowerCase().includes(query)
     )
   )
@@ -112,6 +119,8 @@ export const ActiveWorkflowRunsGrid = ({
         loading={loading}
         emptyState={
           <DataGridEmptyState
+            artwork='workflow'
+            artworkSize='page'
             title='No active workflow runs'
             description='Queued and running workflows appear here.'
           />

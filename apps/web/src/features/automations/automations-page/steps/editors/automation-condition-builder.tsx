@@ -22,7 +22,7 @@ import type {
 } from '@rebroid/automation-core/definition'
 
 const createCondition = (): AutomationConditionRule => ({
-  value: { source: 'runContext', key: 'targetApplicationId' },
+  value: { source: 'runContext', key: 'targetDeviceId' },
   operator: 'exists'
 })
 

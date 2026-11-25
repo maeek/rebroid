@@ -1,21 +1,12 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import {
-  IconAlertTriangle,
-  IconDatabaseOff,
-  IconFilterOff,
-  IconInfinity,
-  IconLoader2,
-  IconMapQuestion,
-  IconRefresh,
-  IconServerOff
-} from '@tabler/icons-react'
+import { IconInfinity, IconLoader2, IconRefresh } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { cn } from '@/lib/utils'
-import { StateIllustration } from './state-illustration'
+import { StateIllustration, type StateArtwork } from './state-illustration'
 
 type StateViewKind = 'loading' | 'empty' | 'no-results' | 'not-found' | 'unavailable' | 'error' | 'not-applicable'
 type StateViewScope = 'page' | 'section' | 'grid' | 'immersive'
@@ -29,15 +20,13 @@ export type StateViewAction = {
   pendingLabel?: string
 }
 
-const defaultIcon = (kind: StateViewKind) => {
-  if (kind === 'loading') return <IconLoader2 className='motion-safe:animate-spin' />
-  if (kind === 'empty') return <IconDatabaseOff />
-  if (kind === 'no-results') return <IconFilterOff />
-  if (kind === 'not-found') return <IconMapQuestion />
-  if (kind === 'not-applicable') return <IconInfinity />
-  if (kind === 'error') return <IconAlertTriangle />
-  return <IconServerOff />
-}
+const defaultArtwork = {
+  empty: 'inventory',
+  'no-results': 'search',
+  'not-found': 'search',
+  unavailable: 'unavailable',
+  error: 'error'
+} satisfies Partial<Record<StateViewKind, StateArtwork>>
 
 const renderAction = (action: StateViewAction, fallbackVariant: 'primary' | 'secondary') => {
   const retry = action.label === 'Try again' || action.label === 'Retry'
@@ -75,6 +64,8 @@ const renderAction = (action: StateViewAction, fallbackVariant: 'primary' | 'sec
 
 export const StateView = ({
   actions,
+  artwork,
+  artworkSize,
   className,
   description,
   detail,
@@ -86,8 +77,10 @@ export const StateView = ({
   title
 }: {
   actions?: StateViewAction[]
+  artwork?: StateArtwork
+  artworkSize?: 'page' | 'panel' | 'inline'
   className?: string
-  description: ReactNode
+  description?: ReactNode
   detail?: ReactNode
   headingLevel?: 1 | 2 | 3
   icon?: ReactNode
@@ -101,8 +94,10 @@ export const StateView = ({
   const dangerous = kind === 'error' || kind === 'unavailable'
   const compact = scope === 'section'
   const illustrationKind =
-    !icon && scope === 'page' && (kind === 'error' || kind === 'unavailable' || kind === 'not-found') ? kind : null
-  const illustrated = illustrationKind !== null
+    kind === 'loading' || kind === 'not-applicable' ? undefined : (artwork ?? defaultArtwork[kind])
+  const size = artworkSize ?? ({ page: 'page', immersive: 'page', section: 'inline', grid: 'panel' } as const)[scope]
+  const prominent = Boolean(illustrationKind) && size === 'page'
+  const statusIcon = kind === 'loading' ? <IconLoader2 className='motion-safe:animate-spin' /> : <IconInfinity />
 
   return (
     <div
@@ -125,24 +120,33 @@ export const StateView = ({
         className={cn(
           'flex w-full max-w-xl gap-3',
           compact ? 'items-start' : 'flex-col items-center',
-          illustrated && 'gap-6'
+          prominent && 'gap-6'
         )}
       >
         <div
           aria-hidden='true'
-          className={cn('shrink-0 text-foreground-muted', !illustrated && '[&>svg]:size-6', {
-            'text-danger': dangerous && !illustrated,
+          className={cn('max-w-full shrink-0 text-foreground-muted', !illustrationKind && '[&>svg]:size-6', {
             'mt-0.5': compact
           })}
         >
-          {illustrationKind ? <StateIllustration kind={illustrationKind} /> : (icon ?? defaultIcon(kind))}
+          {illustrationKind ? (
+            <StateIllustration
+              kind={illustrationKind}
+              size={size}
+              align={compact ? 'start' : 'center'}
+            />
+          ) : (
+            (icon ?? statusIcon)
+          )}
         </div>
         <div className={cn('grid min-w-0 gap-3', !compact && 'justify-items-center')}>
           <div className='grid gap-1'>
-            <Heading className={cn('font-medium', scope === 'immersive' || illustrated ? 'text-xl' : 'text-sm')}>
+            <Heading className={cn('font-medium', scope === 'immersive' || prominent ? 'text-xl' : 'text-sm')}>
               {title}
             </Heading>
-            <div className='text-sm text-foreground-muted [overflow-wrap:anywhere]'>{description}</div>
+            {description ? (
+              <div className='text-sm text-foreground-muted [overflow-wrap:anywhere]'>{description}</div>
+            ) : null}
           </div>
           {detail ? <div className='w-full text-xs text-foreground-muted'>{detail}</div> : null}
           {requestId ? (

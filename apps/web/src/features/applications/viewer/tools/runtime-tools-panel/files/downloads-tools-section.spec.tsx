@@ -63,9 +63,7 @@ describe('file action focus', () => {
     expect(inspectorDownload).toBeDisabled()
     fireEvent.click(inspectorDownload)
     expect(vi.mocked(getBff).mock.calls.filter(([url]) => url.includes('/files/download?'))).toEqual([
-      [
-        `/api/bff/applications/${app.id}/runtime/files/download?${new URLSearchParams({ path: file('manual.txt').path })}`
-      ]
+      [`/api/bff/devices/${app.id}/runtime/files/download?${new URLSearchParams({ path: file('manual.txt').path })}`]
     ])
     pending.reject(new Error('Download temporarily unavailable'))
     expect(await within(details).findByRole('button', { name: 'Download' })).toBeEnabled()

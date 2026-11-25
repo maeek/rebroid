@@ -56,7 +56,7 @@ export function AutomationTriggerFormDialog({
   onSave: () => void
   onUpdateForm: (updater: (current: TriggerFormState) => TriggerFormState) => void
   onUpdateWorkflow: (automationId: string) => void
-  onUpdateTargetApplication: (targetApplicationId: string) => void
+  onUpdateTargetApplication: (targetDeviceId: string) => void
 }) {
   const selectedWorkflow = automations.find(automation => automation.id === form?.automationId)
   const validTarget = Boolean(selectedApplication && selectedWorkflow)
@@ -79,7 +79,7 @@ export function AutomationTriggerFormDialog({
         >
           <DialogHeader className='shrink-0 pr-6'>
             <DialogTitle>{form?.id ? 'Edit trigger' : 'New trigger'}</DialogTitle>
-            <DialogDescription>Choose a workflow, target app, and schedule.</DialogDescription>
+            <DialogDescription>Choose a workflow, target device, and schedule.</DialogDescription>
           </DialogHeader>
           {form ? (
             <form
@@ -159,8 +159,8 @@ export function AutomationTriggerFormDialog({
                       />
                     </FormField>
                     <FormField
-                      label='Target app'
-                      field='targetApplicationId'
+                      label='Target device'
+                      field='targetDeviceId'
                       className='wrap-anywhere'
                       description={
                         selectedApplication
@@ -168,8 +168,8 @@ export function AutomationTriggerFormDialog({
                           : 'Search by name, package, image, or ID.'
                       }
                       error={
-                        form.targetApplicationId && !selectedApplication
-                          ? 'This app is no longer available. Choose another app.'
+                        form.targetDeviceId && !selectedApplication
+                          ? 'This device is no longer available. Choose another device.'
                           : undefined
                       }
                       layout='vertical'
@@ -177,46 +177,54 @@ export function AutomationTriggerFormDialog({
                     >
                       <SingleSelectCombobox
                         options={applications.map(triggerApplicationOption)}
-                        value={form.targetApplicationId}
+                        value={form.targetDeviceId}
                         disabled={saving}
-                        placeholder='Search apps'
+                        placeholder='Search devices'
                         onValueChange={onUpdateTargetApplication}
                       />
                     </FormField>
-                    <ApplicationProfileSelect
-                      modified={
-                        baseline
-                          ? form.profileMode !== baseline.profileMode ||
-                            (form.profileMode === 'persistent' && form.profileName !== baseline.profileName)
-                          : undefined
-                      }
-                      disabled={saving}
-                      mode={form.profileMode}
-                      name={form.profileName}
-                      savedProfiles={appSavedProfiles(selectedApplication)}
-                      selectedProfile={{
-                        mode: appProfileMode(selectedApplication),
-                        name: appProfileName(selectedApplication)
-                      }}
-                      onModeChange={profileMode => onUpdateForm(current => ({ ...current, profileMode }))}
-                      onNameChange={profileName => onUpdateForm(current => ({ ...current, profileName }))}
-                    />
-                    <FormField
-                      label='Start app if needed'
-                      field='startPolicy'
-                      description='Start a stopped app before running the workflow. Otherwise, the app must already be running.'
-                      layout='horizontal'
-                    >
-                      <Switch
-                        checked={form.startPolicy === 'start-if-needed'}
-                        onCheckedChange={checked =>
-                          onUpdateForm(current => ({
-                            ...current,
-                            startPolicy: checked ? 'start-if-needed' : 'require-running'
-                          }))
-                        }
-                      />
-                    </FormField>
+                    {form.external ? (
+                      <p className='text-sm text-foreground-muted'>
+                        The device must have a verified connection when the schedule runs.
+                      </p>
+                    ) : (
+                      <>
+                        <ApplicationProfileSelect
+                          modified={
+                            baseline
+                              ? form.profileMode !== baseline.profileMode ||
+                                (form.profileMode === 'persistent' && form.profileName !== baseline.profileName)
+                              : undefined
+                          }
+                          disabled={saving}
+                          mode={form.profileMode}
+                          name={form.profileName}
+                          savedProfiles={appSavedProfiles(selectedApplication)}
+                          selectedProfile={{
+                            mode: appProfileMode(selectedApplication),
+                            name: appProfileName(selectedApplication)
+                          }}
+                          onModeChange={profileMode => onUpdateForm(current => ({ ...current, profileMode }))}
+                          onNameChange={profileName => onUpdateForm(current => ({ ...current, profileName }))}
+                        />
+                        <FormField
+                          label='Start app if needed'
+                          field='startPolicy'
+                          description='Start a stopped app before running the workflow. Otherwise, the app must already be running.'
+                          layout='horizontal'
+                        >
+                          <Switch
+                            checked={form.startPolicy === 'start-if-needed'}
+                            onCheckedChange={checked =>
+                              onUpdateForm(current => ({
+                                ...current,
+                                startPolicy: checked ? 'start-if-needed' : 'require-running'
+                              }))
+                            }
+                          />
+                        </FormField>
+                      </>
+                    )}
                   </fieldset>
                   <div className='grid min-w-0 gap-x-form-column gap-y-4 lg:col-span-2 lg:grid-cols-2 xl:col-span-1 xl:grid-cols-1'>
                     <ScheduleEditor

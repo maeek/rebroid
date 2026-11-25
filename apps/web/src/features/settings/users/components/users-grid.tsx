@@ -297,6 +297,8 @@ export const UsersGrid = ({
           minWidth='64rem'
           emptyState={
             <DataGridEmptyState
+              artwork='accounts'
+              artworkSize='page'
               title='No users yet'
               description='Add a user to grant access to the platform.'
             />

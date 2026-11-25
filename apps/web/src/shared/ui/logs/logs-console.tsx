@@ -9,6 +9,7 @@ import { Visible } from '@/components/ui/visible'
 import { useFollowOutput } from '@/hooks/use-follow-output'
 import { formatDateLocale } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { StateIllustration } from '@/shared/ui/state-illustration'
 import { parseLogOutput } from './ansi-log-output'
 
 type LogsConsoleEntry = {
@@ -99,7 +100,14 @@ export const LogsConsole = ({
           ) : parsedOutput.text ? (
             parsedOutput.content
           ) : (
-            emptyMessage
+            <span className='flex items-center gap-2 whitespace-normal'>
+              <StateIllustration
+                kind='activity'
+                size='inline'
+                align='start'
+              />
+              {emptyMessage}
+            </span>
           )}
         </pre>
         {!loading && !isAtBottom ? (

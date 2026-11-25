@@ -31,7 +31,7 @@ const run = {
   automationId: 'automation_1',
   automationTriggerId: null,
   ownerUserId: 'user_1',
-  targetApplicationId: 'app_1',
+  targetDeviceId: 'app_1',
   targetProfileMode: 'temporary',
   targetProfileName: null,
   trigger: 'manual',

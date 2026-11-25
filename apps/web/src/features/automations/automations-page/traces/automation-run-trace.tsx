@@ -176,17 +176,21 @@ export function AutomationRunTrace({
             ...(showTargetId
               ? [
                   {
-                    label: 'Target app ID',
-                    value: run.targetApplicationId,
-                    copyValue: run.targetApplicationId,
+                    label: 'Target device ID',
+                    value: run.targetDeviceId,
+                    copyValue: run.targetDeviceId,
                     code: true
                   }
                 ]
               : []),
-            {
-              label: 'Profile',
-              value: run.targetProfileMode === 'temporary' ? 'Temporary' : (run.targetProfileName ?? 'Default')
-            },
+            ...(run.targetKind === 'external'
+              ? []
+              : [
+                  {
+                    label: 'Profile',
+                    value: run.targetProfileMode === 'temporary' ? 'Temporary' : (run.targetProfileName ?? 'Default')
+                  }
+                ]),
             { label: 'Trigger', value: triggerLabels[run.trigger] ?? run.trigger },
             {
               label: 'Created',
@@ -293,6 +297,7 @@ export function AutomationRunTrace({
           <StateView
             scope='section'
             kind='empty'
+            artwork='workflow'
             title='No recorded steps'
             description='Any recorded execution activity appears under Events.'
           />

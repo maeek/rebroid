@@ -17,13 +17,15 @@ const CastingPageContent = () => (
       />
     )}
   >
-    {({ applications, owners, sessions, sidecarHealth, containerId }) => (
+    {({ applications, owners, sessions, sidecarHealth, containerId, externalEnabled, externalAvailability }) => (
       <CastingSettingsPageClient
         initialHealth={sidecarHealth}
         containerId={containerId}
         initialSessions={sessions}
         applications={applications}
         owners={owners}
+        externalEnabled={externalEnabled}
+        externalAvailability={externalAvailability}
       />
     )}
   </OrchestratorPageBoundary>

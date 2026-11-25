@@ -23,8 +23,10 @@ export const useActivityQuery = ({
   loading
 }: ActivityEventsTableProps) => {
   const router = useRouter()
-  const basePath = application ? `/app/${encodeURIComponent(application.id)}` : '/security/audit-log'
-  const appScope = application ? { resourceType: 'application', resourceId: application.id } : {}
+  const basePath = application
+    ? (application.href ?? `/apps/${encodeURIComponent(application.id)}`)
+    : '/security/audit-log'
+  const appScope = application ? { resourceType: 'device', resourceId: application.id } : {}
 
   const hrefFor = (query: ActivityQuery) => {
     const params = compactActivityParams({

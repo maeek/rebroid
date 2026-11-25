@@ -8,6 +8,26 @@ import { orchestratorAutomationsClient } from './client'
 
 const unavailable = () => new PublicActionError('Workflow run unavailable.', { code: 'not_found', status: 404 })
 
+export const readExternalWorkflowRun = async (
+  workflowId: string,
+  runId: string,
+  attachmentId: string,
+  signal: AbortSignal
+) => {
+  const user = await getCurrentUserContext('api')
+  if (!hasPermission(user.permissions, 'automations:run') || !hasPermission(user.permissions, 'devices:use-external'))
+    throw unavailable()
+  const run = await orchestratorAutomationsClient.getRun(user.ownerUserId, runId, signal)
+  if (
+    run.automationId !== workflowId ||
+    !isWorkflowRun(run) ||
+    run.targetKind !== 'external' ||
+    run.targetAttachmentId !== attachmentId
+  )
+    throw unavailable()
+  return run
+}
+
 export const readWorkflowTraceRun = async (workflowId: string, runId: string, signal: AbortSignal) => {
   const user = await getCurrentUserContext('api')
   if (!hasPermission(user.permissions, 'automations:manage')) throw unavailable()

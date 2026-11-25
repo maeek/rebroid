@@ -33,7 +33,7 @@ export const ProtectedShell = ({
   const isDesktop = useDesktopViewport()
   const recentAppsQuery = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
-    () => getBff<RecentApp[]>('/api/bff/shell/recent-apps'),
+    () => getBff<RecentApp[]>('/api/bff/shell/recent-devices'),
     { enabled: pollNavigation, intervalMs: isDesktop === true ? 5000 : null }
   )
   const { mutate: refreshRecentApps } = recentAppsQuery

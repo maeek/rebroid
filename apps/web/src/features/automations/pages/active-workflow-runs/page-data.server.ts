@@ -4,6 +4,7 @@ import {
   canInspectActiveWorkflowRuns,
   listActiveWorkflowRuns
 } from '@/server/orchestrator/automations/active-workflow-runs-query'
+import { listExternalWorkflowDevices } from '@/server/orchestrator/automations/workflow-device-options'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 
 export const loadActiveWorkflowRuns = async () => {
@@ -13,8 +14,13 @@ export const loadActiveWorkflowRuns = async () => {
   const runs = await listActiveWorkflowRuns(user.ownerUserId)
   if (runs.length === 0) return { runs, targets: {} }
 
-  const applications = await orchestratorAppCatalogClient.listApplicationSummaries(user.ownerUserId)
-  const targetIds = new Set(runs.map(run => run.targetApplicationId))
-  const targets = Object.fromEntries(applications.filter(app => targetIds.has(app.id)).map(app => [app.id, app.name]))
+  const [applications, external] = await Promise.all([
+    orchestratorAppCatalogClient.listApplicationSummaries(user.ownerUserId),
+    runs.some(run => run.targetKind === 'external') ? listExternalWorkflowDevices(user) : []
+  ])
+  const targetIds = new Set(runs.map(run => run.targetDeviceId))
+  const targets = Object.fromEntries(
+    [...applications, ...external].filter(app => targetIds.has(app.id)).map(app => [app.id, app.name])
+  )
   return { runs, targets }
 }

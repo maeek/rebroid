@@ -23,7 +23,7 @@ export const runtimeFilesQueryKey = (scope: string, path: string) => ['runtime-f
 
 const runtimeFilesUrl = (appId: string, path: string) => {
   const query = new URLSearchParams({ path })
-  return `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files?${query.toString()}`
+  return `/api/bff/devices/${encodeURIComponent(appId)}/runtime/files?${query.toString()}`
 }
 
 export const useRuntimeFileBrowser = (appId: string, scope: string) => {
@@ -154,7 +154,7 @@ export const useRuntimeFileBrowser = (appId: string, scope: string) => {
       try {
         const query = new URLSearchParams({ path: entry.path })
         const download = await getBff<ApplicationRuntimeFileDownload>(
-          `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files/download?${query.toString()}`
+          `/api/bff/devices/${encodeURIComponent(appId)}/runtime/files/download?${query.toString()}`
         )
         downloadDataUrl(download.dataUrl, download.name)
       } catch (error) {

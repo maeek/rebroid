@@ -9,7 +9,7 @@ export const previewTrigger: AutomationTrigger = {
   description: 'Check stock levels before the morning shift.',
   ownerUserId: 'preview-owner',
   automationId: previewWorkflowOption.id,
-  targetApplicationId: applicationPreview.id,
+  targetDeviceId: applicationPreview.id,
   profileMode: 'persistent',
   profileName: 'default',
   enabled: true,
@@ -46,7 +46,7 @@ export const AutomationTriggersPreview = () => (
       total: 1,
       page: 1,
       pageSize: 20,
-      facets: { tags: ['nightly', 'smoke'], targetApplicationIds: [applicationPreview.id] }
+      facets: { tags: ['nightly', 'smoke'], targetDeviceIds: [applicationPreview.id] }
     }}
     gridQuery={{}}
   />

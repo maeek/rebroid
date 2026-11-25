@@ -47,12 +47,12 @@ describe('orchestrator request helpers', () => {
     vi.mocked(global.fetch).mockResolvedValue(response)
     const { request } = await import('./request')
 
-    await expect(request('/apps', { headers: new Headers({ 'x-request-id': 'required-json' }) })).rejects.toMatchObject(
-      {
-        status: 502,
-        requestId: 'required-json'
-      }
-    )
+    await expect(
+      request('/devices', { headers: new Headers({ 'x-request-id': 'required-json' }) })
+    ).rejects.toMatchObject({
+      status: 502,
+      requestId: 'required-json'
+    })
   })
 
   it('uses the response parser before returning data', async () => {
@@ -61,7 +61,7 @@ describe('orchestrator request helpers', () => {
       throw new Error('Malformed DTO')
     })
 
-    await expect(request('/apps', undefined, parser)).rejects.toMatchObject({ status: 502 })
+    await expect(request('/devices', undefined, parser)).rejects.toMatchObject({ status: 502 })
     expect(parser).toHaveBeenCalledWith({ ok: true })
   })
 
@@ -74,7 +74,7 @@ describe('orchestrator request helpers', () => {
     })
     vi.mocked(global.fetch).mockResolvedValue(new Response(body))
     const { request } = await import('./request')
-    const pending = request('/apps', { signal: deadline.signal, headers: { 'x-request-id': 'body-timeout' } })
+    const pending = request('/devices', { signal: deadline.signal, headers: { 'x-request-id': 'body-timeout' } })
     deadline.abort(new DOMException('Timed out', 'TimeoutError'))
 
     await expect(pending).rejects.toMatchObject({
@@ -96,7 +96,7 @@ describe('orchestrator request helpers', () => {
   it('sends JSON content-type for JSON mutations', async () => {
     const { jsonRequest } = await import('./request')
 
-    await jsonRequest('/apps/app-1', 'PATCH', { name: 'Work' })
+    await jsonRequest('/devices/app-1', 'PATCH', { name: 'Work' })
 
     expect(getFetchInit().headers).toMatchObject({
       accept: 'application/json',
@@ -110,7 +110,7 @@ describe('orchestrator request helpers', () => {
     const body = new ReadableStream<Uint8Array>()
     const contentType = 'multipart/form-data; boundary=upload-boundary'
 
-    await streamRequest('/apps/app-1/runtime/data-files', 'POST', body, contentType)
+    await streamRequest('/devices/app-1/runtime/data-files', 'POST', body, contentType)
 
     expect(getFetchInit().headers).toMatchObject({ 'content-type': contentType })
     expect(getFetchInit()).toMatchObject({ body, duplex: 'half' })
@@ -131,7 +131,7 @@ describe('orchestrator request helpers', () => {
     global.fetch = fetchMock
     const { emptyRequest } = await import('./request')
 
-    await expect(emptyRequest('/apps')).rejects.toMatchObject({
+    await expect(emptyRequest('/devices')).rejects.toMatchObject({
       name: 'OrchestratorRequestError',
       message: 'name is required, name is too short',
       status: 400,

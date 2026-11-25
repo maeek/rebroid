@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { usePathname, useSearchParams } from 'next/navigation'
@@ -13,7 +13,7 @@ import type { ApplicationWorkflowRun } from '@/shared/contracts/application-work
 
 const noop = () => undefined
 
-export function AppWorkflowsSection({ appId }: { appId: string }) {
+export function AppWorkflowsSection({ appId, launch }: { appId: string; launch?: ReactNode }) {
   const pathname = usePathname()
   const search = useSearchParams()
   const runId = search.get('run')
@@ -21,7 +21,7 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
   const backRef = useRef<HTMLButtonElement>(null)
   const historyRef = useRef<HTMLDivElement>(null)
   const previousRunRef = useRef<string | null>(null)
-  const endpoint = `/api/bff/applications/${encodeURIComponent(appId)}/workflow-runs`
+  const endpoint = `/api/bff/devices/${encodeURIComponent(appId)}/workflow-runs`
   const href = (id: string | null) => {
     const query = new URLSearchParams(search)
     if (id) query.set('run', id)
@@ -66,20 +66,24 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
           href={href}
           onOpen={selectRun}
           launch={
-            <AppAutomationRunAction
-              onRunStarted={(run, workflowName) => {
-                queryClient.setQueryData<ApplicationWorkflowRun>(['application-workflow-run', endpoint, run.id], {
-                  ...run,
-                  stepResults: [],
-                  automationName: workflowName
-                })
-                selectRun(run.id)
-                void queryClient.invalidateQueries({
-                  queryKey: ['application-workflow-runs', endpoint],
-                  refetchType: 'none'
-                })
-              }}
-            />
+            launch === undefined ? (
+              <AppAutomationRunAction
+                onRunStarted={(run, workflowName) => {
+                  queryClient.setQueryData<ApplicationWorkflowRun>(['application-workflow-run', endpoint, run.id], {
+                    ...run,
+                    stepResults: [],
+                    automationName: workflowName
+                  })
+                  selectRun(run.id)
+                  void queryClient.invalidateQueries({
+                    queryKey: ['application-workflow-runs', endpoint],
+                    refetchType: 'none'
+                  })
+                }}
+              />
+            ) : (
+              launch
+            )
           }
         />
       </div>

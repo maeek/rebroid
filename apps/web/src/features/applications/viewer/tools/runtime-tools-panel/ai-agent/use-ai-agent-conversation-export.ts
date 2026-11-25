@@ -1,10 +1,10 @@
 import { toast } from '@/hooks/use-toast'
 import { recommendAiModelForAutomation } from '@/shared/model/ai-model-recommendation'
 import type { ChatTurn } from './ai-agent-chat-utils'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AiAgentTarget } from './ai-agent-target'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
-const safeExportName = (app: AppDefinition) =>
+const safeExportName = (app: AiAgentTarget) =>
   app.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -20,7 +20,7 @@ export const useAiAgentConversationExport = ({
   turns
 }: {
   adHocTimeoutMs: number
-  app: AppDefinition
+  app: AiAgentTarget
   selectedModel: AutomationAiModelCatalogProvider['models'][number] | undefined
   selectedProvider: AutomationAiModelCatalogProvider | undefined
   selectedVisionModel: AutomationAiModelCatalogProvider['models'][number] | undefined

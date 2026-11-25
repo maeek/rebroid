@@ -21,14 +21,14 @@ const previewSummary = {
   lastError: null,
   createdAt: '2026-11-07T10:00:00Z',
   updatedAt: '2026-11-07T10:00:00Z'
-} satisfies Omit<AutomationGridRow, 'stepCount' | 'targetApplicationIds'>
+} satisfies Omit<AutomationGridRow, 'stepCount' | 'targetDeviceIds'>
 
-export const previewWorkflowGridRow: AutomationGridRow = { ...previewSummary, stepCount: 0, targetApplicationIds: [] }
+export const previewWorkflowGridRow: AutomationGridRow = { ...previewSummary, stepCount: 0, targetDeviceIds: [] }
 
 export const previewWorkflow: Automation = {
   ...previewSummary,
   definition: {
-    apiVersion: 'rebroid.io/automation/v1',
+    apiVersion: 'rebroid.io/automation/v2',
     kind: 'AndroidAutomation',
     metadata: { name: 'Daily inventory check' },
     spec: { steps: [] }

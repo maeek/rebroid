@@ -203,6 +203,7 @@ export function AppWorkflowRunHistory({
               />
             ) : (
               <DataGridEmptyState
+                artwork='workflow'
                 title='No workflow runs yet'
                 description='Run a workflow on this app to see it here.'
               />

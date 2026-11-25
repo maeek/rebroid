@@ -40,7 +40,7 @@ describe('App run workflow dialog', () => {
     fireEvent.click(within(dialog).getByRole('switch', { name: 'Start app if needed' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Run workflow' }))
     expect(runAutomationAction).toHaveBeenCalledExactlyOnceWith(previewWorkflow.id, {
-      targetApplicationId: previewApp.id,
+      targetDeviceId: previewApp.id,
       profileMode: 'persistent',
       profileName: 'default',
       startPolicy: 'require-running'

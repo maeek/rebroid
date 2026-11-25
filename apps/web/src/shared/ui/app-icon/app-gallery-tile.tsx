@@ -6,7 +6,7 @@ import type { RecentApp } from '@/shared/contracts/recent-app'
 export type AppGalleryCardData = Pick<
   RecentApp,
   'id' | 'name' | 'icon' | 'status' | 'statusLabel' | 'ownerDisplayName' | 'canClone' | 'canViewSnapshot'
->
+> & { href?: string; connectionHref?: string; kindLabel?: string }
 
 export const AppGalleryTile = ({ app }: { app?: AppGalleryCardData }) => (
   <div className='flex min-h-[4.75rem] min-w-0 items-center gap-3 py-4 pl-4 pr-12 text-left touch:pr-14'>
@@ -29,7 +29,11 @@ export const AppGalleryTile = ({ app }: { app?: AppGalleryCardData }) => (
           >
             {app.name}
           </span>
-          {app.ownerDisplayName ? (
+          {app.kindLabel ? (
+            <span className='shrink-0 border-r border-surface-border pr-2 text-xs text-foreground-muted'>
+              {app.kindLabel}
+            </span>
+          ) : app.ownerDisplayName ? (
             <span
               className='max-w-[50%] shrink-0 truncate text-xs text-foreground-muted'
               title={app.ownerDisplayName}
@@ -49,6 +53,8 @@ export const AppGalleryTile = ({ app }: { app?: AppGalleryCardData }) => (
               status={app.status}
               label={app.statusLabel ?? app.status}
             />
+          ) : app.statusLabel ? (
+            <span className='truncate text-xs text-foreground-muted'>{app.statusLabel}</span>
           ) : null}
         </div>
       </div>

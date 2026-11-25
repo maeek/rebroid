@@ -12,7 +12,9 @@ import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 const inputSchema = z
   .object({
     ownerUserId: z.string().min(1).max(200),
-    targetApplicationId: z.string().min(1).max(200),
+    targetDeviceId: z.string().min(1).max(200),
+    attachmentId: z.uuid().optional(),
+    command: z.string().max(120).optional(),
     definition: z.custom<AutomationDefinition>(value => Boolean(value && typeof value === 'object' && 'spec' in value)),
     profileMode: z.string().nullable().optional(),
     profileName: z.string().nullable().optional(),
@@ -45,7 +47,7 @@ export const POST = async (request: Request) => {
   } catch (error) {
     const denied =
       (error instanceof PublicActionError && ['forbidden', 'not_found', 'validation'].includes(error.code)) ||
-      (error instanceof OrchestratorRequestError && error.status === 404)
+      (error instanceof OrchestratorRequestError && [404, 409].includes(error.status))
     logger.warn(denied ? 'automation.authorization_rejected' : 'automation.authorization_unavailable', { requestId })
     return new Response(null, { status: denied ? 403 : 503, headers: { 'x-request-id': requestId } })
   }

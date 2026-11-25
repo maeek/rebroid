@@ -39,7 +39,7 @@ export const AutomationsTableToolbar = ({
     onSearch={onSearchSubmit}
     activeFilters={automationGridFilterSummary({ applications, gridQuery, onUpdateGrid })}
     onResetFilters={() =>
-      onUpdateGrid({ tag: undefined, targetApplicationId: undefined, status: undefined, lastRun: undefined, page: 1 })
+      onUpdateGrid({ tag: undefined, targetDeviceId: undefined, status: undefined, lastRun: undefined, page: 1 })
     }
     selectedCount={selectedCount}
     bulkActions={

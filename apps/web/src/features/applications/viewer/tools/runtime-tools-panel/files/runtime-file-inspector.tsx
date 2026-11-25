@@ -28,7 +28,7 @@ export const RuntimeFileInspector = ({
   const [previewFailed, setPreviewFailed] = useState(false)
   const canPreview = runtimeFileCanPreview(entry)
   const query = new URLSearchParams({ path: entry.path, modifiedAt: entry.modifiedAt ?? '' })
-  const previewUrl = `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files/preview?${query.toString()}`
+  const previewUrl = `/api/bff/devices/${encodeURIComponent(appId)}/runtime/files/preview?${query.toString()}`
 
   useEffect(() => setPreviewFailed(false), [entry.path, entry.modifiedAt])
 

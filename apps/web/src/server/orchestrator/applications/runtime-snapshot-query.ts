@@ -24,7 +24,7 @@ export const readApplicationRuntimeSnapshot = async (id: string, signal?: AbortS
     })
   }
   return request<ApplicationRuntimeSnapshot>(
-    `/apps/${encodeURIComponent(id)}/runtime/snapshot`,
+    `/devices/${encodeURIComponent(id)}/runtime/snapshot`,
     {
       headers: { 'x-rebroid-snapshot-owner': account.id },
       signal,

@@ -139,15 +139,17 @@ export const orchestratorAutomationsClient = {
     return jsonRequest<AiPromptSuggestions>('/automations/ai/suggestions', 'POST', { ...input, ownerUserId })
   },
 
-  listAdHocAiRunHistory(ownerUserId: string, targetApplicationId: string, limit: number) {
-    const query = new URLSearchParams({ ownerUserId, targetApplicationId, limit: String(limit) })
+  listAdHocAiRunHistory(ownerUserId: string, targetDeviceId: string, limit: number, attachmentId?: string) {
+    const query = new URLSearchParams({ ownerUserId, targetDeviceId, limit: String(limit) })
+    if (attachmentId) query.set('attachmentId', attachmentId)
     return emptyRequest<Array<{ run: AutomationRun; events: AutomationRunEvent[] }>>(
       `/automations/ai/run-history?${query}`
     )
   },
 
-  clearAdHocAiRuns(ownerUserId: string, targetApplicationId: string) {
-    const query = new URLSearchParams({ ownerUserId, targetApplicationId })
+  clearAdHocAiRuns(ownerUserId: string, targetDeviceId: string, attachmentId?: string) {
+    const query = new URLSearchParams({ ownerUserId, targetDeviceId })
+    if (attachmentId) query.set('attachmentId', attachmentId)
     return request<{ cleared: number }>(`/automations/ai/runs?${query.toString()}`, {
       method: 'DELETE'
     })

@@ -2,7 +2,8 @@ import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 export type ServiceHealth = OrchestratorApiSchemas['ServiceHealthDto']
 export type OrchestratorHealth = OrchestratorApiSchemas['OrchestratorDiagnosticsDto']
-export type DisplaySidecarSession = OrchestratorApiSchemas['DockerSidecarAdminSessionDto']
+export type DisplaySidecarSession = OrchestratorApiSchemas['DockerSidecarAdminSessionDto'] &
+  Partial<Pick<OrchestratorApiSchemas['ExternalAdminSessionDto'], 'provider' | 'deviceName'>>
 export type DockerMetricsSnapshot = OrchestratorApiSchemas['DockerMetricsSnapshotDto']
 
 export type ServiceContainer = { id: string; name: string }

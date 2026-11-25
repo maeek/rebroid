@@ -201,6 +201,8 @@ export const FeaturesGrid = ({
           loading={loading ? { rowCount: features.length || 4, selectable: false, rowMenu: false } : false}
           emptyState={
             <DataGridEmptyState
+              artwork='models'
+              artworkSize='page'
               title='No features available'
               description='Platform capabilities will appear here when they are available.'
             />

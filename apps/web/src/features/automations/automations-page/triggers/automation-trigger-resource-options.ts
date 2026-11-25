@@ -1,5 +1,6 @@
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationOption } from '@/shared/contracts/automation'
+import type { ExternalDevice } from '@/shared/contracts/external-device'
 
 export function triggerWorkflowOption(workflow: AutomationOption) {
   const count = workflow.topLevelStepCount
@@ -23,12 +24,22 @@ export const toTriggerApplication = ({ id, name, apk, runtime, storage }: Androi
     savedProfiles: storage.savedProfiles
   }
 })
-export type TriggerApplication = ReturnType<typeof toTriggerApplication>
+export const toTriggerExternalDevice = ({ id, name, transport, connection }: ExternalDevice) => ({
+  id,
+  name,
+  transport,
+  verified: connection.state === 'ready'
+})
+
+export type TriggerApplication = ReturnType<typeof toTriggerApplication> | ReturnType<typeof toTriggerExternalDevice>
 
 export function triggerApplicationOption(application: TriggerApplication) {
   return {
     value: application.id,
     label: application.name,
-    description: [application.apk.packageName, application.runtime.image, application.id].filter(Boolean).join(' · ')
+    description:
+      'transport' in application
+        ? `${application.transport.toUpperCase()} · ${application.verified ? 'Verified connection' : 'Requires verification'}`
+        : [application.apk.packageName, application.runtime.image, application.id].filter(Boolean).join(' · ')
   }
 }

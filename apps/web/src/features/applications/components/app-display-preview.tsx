@@ -1,7 +1,8 @@
 import { useContext, type CSSProperties } from 'react'
-import { IconBrandAndroid, IconDeviceMobile } from '@tabler/icons-react'
 import { FormLoadingContext } from '@/components/ui/form-loading-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StateIllustration } from '@/shared/ui/state-illustration'
+import styles from './app-display-preview.module.css'
 
 export const AppDisplayPreview = ({ display }: { display: { width: number; height: number; dpi?: number } | null }) => {
   const loading = useContext(FormLoadingContext)
@@ -23,25 +24,18 @@ export const AppDisplayPreview = ({ display }: { display: { width: number; heigh
           {loading ? (
             <Skeleton className='h-full w-12 rounded-control @min-[42rem]/runtime:w-20' />
           ) : display ? (
-            <div className='rounded-[10px] border border-control-border-strong bg-control p-0.75 @min-[42rem]/runtime:rounded-panel @min-[42rem]/runtime:p-1'>
-              <div
-                data-slot='device-preview-screen'
-                className='relative grid h-[calc(var(--screen-height)*var(--device-unit))] w-[calc(var(--screen-width)*var(--device-unit))] place-items-center overflow-hidden rounded-[6px] bg-surface-editor text-foreground-muted @min-[42rem]/runtime:rounded-control'
-                style={{ '--screen-width': screenWidth, '--screen-height': screenHeight } as CSSProperties}
-              >
-                {showScreenDetails ? (
-                  <>
-                    {ratio < 0.7 ? (
-                      <div className='absolute top-1.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-foreground-muted/40' />
-                    ) : null}
-                    <IconBrandAndroid className='size-4 @min-[42rem]/runtime:size-5' />
-                    <div className='absolute inset-x-[32%] bottom-1.5 h-0.5 rounded-full bg-foreground-muted/50' />
-                  </>
-                ) : null}
-              </div>
+            <div
+              data-slot='device-preview-screen'
+              className={styles.screen}
+              style={{ '--screen-width': screenWidth, '--screen-height': screenHeight } as CSSProperties}
+            >
+              {showScreenDetails ? <span className={styles.androidMark} /> : null}
             </div>
           ) : (
-            <IconDeviceMobile className='size-10 text-foreground-muted' />
+            <StateIllustration
+              kind='external-devices'
+              size='inline'
+            />
           )}
         </div>
         <div className='grid min-w-0 gap-1'>

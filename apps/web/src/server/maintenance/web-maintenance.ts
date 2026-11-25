@@ -5,6 +5,7 @@ import {
   deleteWebMaintenance,
   getWebMaintenance,
   listDueWebMaintenance,
+  markViewerRevocationComplete,
   retryWebMaintenance,
   type WebMaintenanceJob
 } from '@/server/persistence/web-maintenance-repository'
@@ -22,8 +23,18 @@ const state: MaintenanceState = (runtime.rebroidWebMaintenance ??= { active: new
 
 const finishJob = async (job: WebMaintenanceJob) => {
   const signal = AbortSignal.timeout(20_000)
-  if (job.kind === 'app-deletion') return cleanDeletedApplicationMetadata(job, signal)
-  await revokeViewerSessionsForUsers(job.userIds, signal)
+  if (job.kind !== 'viewer-revocation') return cleanDeletedApplicationMetadata(job, signal)
+  const revoke = async (kind: 'managed' | 'external') => {
+    if (job.completed.includes(kind)) return
+    if (kind === 'managed') await revokeViewerSessionsForUsers(job.userIds, signal)
+    if (kind === 'external' && process.env.EXTERNAL_ADB_BROKER_SECRET) {
+      await revokeViewerSessionsForUsers(job.userIds, signal, kind)
+    }
+    markViewerRevocationComplete(job.id, kind)
+  }
+  const results = await Promise.allSettled([revoke('managed'), revoke('external')])
+  const failure = results.find(result => result.status === 'rejected')
+  if (failure) throw failure.reason
   return true
 }
 

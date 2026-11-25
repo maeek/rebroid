@@ -4,11 +4,13 @@ import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { AutomationStartPolicy, AutomationTrigger } from '@/shared/contracts/automation'
 
 export const appProfileMode = (app: TriggerApplication | null | undefined): ApplicationProfileMode =>
-  app?.storage.profileMode ?? 'persistent'
+  (app && 'storage' in app ? app.storage.profileMode : undefined) ?? 'persistent'
 
-export const appProfileName = (app: TriggerApplication | null | undefined) => app?.storage.profileName ?? 'default'
+export const appProfileName = (app: TriggerApplication | null | undefined) =>
+  (app && 'storage' in app ? app.storage.profileName : undefined) ?? 'default'
 
-export const appSavedProfiles = (app: TriggerApplication | null | undefined) => app?.storage.savedProfiles ?? []
+export const appSavedProfiles = (app: TriggerApplication | null | undefined) =>
+  (app && 'storage' in app ? app.storage.savedProfiles : undefined) ?? []
 
 export const getScheduleCron = (trigger: AutomationTrigger) => {
   const cronExpression = trigger.triggerConfig.cronExpression

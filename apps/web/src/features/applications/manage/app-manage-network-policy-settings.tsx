@@ -93,7 +93,7 @@ export const AppManageNetworkPolicySettings = ({
       // The orchestrator can persist the draft before live enforcement fails.
       if (!details || ['upstream_error', 'upstream_unavailable', 'internal'].includes(details.code)) {
         try {
-          const current = await getBff<AndroidApplication>(`/api/bff/applications/${encodeURIComponent(app.id)}`)
+          const current = await getBff<AndroidApplication>(`/api/bff/devices/${encodeURIComponent(app.id)}`)
           const next = mapAndroidApplicationToAppDefinition(current)
           onUpdated(next)
           saved = Boolean(

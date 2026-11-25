@@ -121,11 +121,11 @@ describe('Network policies workflow', () => {
     )
     expect(screen.getByRole('link', { name: 'Inventory worker · alice' })).toHaveAttribute(
       'href',
-      '/app/preview-app?view=network'
+      '/apps/preview-app?view=network'
     )
     expect(screen.getByRole('link', { name: 'Inventory worker · bob' })).toHaveAttribute(
       'href',
-      '/app/other-app?view=network'
+      '/apps/other-app?view=network'
     )
     const row = within(screen.getByRole('row', { name: /Inventory worker · alice/ }))
     expect(row.getByText('· alice')).toBeVisible()

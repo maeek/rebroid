@@ -66,7 +66,8 @@ export const RecentAppLink = ({
   const rail = variant === 'rail'
   const canPreviewSnapshot = variant !== 'drawer' && app.status === 'running' && app.canViewSnapshot
   const highlighted = isActive || contextOpen
-  const href = `/app/${encodeURIComponent(app.id)}`
+  const href = app.href ?? `/apps/${encodeURIComponent(app.id)}`
+  const detailHref = app.connectionHref ?? `${href}?view=configuration`
   const label = app.ownerDisplayName ? `${app.name} · ${app.ownerDisplayName}` : app.name
   const icon = (
     <AppIcon
@@ -207,15 +208,15 @@ export const RecentAppLink = ({
               href={href}
               onNavigate={handleShellLink(onNavigate, href, label)}
             >
-              <IconAppWindow /> {app.ownerDisplayName ? 'View app' : 'Open app'}
+              <IconAppWindow /> {app.ownerDisplayName ? 'View device' : 'Open device'}
             </Link>
           </ContextMenuItem>
           <ContextMenuItem asChild>
             <Link
-              href={`${href}?view=configuration`}
-              onNavigate={handleShellLink(onNavigate, `${href}?view=configuration`, 'Configuration')}
+              href={detailHref}
+              onNavigate={handleShellLink(onNavigate, detailHref, app.connectionHref ? 'Connection' : 'Configuration')}
             >
-              <IconSettings /> Configuration
+              <IconSettings /> {app.connectionHref ? 'Connection' : 'Configuration'}
             </Link>
           </ContextMenuItem>
           {canStart ? (

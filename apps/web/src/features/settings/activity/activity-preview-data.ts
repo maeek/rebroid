@@ -28,7 +28,7 @@ export const previewActivityProps: ActivityEventsTableProps = {
     ],
     categories: ['application', 'auth', 'settings'],
     actions: ['automation.trigger.update', 'application.start', 'settings.features.update', 'auth.login.success'],
-    resourceTypes: ['automation', 'application', 'feature_flags']
+    resourceTypes: ['automation', 'device', 'feature_flags']
   },
   result: {
     page: 1,
@@ -41,7 +41,7 @@ export const previewActivityProps: ActivityEventsTableProps = {
         ...previewAuditEvent,
         id: 41,
         action: 'application.start',
-        resourceType: 'application',
+        resourceType: 'device',
         resourceLabel: 'Reports worker',
         resourceId: 'app-reports',
         outcome: 'failure',

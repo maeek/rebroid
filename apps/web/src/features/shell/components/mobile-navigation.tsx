@@ -16,6 +16,8 @@ import { MobileAccount } from './navigation-controls/mobile-account'
 import { ProtectedNavigation, type RecentAppsQuery } from './protected-navigation'
 import {
   appsNavigationItem,
+  canBrowseDevices,
+  externalDevicesNavigationItem,
   isNavigationDestinationActive,
   workflowsNavigationItem
 } from './protected-navigation-config'
@@ -57,9 +59,10 @@ export const MobileNavigation = ({
   const close = () => setOpen(false)
   const pathname = usePathname()
   const { isFeatureEnabled } = useFeatureFlags()
-  const destinations = isFeatureEnabled('feature.workflows')
-    ? [appsNavigationItem, workflowsNavigationItem]
-    : [appsNavigationItem]
+  const destinations = [{ ...appsNavigationItem, name: 'Apps' }]
+  if (canBrowseDevices(user, isFeatureEnabled('feature.external-devices')))
+    destinations.push({ ...externalDevicesNavigationItem, name: 'Devices' })
+  if (isFeatureEnabled('feature.workflows')) destinations.push(workflowsNavigationItem)
 
   useBackLayer(open && showAccount, () => setShowAccount(false))
 
@@ -104,9 +107,7 @@ export const MobileNavigation = ({
         </Surface>
       ) : null}
       {destinations.map(({ href, Icon, name }) => {
-        const isApps = href === appsNavigationItem.href
-        const active =
-          isNavigationDestinationActive(pathname, href) || (isApps && isNavigationDestinationActive(pathname, '/app'))
+        const active = isNavigationDestinationActive(pathname, href)
         const current = pathname === href ? 'page' : 'location'
 
         return (
@@ -123,7 +124,7 @@ export const MobileNavigation = ({
             >
               <Icon className='size-5' />
             </span>
-            {isApps ? 'Apps' : name}
+            {name}
           </Link>
         )
       })}

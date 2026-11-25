@@ -28,7 +28,7 @@ describe('API CSRF boundary', () => {
     'runs the API proxy even with prefetch headers %j',
     headers => {
       expect(unstable_doesMiddlewareMatch({ config, url: '/api/bff/preferences/ui-settings', headers })).toBe(true)
-      expect(unstable_doesMiddlewareMatch({ config, url: '/apps', headers })).toBe(false)
+      expect(unstable_doesMiddlewareMatch({ config, url: '/devices', headers })).toBe(false)
     }
   )
 

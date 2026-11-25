@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { externalDeviceHref } from '@/shared/model/applications/external-device-links'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -56,7 +57,7 @@ const sortRuns = (runs: AutomationRunHistoryRow[], sorting: SortingState) => {
       let result = 0
       if (item.id === 'startedAt') result = runTime(left) - runTime(right)
       else if (item.id === 'trigger') result = triggerLabel(left).localeCompare(triggerLabel(right))
-      else if (item.id === 'target') result = left.targetApplicationId.localeCompare(right.targetApplicationId)
+      else if (item.id === 'target') result = left.targetDeviceId.localeCompare(right.targetDeviceId)
       else if (item.id === 'steps') result = left.stepCount - right.stepCount
       else if (item.id === 'duration') result = (durationMs(left) ?? -1) - (durationMs(right) ?? -1)
       else if (item.id === 'status') result = left.status.localeCompare(right.status)
@@ -90,11 +91,11 @@ export function AutomationTracesSection({
   const filteredRuns = useMemo(() => {
     const query = search.trim().toLowerCase()
     return runs.filter(run => {
-      const target = applicationById.get(run.targetApplicationId)?.name ?? run.targetApplicationId
+      const target = applicationById.get(run.targetDeviceId)?.name ?? run.targetDeviceId
       if (query && !`${run.id} ${target} ${run.error ?? ''}`.toLowerCase().includes(query)) return false
       if (statusFilter !== 'all' && run.status !== statusFilter) return false
       if (sourceFilter !== 'all' && run.trigger !== sourceFilter) return false
-      if (targetFilter !== 'all' && run.targetApplicationId !== targetFilter) return false
+      if (targetFilter !== 'all' && run.targetDeviceId !== targetFilter) return false
       return true
     })
   }, [applicationById, runs, search, sourceFilter, statusFilter, targetFilter])
@@ -131,19 +132,27 @@ export function AutomationTracesSection({
       },
       {
         id: 'target',
-        accessorFn: run => applicationById.get(run.targetApplicationId)?.name ?? run.targetApplicationId,
+        accessorFn: run => applicationById.get(run.targetDeviceId)?.name ?? run.targetDeviceId,
         header: 'Target',
         size: 320,
         meta: { compactSlot: 'details', label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
         cell: ({ row }) => {
-          const application = applicationById.get(row.original.targetApplicationId)
+          const application = applicationById.get(row.original.targetDeviceId)
           return (
             <div className='grid gap-1 text-sm'>
-              <ResourceLink href={`/app/${encodeURIComponent(row.original.targetApplicationId)}`}>
-                {application?.name ?? row.original.targetApplicationId}
+              <ResourceLink
+                href={
+                  row.original.targetKind === 'external'
+                    ? externalDeviceHref(row.original.targetDeviceId)
+                    : `/apps/${encodeURIComponent(row.original.targetDeviceId)}`
+                }
+              >
+                {application?.name ?? row.original.targetDeviceId}
               </ResourceLink>
               <span className='truncate text-foreground-muted'>
-                {row.original.targetProfileName ?? 'default'} / {row.original.targetProfileMode ?? 'persistent'}
+                {row.original.targetKind === 'external'
+                  ? 'External ADB'
+                  : `${row.original.targetProfileName ?? 'default'} / ${row.original.targetProfileMode ?? 'persistent'}`}
               </span>
             </div>
           )
@@ -318,6 +327,7 @@ export function AutomationTracesSection({
           minWidth='72rem'
           emptyState={
             <DataGridEmptyState
+              artwork='activity'
               title='No runs yet'
               description='Run this workflow from an app or trigger to record an execution.'
             />

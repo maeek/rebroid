@@ -57,8 +57,9 @@ describe('application lifecycle acknowledgements', () => {
     })
     vi.mocked(orchestratorAppCatalogClient.getViewerRuntime).mockResolvedValue({
       ownerUserId: 'owner',
-      status: 'running',
-      containerId: null
+      deviceId: id,
+      kind: 'managed',
+      runtimeId: null
     })
     vi.mocked(orchestratorAppCatalogClient.getApplication)
       .mockRejectedValue(new Error('Catalog unavailable after command'))
@@ -115,7 +116,7 @@ describe('application lifecycle acknowledgements', () => {
       actorLabel: 'owner',
       category: 'application',
       action: 'application.profile.delete',
-      resourceType: 'application',
+      resourceType: 'device',
       resourceId: id,
       resourceLabel: 'App',
       details: { profileName: 'Work' }

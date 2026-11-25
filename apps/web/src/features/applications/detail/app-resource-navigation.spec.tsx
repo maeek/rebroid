@@ -57,10 +57,13 @@ describe('app resource navigation', () => {
       'Configuration',
       'Network'
     ])
-    expect(screen.getByRole('link', { name: 'Diagnostics' })).toHaveAttribute('href', '/app/app-1?view=diagnostics')
+    expect(screen.getByRole('link', { name: 'Diagnostics' })).toHaveAttribute('href', '/apps/app-1?view=diagnostics')
     expect(screen.getByRole('link', { name: 'AI agent' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Configuration' })).toHaveAttribute('href', '/app/app-1?view=configuration')
-    expect(screen.getByRole('link', { name: 'Network' })).toHaveAttribute('href', '/app/app-1?view=network')
+    expect(screen.getByRole('link', { name: 'Configuration' })).toHaveAttribute(
+      'href',
+      '/apps/app-1?view=configuration'
+    )
+    expect(screen.getByRole('link', { name: 'Network' })).toHaveAttribute('href', '/apps/app-1?view=network')
     expect(screen.queryByRole('link', { name: 'Workspace' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Streaming' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Clipboard' })).toBeNull()
@@ -77,7 +80,7 @@ describe('app resource navigation', () => {
     expect(screen.queryByRole('link', { name: 'Diagnostics' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Workflows' })).toBeNull()
   })
-  it('links to Apps and ends the breadcrumb at the current app', () => {
+  it('links to Devices and ends the breadcrumb at the current app', () => {
     render(<AppResourceBreadcrumbs appName='Example' />)
     expect(screen.getByRole('link', { name: 'Apps' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/apps')

@@ -45,7 +45,7 @@ export const AppActivityPreview = () => (
     application={{ id: previewApp.id, name: previewApp.name }}
     auditRetentionDays={30}
     facets={{ actors: [], categories: [], actions: [], resourceTypes: [] }}
-    filters={{ resourceType: 'application', resourceId: previewApp.id }}
+    filters={{ resourceType: 'device', resourceId: previewApp.id }}
     sorting={[{ id: 'createdAt', desc: true }]}
     result={{
       total: 1,
@@ -59,7 +59,7 @@ export const AppActivityPreview = () => (
           actorLabel: 'Operator',
           action: 'application.start',
           category: 'applications',
-          resourceType: 'application',
+          resourceType: 'device',
           resourceId: previewApp.id,
           resourceLabel: previewApp.name,
           outcome: 'failure',

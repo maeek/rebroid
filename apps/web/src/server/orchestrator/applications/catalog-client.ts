@@ -1,3 +1,4 @@
+import { managedAndroidDeviceKind } from '@rebroid/android-application-core/android-device'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { emptyRequest, jsonRequest, OrchestratorRequestError } from '../request'
 import { applicationPath } from './application-path'
@@ -31,30 +32,35 @@ export const orchestratorAppCatalogClient = {
     maxOpenApps: number | null,
     actor: ApplicationImageActor
   ) {
-    return jsonRequest<ApplicationCommandResult>('/apps', 'POST', input, {
-      headers: {
-        ...openAppQuotaHeaders(maxOpenApps),
-        ...applicationImageAccessHeaders(actor),
-        'x-request-id': requestId
+    return jsonRequest<ApplicationCommandResult>(
+      '/devices',
+      'POST',
+      { ...input, kind: managedAndroidDeviceKind },
+      {
+        headers: {
+          ...openAppQuotaHeaders(maxOpenApps),
+          ...applicationImageAccessHeaders(actor),
+          'x-request-id': requestId
+        }
       }
-    }).catch(throwAppCreateError)
+    ).catch(throwAppCreateError)
   },
 
   listApplications(ownerUserId?: string) {
     const query = new URLSearchParams()
     if (ownerUserId) query.set('ownerUserId', ownerUserId)
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return emptyRequest<AndroidApplication[]>(`/apps${suffix}`)
+    return emptyRequest<AndroidApplication[]>(`/devices${suffix}`)
   },
 
   listApplicationGallery(ownerUserId?: string) {
     const suffix = ownerUserId ? `?${new URLSearchParams({ ownerUserId })}` : ''
-    return emptyRequest<OrchestratorApiSchemas['AndroidApplicationGalleryRowDto'][]>(`/apps/gallery${suffix}`)
+    return emptyRequest<OrchestratorApiSchemas['AndroidApplicationGalleryRowDto'][]>(`/devices/gallery${suffix}`)
   },
 
   async listApplicationNavigation(query: OrchestratorApiSchemas['ListAndroidApplicationNavigationDto']) {
     const rows = await jsonRequest<OrchestratorApiSchemas['AndroidApplicationNavigationRowDto'][]>(
-      '/apps/navigation',
+      '/devices/navigation',
       'POST',
       query
     )
@@ -70,7 +76,7 @@ export const orchestratorAppCatalogClient = {
     for (const id of filters?.applicationIds ?? []) query.append('applicationIds', id)
     if (filters?.includeRunning) query.set('includeRunning', 'true')
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return emptyRequest<AndroidApplicationSummary[]>(`/apps/summaries${suffix}`)
+    return emptyRequest<AndroidApplicationSummary[]>(`/devices/summaries${suffix}`)
   },
 
   getApplication(id: string, signal?: AbortSignal) {
@@ -86,7 +92,7 @@ export const orchestratorAppCatalogClient = {
   },
 
   getViewerRuntime(id: string, signal?: AbortSignal) {
-    return emptyRequest<OrchestratorApiSchemas['AndroidApplicationViewerRuntimeDto']>(
+    return emptyRequest<OrchestratorApiSchemas['AndroidDeviceViewerTargetDto']>(
       `${applicationPath(id)}/viewer-runtime`,
       { signal }
     )

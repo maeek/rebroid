@@ -1,156 +1,90 @@
-type StateIllustrationKind = 'unavailable' | 'not-found' | 'error'
+import Image from 'next/image'
+import { cn } from '@/lib/utils'
 
-const DisconnectedServer = () => (
-  <>
-    <rect
-      x='65'
-      y='24'
-      width='110'
-      height='90'
-      rx='12'
-      className='fill-control stroke-foreground-muted'
-    />
-    <path
-      d='M65 54h110M65 84h110'
-      className='stroke-control-border-strong'
-    />
-    <path
-      d='M82 39h25m-25 30h25m-25 30h25'
-      className='stroke-foreground-subtle'
-    />
-    <path
-      d='M153 39h5m-5 30h5m-5 30h5'
-      className='stroke-foreground-muted'
-    />
-    <path
-      d='M94 114v14H62a16 16 0 0 1-16-16V94m100 20v14h32'
-      className='stroke-foreground-subtle'
-    />
-    <g
-      transform='rotate(-16 46 88)'
-      className='fill-control stroke-foreground-muted'
+export type StateArtwork =
+  | 'accounts'
+  | 'activity'
+  | 'build'
+  | 'error'
+  | 'external-devices'
+  | 'files'
+  | 'inventory'
+  | 'models'
+  | 'network'
+  | 'package'
+  | 'search'
+  | 'trigger'
+  | 'unavailable'
+  | 'workflow'
+
+const widths = {
+  page: 'w-72 sm:w-[23rem]',
+  panel: 'w-36 sm:w-44',
+  inline: 'w-20 sm:w-24'
+}
+
+// Align the main object with the heading. Cables, plugs and secondary tools
+// extend the silhouette without carrying the same visual weight.
+const opticalOffsets: Partial<Record<StateArtwork, string>> = {
+  build: 'translate-x-[3%]',
+  'external-devices': 'translate-x-[3%]',
+  models: 'translate-x-[5%]',
+  network: '-translate-x-[4%]',
+  trigger: 'translate-x-[2%]',
+  unavailable: 'translate-x-[8%]',
+  workflow: '-translate-x-[4%]'
+}
+
+// Bounds of the rendered lens, as percentages of its transparent canvas.
+const indicatorBounds: Partial<Record<StateArtwork, [number, number, number, number]>> = {
+  accounts: [79.52, 42.98, 2.23, 4.04],
+  'external-devices': [79.62, 47.88, 1.94, 3.39],
+  files: [70.06, 51.39, 2.75, 4.69],
+  inventory: [70.14, 60.07, 2.31, 4.3],
+  models: [44.01, 24.27, 1.94, 3.26],
+  network: [75.6, 36.26, 2.01, 3.39],
+  package: [68.75, 48.05, 2.01, 3.52],
+  search: [65.53, 70.85, 2.16, 3.52],
+  unavailable: [57.22, 33.08, 2.16, 3.78],
+  workflow: [79.38, 17.21, 1.94, 3.26]
+}
+
+export const StateIllustration = ({
+  kind,
+  size,
+  align = 'center'
+}: {
+  kind: StateArtwork
+  size: keyof typeof widths
+  align?: 'center' | 'start'
+}) => {
+  const indicator = indicatorBounds[kind]
+
+  return (
+    <span
+      data-slot='state-illustration'
+      aria-hidden='true'
+      className={cn('relative isolate block max-w-full', widths[size], align === 'center' && opticalOffsets[kind])}
     >
-      <path d='M38 77v-8m16 8v-8' />
-      <path d='M35 77h22v10a11 11 0 0 1-22 0Z' />
-    </g>
-    <path
-      d='m34 55-4-6m17 5 1-8m11 12 6-5'
-      className='stroke-foreground-subtle'
-    />
-    <circle
-      cx='184'
-      cy='128'
-      r='6'
-      className='fill-control stroke-foreground-subtle'
-    />
-  </>
-)
-
-const MissingResource = () => (
-  <>
-    <path
-      d='m65 63 47-24 47 24v57l-47 23-47-23Z'
-      className='fill-control stroke-foreground-muted'
-    />
-    <path
-      d='m65 63 47 24 47-24m-47 24v56'
-      className='stroke-foreground-subtle'
-    />
-    <path
-      d='m65 63-17-16 47-24 17 16 18-16 46 24-17 16'
-      className='fill-surface-editor stroke-foreground-muted'
-    />
-    <path
-      d='m87 98 11 6m-11 3 11 6'
-      className='stroke-foreground-subtle'
-    />
-    <circle
-      cx='165'
-      cy='88'
-      r='27'
-      className='fill-surface-elevated stroke-foreground-muted'
-    />
-    <path
-      d='m184 108 17 19'
-      strokeWidth='7'
-      className='stroke-control-border-strong'
-    />
-    <path
-      d='M155 88h20'
-      className='stroke-foreground-subtle'
-    />
-  </>
-)
-
-const InterruptedPage = () => (
-  <>
-    <rect
-      x='47'
-      y='29'
-      width='146'
-      height='100'
-      rx='12'
-      className='fill-control stroke-foreground-muted'
-    />
-    <path
-      d='M47 52h146'
-      className='stroke-control-border-strong'
-    />
-    <path
-      d='M61 41h1m8 0h1m8 0h1'
-      strokeWidth='3'
-      className='stroke-foreground-subtle'
-    />
-    <rect
-      x='63'
-      y='68'
-      width='35'
-      height='44'
-      rx='5'
-      stroke='none'
-      className='fill-surface-editor'
-    />
-    <path
-      d='M113 72h55m-55 13h37m-37 13h17'
-      className='stroke-foreground-subtle'
-    />
-    <path
-      d='m150 113 12-20a5 5 0 0 1 8 0l19 32a5 5 0 0 1-4 8h-38a5 5 0 0 1-4-8l3-5'
-      className='fill-surface-elevated stroke-foreground-muted'
-    />
-    <path
-      d='M166 104v10m0 8v1'
-      className='stroke-foreground-muted'
-    />
-  </>
-)
-
-/** Local, theme-aware artwork remains available when runtime services are offline. */
-export const StateIllustration = ({ kind }: { kind: StateIllustrationKind }) => (
-  <svg
-    aria-hidden='true'
-    focusable='false'
-    viewBox='0 0 240 168'
-    fill='none'
-    strokeWidth='1.8'
-    strokeLinecap='round'
-    strokeLinejoin='round'
-    className='h-auto w-56 max-w-full sm:w-64'
-    data-slot='state-illustration'
-  >
-    <ellipse
-      cx='120'
-      cy='145'
-      rx='83'
-      ry='7'
-      className='fill-surface-editor'
-    />
-    <path
-      d='M26 111h8m-4-4v8m170-77h8m-4-4v8M207 76h5M27 33h5'
-      className='stroke-control-border-strong'
-    />
-    {kind === 'unavailable' ? <DisconnectedServer /> : null}
-    {kind === 'not-found' ? <MissingResource /> : null}
-    {kind === 'error' ? <InterruptedPage /> : null}
-  </svg>
-)
+      <Image
+        src={`/illustrations/${kind}.webp`}
+        alt=''
+        width={1344}
+        height={768}
+        unoptimized
+        className='block h-auto w-full'
+      />
+      {indicator && (
+        <span
+          className='pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary mix-blend-color'
+          style={{
+            left: `${indicator[0]}%`,
+            top: `${indicator[1]}%`,
+            width: `${indicator[2]}%`,
+            height: `${indicator[3]}%`
+          }}
+        />
+      )}
+    </span>
+  )
+}

@@ -18,7 +18,7 @@ afterEach(() => {
 it('opens serializable Visual drafts with broken references and returns immediately when YAML is unchanged', () => {
   vi.useFakeTimers()
   const form = definitionToForm({
-    apiVersion: 'rebroid.io/automation/v1',
+    apiVersion: 'rebroid.io/automation/v2',
     kind: 'AndroidAutomation',
     metadata: { name: 'Repair workflow' },
     spec: { steps: [{ id: 'log', uses: 'debug.log', with: { message: { $ref: 'steps.missing.output.message' } } }] }
@@ -43,7 +43,7 @@ it('opens serializable Visual drafts with broken references and returns immediat
 it('applies validated YAML to Visual and keeps AI settings and edit history', async () => {
   vi.useFakeTimers()
   const definition: AutomationDefinition = {
-    apiVersion: 'rebroid.io/automation/v1',
+    apiVersion: 'rebroid.io/automation/v2',
     kind: 'AndroidAutomation',
     metadata: { name: 'Find Żappka' },
     spec: { steps: [{ id: 'agent', uses: 'ai.run', with: { prompt: 'Find Żappka', agentMode: 'adaptive' } }] }
@@ -112,7 +112,7 @@ it('applies validated YAML to Visual and keeps AI settings and edit history', as
 it('takes one Visual editor click and reuses a check in progress for the exact YAML', async () => {
   vi.useFakeTimers()
   const definition: AutomationDefinition = {
-    apiVersion: 'rebroid.io/automation/v1',
+    apiVersion: 'rebroid.io/automation/v2',
     kind: 'AndroidAutomation',
     metadata: { name: 'Save workflow' },
     spec: { steps: [] }

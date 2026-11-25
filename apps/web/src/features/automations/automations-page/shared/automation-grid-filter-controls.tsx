@@ -16,13 +16,13 @@ type FilterProps = {
 export const automationGridFilterSummary = ({ applications, gridQuery, onUpdateGrid }: FilterProps) => {
   const entries: DataGridFilterEntry[] = []
   const add = (
-    key: 'tag' | 'targetApplicationId' | 'enabled' | 'status' | 'lastRun',
+    key: 'tag' | 'targetDeviceId' | 'enabled' | 'status' | 'lastRun',
     label: string,
     value = gridQuery[key]
   ) => {
     if (value)
       entries.push({
-        id: key === 'targetApplicationId' ? 'target' : key,
+        id: key === 'targetDeviceId' ? 'target' : key,
         label,
         value,
         onRemove: () => onUpdateGrid({ [key]: undefined, page: 1 })
@@ -30,9 +30,9 @@ export const automationGridFilterSummary = ({ applications, gridQuery, onUpdateG
   }
   add('tag', 'Tag')
   add(
-    'targetApplicationId',
+    'targetDeviceId',
     'Target',
-    applications.find(app => app.id === gridQuery.targetApplicationId)?.name ?? gridQuery.targetApplicationId
+    applications.find(app => app.id === gridQuery.targetDeviceId)?.name ?? gridQuery.targetDeviceId
   )
   if (gridQuery.enabled) add('enabled', 'State', gridQuery.enabled === 'true' ? 'Enabled' : 'Disabled')
   add('status', 'Status')
@@ -73,13 +73,13 @@ export const AutomationGridFilterControls = ({
       </Select>
     </FormField>
     <FormField
-      label='Target app'
+      label='Target device'
       layout='vertical'
     >
       <SingleSelectCombobox
-        value={gridQuery.targetApplicationId ?? allFilterValue}
+        value={gridQuery.targetDeviceId ?? allFilterValue}
         onValueChange={nextValue =>
-          onUpdateGrid({ targetApplicationId: nextValue === allFilterValue ? undefined : nextValue, page: 1 })
+          onUpdateGrid({ targetDeviceId: nextValue === allFilterValue ? undefined : nextValue, page: 1 })
         }
         options={[
           { value: allFilterValue, label: 'All apps' },

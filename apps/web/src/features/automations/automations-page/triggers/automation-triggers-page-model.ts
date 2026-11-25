@@ -23,13 +23,14 @@ export const newTriggerFormState = ({
   name: defaultTriggerName(automation, app),
   description: '',
   automationId: automation.id,
-  targetApplicationId: app.id,
+  targetDeviceId: app.id,
+  ...('transport' in app && { external: true }),
   profileMode: appProfileMode(app),
   profileName: appProfileName(app),
   enabled: true,
   tags: [],
   schedule: defaultSchedule,
-  startPolicy: 'start-if-needed'
+  startPolicy: 'transport' in app ? 'require-running' : 'start-if-needed'
 })
 
 export const editTriggerFormState = ({
@@ -43,7 +44,8 @@ export const editTriggerFormState = ({
   name: trigger.name,
   description: trigger.description ?? '',
   automationId: trigger.automationId,
-  targetApplicationId: trigger.targetApplicationId,
+  targetDeviceId: trigger.targetDeviceId,
+  ...(app && 'transport' in app && { external: true }),
   profileMode: (trigger.profileMode as ApplicationProfileMode | null) ?? appProfileMode(app),
   profileName: trigger.profileName ?? appProfileName(app),
   enabled: trigger.enabled,
@@ -54,7 +56,7 @@ export const editTriggerFormState = ({
 
 export const applyTriggerTargetApplication = (
   form: TriggerFormState,
-  targetApplicationId: string,
+  targetDeviceId: string,
   app: TriggerApplication | undefined,
   workflow?: AutomationOption,
   previousApp?: TriggerApplication
@@ -64,7 +66,9 @@ export const applyTriggerTargetApplication = (
     !form.id && workflow && form.name === defaultTriggerName(workflow, previousApp)
       ? defaultTriggerName(workflow, app)
       : form.name,
-  targetApplicationId,
+  targetDeviceId,
+  external: Boolean(app && 'transport' in app),
+  startPolicy: app && 'transport' in app ? 'require-running' : form.external ? 'start-if-needed' : form.startPolicy,
   profileMode: appProfileMode(app),
   profileName: appProfileName(app)
 })
@@ -88,9 +92,9 @@ export const triggerFormSavePayload = (form: TriggerFormState) =>
     name: form.name.trim(),
     description: form.description.trim() || null,
     automationId: form.automationId,
-    targetApplicationId: form.targetApplicationId,
-    profileMode: form.profileMode,
-    profileName: form.profileName.trim() || 'default',
+    targetDeviceId: form.targetDeviceId,
+    profileMode: form.external ? null : form.profileMode,
+    profileName: form.external ? null : form.profileName.trim() || 'default',
     enabled: form.enabled,
     tags: form.tags,
     triggerType: 'schedule',
@@ -115,7 +119,7 @@ export const triggerFormUpdatePayload = (
     ...(next.name !== previous.name && { name: next.name }),
     ...(next.description !== previous.description && { description: next.description }),
     ...(next.automationId !== previous.automationId && { automationId: next.automationId }),
-    ...(next.targetApplicationId !== previous.targetApplicationId && { targetApplicationId: next.targetApplicationId }),
+    ...(next.targetDeviceId !== previous.targetDeviceId && { targetDeviceId: next.targetDeviceId }),
     ...(next.profileMode !== previous.profileMode && { profileMode: next.profileMode }),
     ...(next.profileName !== previous.profileName && { profileName: next.profileName }),
     ...(next.enabled !== previous.enabled && { enabled: next.enabled }),

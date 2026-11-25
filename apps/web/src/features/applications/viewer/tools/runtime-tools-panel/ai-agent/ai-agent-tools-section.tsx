@@ -17,11 +17,11 @@ import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import { useAiAgentConversationExport } from './use-ai-agent-conversation-export'
 import { useAiAgentPromptSuggestions, type GeneratePromptSuggestions } from './use-ai-agent-prompt-suggestions'
 import { useAiAgentWorkflowDraft, type DraftWorkflowFromRun } from './use-ai-agent-workflow-draft'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AiAgentTarget } from './ai-agent-target'
 import type { AutomationRun } from '@/shared/contracts/automation'
 
 type AiAgentToolsSectionProps = {
-  app: AppDefinition
+  app: AiAgentTarget
   canSaveWorkflow?: boolean
   className?: string
   contextualSuggestionsEnabled?: boolean
@@ -137,7 +137,7 @@ export const AiAgentConversation = ({
   }
 
   const approveEscalation = (program: string) => {
-    if (!app.running) return
+    if (!app.running || app.attachmentId) return
     void submitPrompt(
       [
         `Continue the previous task. I approve one read-only ${program} diagnostic if it is still required.`,
@@ -154,7 +154,7 @@ export const AiAgentConversation = ({
   }
 
   const modelBlocker = !selectedProvider || !selectedModel ? selectionMessage : null
-  const deviceBlocker = !app.running ? 'The app must be running to send or run a queued task.' : null
+  const deviceBlocker = !app.running ? 'The device must be ready to send or run a queued task.' : null
   const canSendMessage = app.running && canSubmit
 
   const canceling = isCanceling || activeTurn?.status === 'canceling'

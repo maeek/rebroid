@@ -120,7 +120,7 @@ describe('AppResourceHome', () => {
     render(<AppResourceHome view='diagnostics' />)
     expect(
       within(screen.getByRole('navigation', { name: 'App sections' })).getByRole('link', { name: 'Diagnostics' })
-    ).toHaveAttribute('href', '/app/app-1?view=diagnostics')
+    ).toHaveAttribute('href', '/apps/app-1?view=diagnostics')
     expect(screen.getByText('Inspect boot output.')).toBeTruthy()
     expect(screen.getByText('Diagnostic log content')).toBeTruthy()
     const startupTimings = screen.getByText('Startup timings')

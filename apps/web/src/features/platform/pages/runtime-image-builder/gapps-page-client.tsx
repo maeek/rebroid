@@ -78,7 +78,7 @@ const pendingController: GappsBuildController = {
   activeJob: null,
   androidVersion: '14',
   presets: [],
-  createAppHref: '/apps/create',
+  createAppHref: '/apps/new',
   currentPhaseIndex: -1,
   isClearing: false,
   isCancelling: false,

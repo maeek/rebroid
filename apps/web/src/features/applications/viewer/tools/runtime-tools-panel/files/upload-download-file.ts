@@ -34,7 +34,7 @@ export const uploadDownloadFileWithProgress = async ({
     signal,
     timeoutMessage: 'File upload timed out.',
     timeoutMs: 5 * 60 * 1000,
-    url: `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files/upload?${query.toString()}`
+    url: `/api/bff/devices/${encodeURIComponent(appId)}/runtime/files/upload?${query.toString()}`
   })
   if (!isActionResult<ApplicationRuntimeFileUpload>(result))
     throw new Error('The upload service returned an invalid response.')

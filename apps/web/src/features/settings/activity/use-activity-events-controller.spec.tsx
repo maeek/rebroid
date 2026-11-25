@@ -9,7 +9,7 @@ vi.mock('@/server/audit/actions', () => ({ purgeAllAuditEventsAction: vi.fn(), s
 const props: ActivityEventsTableProps = {
   application: { id: 'app-1', name: 'Example' },
   result: { events: [], total: 0, page: 1, pageSize: 20, summary: { success: 0, failure: 0, lastEventAt: null } },
-  filters: { resourceType: 'application', resourceId: 'app-1', search: 'failed' },
+  filters: { resourceType: 'device', resourceId: 'app-1', search: 'failed' },
   sorting: [{ id: 'createdAt', desc: true }],
   facets: { actors: [], categories: [], actions: [], resourceTypes: [] },
   auditRetentionDays: 30
@@ -19,13 +19,25 @@ describe('embedded application activity navigation', () => {
   it('keeps search, sorting, pagination, and reset on the app activity tab', () => {
     const { result } = renderHook(() => useActivityEventsController(props))
     act(() => result.current.setFilterValue('search', 'start'))
-    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/app\/app-1\?.*view=activity/), { scroll: false })
+    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/apps\/app-1\?.*view=activity/), {
+      scroll: false
+    })
     act(() => result.current.pushParams({ page: 2 }))
     expect(push).toHaveBeenLastCalledWith(expect.stringContaining('page=2'), { scroll: false })
     act(() => result.current.setSorting([{ id: 'action', desc: false }]))
     expect(push).toHaveBeenLastCalledWith(expect.stringContaining('sort=action%3Aasc'), { scroll: false })
     act(() => result.current.resetFilters())
-    expect(push).toHaveBeenLastCalledWith('/app/app-1?view=activity', { scroll: false })
+    expect(push).toHaveBeenLastCalledWith('/apps/app-1?view=activity', { scroll: false })
+  })
+  it('keeps external device filters on the device activity tab', () => {
+    const { result } = renderHook(() =>
+      useActivityEventsController({
+        ...props,
+        application: { id: 'device-1', name: 'Phone', href: '/devices/external/device-1' }
+      })
+    )
+    act(() => result.current.resetFilters())
+    expect(push).toHaveBeenLastCalledWith('/devices/external/device-1?view=activity', { scroll: false })
   })
   it('preserves global audit navigation outside an app', () => {
     const globalProps = { ...props, application: undefined, filters: {} }
@@ -37,7 +49,7 @@ describe('embedded application activity navigation', () => {
     const { result } = renderHook(() => useActivityEventsController(props))
     const url = new URL(result.current.exportHref, 'https://example.test')
     expect(url.searchParams.get('resourceId')).toBe('app-1')
-    expect(url.searchParams.get('resourceType')).toBe('application')
+    expect(url.searchParams.get('resourceType')).toBe('device')
     expect(url.searchParams.get('search')).toBe('failed')
     expect(url.searchParams.get('sort')).toBe('createdAt:desc')
   })
@@ -126,7 +138,7 @@ describe('embedded application activity navigation', () => {
       result.current.setFilterValue('resourceId', 'other-app')
     })
     const url = new URL(push.mock.lastCall![0], 'https://example.test')
-    expect(url.pathname).toBe('/app/app-1')
+    expect(url.pathname).toBe('/apps/app-1')
     expect(url.searchParams.get('view')).toBe('activity')
     expect(url.searchParams.get('actor')).toBe('admin')
     expect(url.searchParams.has('outcome')).toBe(false)

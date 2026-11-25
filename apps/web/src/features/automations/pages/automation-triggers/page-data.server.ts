@@ -2,9 +2,13 @@ import { runSafeAction } from '@/server/actions/safe-action'
 import { listVisibleApplications } from '@/server/orchestrator/applications/application-list-query'
 import { requireAutomationUser } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
+import { listExternalWorkflowDevices } from '@/server/orchestrator/automations/workflow-device-options'
 import { validatedSearchParam } from '@/shared/model/search-params'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { toTriggerApplication } from '../../automations-page/triggers/automation-trigger-resource-options'
+import {
+  toTriggerApplication,
+  toTriggerExternalDevice
+} from '../../automations-page/triggers/automation-trigger-resource-options'
 import { workflowGridQueryFromSearchParams, type WorkflowGridSearchParams } from '../workflow-grid-query'
 import type { AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 
@@ -18,14 +22,21 @@ export const loadAutomationTriggersPageData = (searchParams: WorkflowGridSearchP
         ...workflowGridQueryFromSearchParams(searchParams),
         enabled: validatedSearchParam(searchParams.enabled, enabledValues)
       }
-      const [applications, automations, triggersPage] = await Promise.all([
+      const [applications, external, automations, triggersPage] = await Promise.all([
         listVisibleApplications(),
+        listExternalWorkflowDevices(user),
         orchestratorAutomationsClient.listOptions(user.ownerUserId),
         orchestratorAutomationsClient.listTriggersGrid(user.ownerUserId, gridQuery)
       ])
       return {
-        applications: applications.map(({ id, name }) => ({ id, name })),
-        targetApps: applications.filter(app => app.ownerUserId === user.ownerUserId).map(toTriggerApplication),
+        applications: [
+          ...applications.map(({ id, name }) => ({ id, name })),
+          ...external.map(({ id, name }) => ({ id, name, external: true }))
+        ],
+        targetApps: [
+          ...applications.filter(app => app.ownerUserId === user.ownerUserId).map(toTriggerApplication),
+          ...external.map(toTriggerExternalDevice)
+        ],
         canRun: hasPermission(user.permissions, 'automations:run'),
         canCreateApp: hasPermission(user.permissions, 'applications:create'),
         automations,

@@ -1,0 +1,23 @@
+.screen {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--screen-width) * var(--device-unit));
+  height: calc(var(--screen-height) * var(--device-unit));
+}
+
+/* Scale the rendered glass to the selected display, preserving the polished corners. */
+.screen::before {
+  content: '';
+  position: absolute;
+  inset: calc(-0.025 * var(--device-unit));
+  border-image: url('/illustrations/device-frame.webp') 54 fill / calc(0.075 * var(--device-unit)) stretch;
+}
+
+.androidMark {
+  position: relative;
+  width: min(48%, calc(0.26 * var(--device-unit)));
+  aspect-ratio: 430 / 252;
+  background: url('/auth-android-backdrop.svg') center / contain no-repeat;
+  filter: grayscale(1);
+}

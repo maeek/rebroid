@@ -173,6 +173,8 @@ export const RuntimeNetworksSection = ({
             }}
             emptyState={
               <DataGridEmptyState
+                artwork='network'
+                artworkSize='page'
                 title='No networks'
                 description='No networks are available in the current Docker inventory.'
               />

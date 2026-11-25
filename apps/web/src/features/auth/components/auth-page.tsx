@@ -23,7 +23,7 @@ export const AuthPage = ({
         {intro ? (
           <>
             {intro}
-            <div className='min-w-0'>{children}</div>
+            <div className='min-w-0 rounded-panel shadow-sign-in'>{children}</div>
           </>
         ) : (
           children

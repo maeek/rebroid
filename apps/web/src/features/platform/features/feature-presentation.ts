@@ -6,6 +6,7 @@ const featureLabelsInDisplayOrder = {
   'feature.ocr': 'OCR perception',
   'feature.display-virtual': 'Virtual displays',
   'feature.display-webrtc': 'WebRTC streaming',
+  'feature.external-devices': 'External devices',
   'feature.image-builder': 'Image builder',
   'feature.firewall': 'Firewall enforcement',
   'feature.resource-quota': 'Resource quota'
@@ -29,6 +30,8 @@ export const featureDestination = (feature: FeatureFlagState) => {
     return { label: 'View sessions', href: '/platform/casting' }
   if (feature.key === 'feature.ai' && feature.enabled) return { label: 'Manage AI providers', href: '/platform/ai' }
   if (feature.key === 'feature.workflows' && feature.enabled) return { label: 'Open workflows', href: '/automations' }
+  if (feature.key === 'feature.external-devices' && feature.enabled)
+    return { label: 'Open external devices', href: '/devices' }
   if (feature.key === 'feature.resource-quota') return { label: 'Manage users', href: '/security/users' }
   if (feature.key === 'feature.image-builder' && feature.enabled)
     return { label: 'Open image builder', href: '/runtime/images/build' }

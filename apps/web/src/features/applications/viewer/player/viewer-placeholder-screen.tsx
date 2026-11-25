@@ -7,6 +7,7 @@ import { getViewerPlaceholder } from '@/features/applications/viewer/player/view
 import { cn } from '@/lib/utils'
 import { resolveAppIconUrl } from '@/shared/model/media/image-url'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
+import { StateIllustration } from '@/shared/ui/state-illustration'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerPlaceholder } from '@/features/applications/viewer/player/viewer-placeholder'
 
@@ -29,7 +30,14 @@ export const ViewerPlaceholderScreen = ({
     <div className='relative flex h-full w-full items-center justify-center overflow-hidden px-6'>
       <ViewerPlaceholderBackground app={app} />
       <div className='relative z-10 flex w-full max-w-sm flex-col items-center gap-5 text-center'>
-        <ViewerPlaceholderIcon app={app} />
+        {app && !viewerPlaceholder.showSpinner && !isStarting ? (
+          <StateIllustration
+            kind={app.status === 'error' ? 'error' : 'external-devices'}
+            size='panel'
+          />
+        ) : (
+          <ViewerPlaceholderIcon app={app} />
+        )}
         <div className='flex flex-col items-center gap-3'>
           <ViewerPlaceholderAction
             app={app}

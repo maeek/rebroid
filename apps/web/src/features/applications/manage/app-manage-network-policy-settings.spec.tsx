@@ -110,7 +110,7 @@ describe('App network policy settings', () => {
     saveDestinations('10.0.0.0/24\n192.0.2.10')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Settings saved. Check firewall enforcement.')
-    expect(getBff).toHaveBeenCalledWith(`/api/bff/applications/${applicationPreview.id}`)
+    expect(getBff).toHaveBeenCalledWith(`/api/bff/devices/${applicationPreview.id}`)
     expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ networkPolicyAllowCidrs: cidrs }))
     expect(toast).not.toHaveBeenCalled()
   })

@@ -6,7 +6,7 @@ import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-cont
 import { ProtectedShell } from './protected-shell'
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/apps',
+  usePathname: () => '/devices',
   useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: vi.fn() })
 }))

@@ -64,6 +64,9 @@ test('page failures keep illustrations, recovery, and headings readable in every
     if (kind === 'not-found') await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 })
+      const artwork = page.locator('[data-slot="state-illustration"]')
+      await artwork.locator('img').evaluate((img: HTMLImageElement) => img.decode())
+      await expect(artwork).toHaveCSS('width', width === 390 ? '288px' : '368px')
       for (const theme of ['light', 'dark', 'oled']) {
         await page.evaluate(value => {
           document.documentElement.classList.remove('light', 'dark', 'oled')

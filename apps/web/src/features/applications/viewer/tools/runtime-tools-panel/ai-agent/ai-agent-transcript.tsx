@@ -3,6 +3,7 @@ import { IconArrowDown } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StateIllustration } from '@/shared/ui/state-illustration'
 import { ChatTurnView } from './ai-agent-chat-events'
 import type { ChatTurn } from './ai-agent-chat-utils'
 
@@ -30,6 +31,10 @@ const AiAgentTranscriptSkeleton = () => (
 const AiAgentEmptyTranscript = ({ suggestions }: { suggestions?: ReactNode }) => (
   <div className='flex min-h-48 flex-1 items-center justify-center py-6 text-center'>
     <div className='grid max-w-lg place-items-center gap-4'>
+      <StateIllustration
+        kind='models'
+        size='panel'
+      />
       <div className='grid gap-2'>
         <h3 className='text-xl font-medium'>Give the device agent a task</h3>
         <p className='text-sm leading-6 text-foreground-muted'>Try asking what’s on the Android screen.</p>

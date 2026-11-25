@@ -217,7 +217,7 @@ ${steps.join('\n')}`)
   })
 })
 
-const workflowYaml = (uses: string, withLines: string[]) => `apiVersion: rebroid.io/automation/v1
+const workflowYaml = (uses: string, withLines: string[]) => `apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Test

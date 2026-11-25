@@ -46,7 +46,7 @@ export const CastingSidecarServiceSection = ({
   return (
     <Section
       surface='panel'
-      title='Connection'
+      title='Managed display connection'
       description='Managed by your deployment configuration.'
       contentClassName='gap-6'
     >

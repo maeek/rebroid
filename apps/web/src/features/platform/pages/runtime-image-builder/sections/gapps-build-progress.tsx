@@ -13,6 +13,7 @@ export const GappsBuildProgress = ({
   controller: Pick<
     GappsBuildController,
     | 'activeJob'
+    | 'isStarting'
     | 'isRunning'
     | 'isCancelling'
     | 'currentPhaseIndex'
@@ -28,6 +29,7 @@ export const GappsBuildProgress = ({
     <aside className='grid min-w-0 gap-6'>
       <BuildRunPanel
         job={controller.activeJob}
+        starting={controller.isStarting}
         running={controller.isRunning}
         cancelling={controller.isCancelling}
         settingDefault={controller.isSettingDefault}
@@ -75,7 +77,7 @@ export const GappsBuildProgress = ({
           })}
         </ol>
       </BuildRunPanel>
-      {controller.activeJob ? (
+      {controller.activeJob && !controller.isStarting ? (
         <BuildLogs
           job={controller.activeJob}
           running={controller.isRunning}

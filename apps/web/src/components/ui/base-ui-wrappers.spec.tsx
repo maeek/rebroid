@@ -28,11 +28,11 @@ describe('Base UI wrapper compatibility', () => {
   it('keeps Button asChild composition', () => {
     render(
       <Button asChild>
-        <a href='/apps'>Apps</a>
+        <a href='/devices'>Apps</a>
       </Button>
     )
 
-    expect(screen.getByRole('link', { name: 'Apps' }).getAttribute('href')).toBe('/apps')
+    expect(screen.getByRole('link', { name: 'Apps' }).getAttribute('href')).toBe('/devices')
     expect(screen.getByRole('link', { name: 'Apps' }).getAttribute('data-slot')).toBe('button')
   })
 
@@ -40,7 +40,7 @@ describe('Base UI wrapper compatibility', () => {
     let observedRef: React.Ref<HTMLAnchorElement> | undefined
     const RefProbe = ({ ref: refProp }: { ref?: React.Ref<HTMLAnchorElement> }) => {
       observedRef = refProp
-      return <a href='/apps'>Apps</a>
+      return <a href='/devices'>Apps</a>
     }
 
     render(

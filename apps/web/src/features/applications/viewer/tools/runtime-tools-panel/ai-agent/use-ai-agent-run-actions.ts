@@ -11,7 +11,7 @@ import { replayTerminalRunEvents } from '@/shared/model/run-event-delivery'
 import { createPromptTurn } from './ai-agent-chat-session-model'
 import { runStatusToTurnStatus, type ChatTurn } from './ai-agent-chat-utils'
 import { conversationBeforeTurn, type AutomationAiConversationMessage } from './ai-agent-conversation'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AiAgentTarget } from './ai-agent-target'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
@@ -42,7 +42,7 @@ export const useAiAgentRunActions = ({
   activeTurn: ChatTurn | null
   adHocTimeoutMs: number
   appendRunEvents: AppendRunEvents
-  app: AppDefinition
+  app: AiAgentTarget
   conversationVersionRef: RefObject<number>
   historyReady: boolean
   modelIsValid: boolean
@@ -69,8 +69,8 @@ export const useAiAgentRunActions = ({
     id: string
     version: number
     draft?: string
-    profileMode: AppDefinition['profileMode']
-    profileName: AppDefinition['profileName']
+    profileMode: AiAgentTarget['profileMode']
+    profileName: AiAgentTarget['profileName']
   } | null>(null)
   const clearing = useRef(false)
   const cancelingRunIdRef = useRef<string | null>(null)
@@ -85,9 +85,13 @@ export const useAiAgentRunActions = ({
       )
       try {
         pendingStart.current = runAdHocAiAutomationAction({
-          targetApplicationId: app.id,
-          profileMode: app.profileMode,
-          profileName: app.profileName,
+          targetDeviceId: app.id,
+          ...(app.attachmentId
+            ? { attachmentId: app.attachmentId }
+            : {
+                profileMode: app.profileMode,
+                profileName: app.profileName
+              }),
           prompt: turn.prompt,
           conversation,
           providerId: selectedProvider.id,
@@ -276,7 +280,8 @@ export const useAiAgentRunActions = ({
     setError(null)
     try {
       await pendingStart.current?.catch(() => undefined)
-      await clearAdHocAiAutomationRunsAction(app.id)
+      if (app.attachmentId) await clearAdHocAiAutomationRunsAction(app.id, app.attachmentId)
+      else await clearAdHocAiAutomationRunsAction(app.id)
     } catch (clearError) {
       setError(clearError instanceof Error ? clearError.message : 'AI conversation could not be cleared.')
     } finally {

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { GET } from '@/app/api/bff/applications/[id]/runtime/snapshot/route'
+import { GET } from '@/app/api/bff/devices/[id]/runtime/snapshot/route'
 import { getCurrentUser } from '@/server/auth/authorization'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { OrchestratorRequestError, request } from '@/server/orchestrator/request'
@@ -23,7 +23,7 @@ describe('application snapshot endpoint', () => {
   }
   const getSnapshot = (appId: string = id) =>
     GET(
-      new Request(`https://rebroid.example/api/bff/applications/${appId}/runtime/snapshot`, {
+      new Request(`https://rebroid.example/api/bff/devices/${appId}/runtime/snapshot`, {
         headers: { 'x-rebroid-snapshot-owner': 'spoofed-owner' }
       }),
       { params: Promise.resolve({ id: appId }) }
@@ -45,7 +45,7 @@ describe('application snapshot endpoint', () => {
     vi.mocked(request).mockResolvedValue(snapshot)
     const response = await getSnapshot()
     expect(request).toHaveBeenCalledWith(
-      `/apps/${id}/runtime/snapshot`,
+      `/devices/${id}/runtime/snapshot`,
       expect.objectContaining({ headers: { 'x-rebroid-snapshot-owner': accountId } }),
       expect.anything()
     )

@@ -359,6 +359,7 @@ export const RuntimeFileList = ({
               />
             ) : (
               <DataGridEmptyState
+                artwork='files'
                 title='This folder is empty'
                 description='Upload or drop files here, or choose another location.'
                 actions={onUpload ? [{ label: 'Upload files', onClick: onUpload }] : undefined}

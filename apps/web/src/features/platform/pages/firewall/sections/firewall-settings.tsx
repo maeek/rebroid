@@ -343,6 +343,7 @@ export const FirewallSettings = ({
           minWidth='64rem'
           emptyState={
             <DataGridEmptyState
+              artwork='network'
               title='No app policies'
               description='Network policies will appear here when application containers are configured.'
             />

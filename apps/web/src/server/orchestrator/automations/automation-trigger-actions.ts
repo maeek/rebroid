@@ -15,7 +15,7 @@ export const createAutomationTriggerAction = async (input: SaveAutomationTrigger
       revalidatePath('/automations/triggers')
       recordAutomationAudit(user.ownerUserId, 'automation.trigger.create', trigger.id, trigger.name, {
         automationId: trigger.automationId,
-        targetApplicationId: trigger.targetApplicationId
+        targetDeviceId: trigger.targetDeviceId
       })
       return trigger
     },
@@ -64,7 +64,7 @@ export const runAutomationTriggerAction = async (id: string) =>
       revalidatePath(`/automations/${run.automationId}`)
       recordAutomationAudit(user.ownerUserId, 'automation.trigger.run', id, id, {
         runId: run.id,
-        targetApplicationId: run.targetApplicationId
+        targetDeviceId: run.targetDeviceId
       })
       return run
     },

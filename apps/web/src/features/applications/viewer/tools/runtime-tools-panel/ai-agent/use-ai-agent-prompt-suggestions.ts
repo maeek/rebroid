@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AiAgentTarget } from './ai-agent-target'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 import type { AiPromptSuggestion, SuggestAdHocAiPromptsInput } from '@/shared/contracts/automation'
 
@@ -17,7 +17,7 @@ export const useAiAgentPromptSuggestions = ({
   selectedProvider
 }: {
   visible: boolean
-  app: AppDefinition
+  app: AiAgentTarget
   contextualSuggestionsEnabled: boolean
   fallbackSuggestions: AiPromptSuggestion[]
   generatePromptSuggestions?: GeneratePromptSuggestions
@@ -34,7 +34,8 @@ export const useAiAgentPromptSuggestions = ({
 
     let cancelled = false
     void generatePromptSuggestions({
-      targetApplicationId: app.id,
+      targetDeviceId: app.id,
+      ...(app.attachmentId && { attachmentId: app.attachmentId }),
       appName: app.name,
       profileMode: app.profileMode,
       profileName: app.profileName,
@@ -55,6 +56,7 @@ export const useAiAgentPromptSuggestions = ({
   }, [
     visible,
     app.id,
+    app.attachmentId,
     app.name,
     app.profileMode,
     app.profileName,

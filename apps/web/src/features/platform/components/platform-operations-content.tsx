@@ -7,6 +7,7 @@ import { activeWorkflowRunsHref } from '@/shared/model/active-workflow-runs-href
 import { appsInProgressHref, appsNeedingAttentionHref } from '@/shared/model/applications/app-gallery-status'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
+import { StateView } from '@/shared/ui/state-view'
 import type { PlatformOperationItem, PlatformOperationsSnapshot } from '@/shared/contracts/platform-operations'
 
 const OperationsGroup = ({
@@ -45,7 +46,14 @@ const OperationsGroup = ({
         <Skeleton className='h-5 w-36' />
       </div>
     )
-  else if (total === 0 && empty) content = <p className='text-sm text-foreground-muted'>{empty}</p>
+  else if (total === 0 && empty)
+    content = (
+      <StateView
+        kind='empty'
+        artwork='activity'
+        title={empty}
+      />
+    )
   else
     content = (
       <>

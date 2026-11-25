@@ -11,7 +11,7 @@ const run: AutomationRun = {
   automationId: 'workflow-1',
   automationTriggerId: null,
   ownerUserId: 'owner',
-  targetApplicationId: 'app',
+  targetDeviceId: 'app',
   targetProfileMode: 'temporary',
   targetProfileName: null,
   trigger: 'manual',

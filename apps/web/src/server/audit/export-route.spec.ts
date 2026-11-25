@@ -33,7 +33,7 @@ describe('audit CSV authorization and scope', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ isPlatformAdmin: false } as Awaited<
       ReturnType<typeof getCurrentUser>
     >)
-    expect((await GET(request('?resourceType=application&resourceId=app-1'))).status).toBe(403)
+    expect((await GET(request('?resourceType=device&resourceId=app-1'))).status).toBe(403)
     expect(exportAuditEvents).not.toHaveBeenCalled()
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
@@ -41,12 +41,12 @@ describe('audit CSV authorization and scope', () => {
   it('exports the exact app scope, filters, and sort without page limits', async () => {
     const response = await GET(
       request(
-        '?resourceType=application&resourceId=app-1&search=start&actor=admin&outcome=failure&from=2026-11-08&sort=action:asc&page=9&pageSize=1'
+        '?resourceType=device&resourceId=app-1&search=start&actor=admin&outcome=failure&from=2026-11-08&sort=action:asc&page=9&pageSize=1'
       )
     )
     expect(exportAuditEvents).toHaveBeenCalledWith(
       expect.objectContaining({
-        resourceType: 'application',
+        resourceType: 'device',
         resourceId: 'app-1',
         search: 'start',
         actorUserId: 'admin',

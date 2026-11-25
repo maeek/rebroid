@@ -61,7 +61,7 @@ test('app shortcuts keep equal row heights with a status symbol or Start action'
   await expect(recentRow).toHaveCSS('height', rowHeight)
   await expect(recentApp).toHaveCSS('height', rowHeight)
 
-  await page.evaluate(() => history.replaceState(null, '', '/app/stopped-app'))
+  await page.evaluate(() => history.replaceState(null, '', '/apps/stopped-app'))
   await expect(drawer).toBeHidden()
   await more.click()
   await expect(recentApp).toHaveAttribute('aria-current', 'page')
@@ -201,7 +201,7 @@ test('trigger creation uses consistent, searchable and keyboard accessible field
     await page.getByRole('checkbox', { name: 'Select current page' }).uncheck()
     await page.getByRole('button', { name: 'New trigger' }).click()
     const dialog = page.getByRole('dialog', { name: 'New trigger' })
-    const target = dialog.getByRole('combobox', { name: /Target app/ })
+    const target = dialog.getByRole('combobox', { name: /Target device/ })
     await target.fill('Reports')
     await page.getByRole('option', { name: /Reports worker/ }).click()
     await expect(target).toHaveValue('Reports worker')
@@ -230,7 +230,7 @@ test('trigger creation uses consistent, searchable and keyboard accessible field
     await expect(page.getByRole('button', { name: 'New trigger' })).toBeFocused()
     await page.getByRole('button', { name: 'Filters', exact: true }).click()
     const filters = page.getByRole('dialog', { name: 'Filters' })
-    await expect(filters.getByRole('combobox', { name: 'Target app' })).toBeVisible()
+    await expect(filters.getByRole('combobox', { name: 'Target device' })).toBeVisible()
     await expect(filters.getByRole('combobox', { name: 'State' })).toBeVisible()
     await filters.getByRole('button', { name: 'Done' }).click()
   }
@@ -262,7 +262,7 @@ test('network policies keep the same grid and filter geometry while loading', as
     await expect(page.getByRole('button', { name: 'Sync all rules' })).toBeEnabled()
     await expect(page.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
       'href',
-      '/app/preview-app?view=network'
+      '/apps/preview-app?view=network'
     )
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
@@ -306,7 +306,7 @@ test('the app Network view keeps its editor separate and accepts pasted destinat
 })
 
 test('resource titles wrap and the expanded sidebar remains scrollable to its last link', async ({ page }) => {
-  await page.route('**/api/bff/shell/recent-apps', route =>
+  await page.route('**/api/bff/shell/recent-devices', route =>
     route.fulfill({ json: { ok: true, data: [], requestId: 'preview' } })
   )
   for (const width of [390, 768, 1024, 1440, 2048]) {
@@ -592,7 +592,7 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   }
   const apps = sidebar.getByRole('link', { name: 'All apps', exact: true })
   await expect(apps).toHaveAttribute('href', '/apps')
-  await expect(sidebar.getByRole('link', { name: 'Create app', exact: true })).toHaveAttribute('href', '/apps/create')
+  await expect(sidebar.getByRole('link', { name: 'Create app', exact: true })).toHaveAttribute('href', '/apps/new')
   if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) {
     const hint = page.locator('[data-slot="navigation-hint"]').filter({ hasText: 'All apps' })
     await apps.hover()
@@ -731,7 +731,7 @@ test('Files opens Downloads and keeps folder navigation available on narrow and 
   page
 }, testInfo) => {
   const downloads = '/data/media/0/Download'
-  await page.route('**/api/bff/applications/*/runtime/files?*', route => {
+  await page.route('**/api/bff/devices/*/runtime/files?*', route => {
     const path = new URL(route.request().url()).searchParams.get('path')
     const data =
       path === downloads

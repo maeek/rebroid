@@ -36,7 +36,7 @@ describe('ai run action model', () => {
 
   it('preserves the complete AI input through a visual prompt edit and YAML serialization', () => {
     const definition = parse(`
-apiVersion: rebroid.io/automation/v1
+apiVersion: rebroid.io/automation/v2
 kind: AndroidAutomation
 metadata:
   name: Open Żappka

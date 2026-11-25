@@ -9,9 +9,9 @@ describe('automations table model', () => {
   it('clears workflow filters without restoring their previous values', () => {
     const url = new URL(
       buildAutomationGridHref('/automations', {
-        gridQuery: { q: 'smoke', tag: 'nightly', targetApplicationId: 'app-1', status: 'failed', lastRun: '7d' },
+        gridQuery: { q: 'smoke', tag: 'nightly', targetDeviceId: 'app-1', status: 'failed', lastRun: '7d' },
         pageSize: 20,
-        patch: { tag: undefined, targetApplicationId: undefined, status: undefined, lastRun: undefined, page: 1 }
+        patch: { tag: undefined, targetDeviceId: undefined, status: undefined, lastRun: undefined, page: 1 }
       }),
       'https://rebroid.test'
     )
@@ -30,7 +30,7 @@ describe('automations table model', () => {
         gridQuery: {
           q: 'smoke',
           tag: 'nightly',
-          targetApplicationId: 'app-1',
+          targetDeviceId: 'app-1',
           status: 'failed',
           lastRun: 'all',
           sort: 'updatedAt:desc',
@@ -40,6 +40,6 @@ describe('automations table model', () => {
         pageSize: 25,
         patch: { q: '', page: 1 }
       })
-    ).toBe('/automations?tag=nightly&targetApplicationId=app-1&status=failed&sort=updatedAt%3Adesc&page=1&pageSize=25')
+    ).toBe('/automations?tag=nightly&targetDeviceId=app-1&status=failed&sort=updatedAt%3Adesc&page=1&pageSize=25')
   })
 })

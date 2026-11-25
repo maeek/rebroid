@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { GET } from '@/app/api/bff/apps/gallery/route'
+import { GET } from '@/app/api/bff/devices/route'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getVisibleOwnerDisplayNames } from '@/server/users/owner-display-names'
+import { applicationPreview } from '@/shared/testing/application-preview'
 import { getAppsListPageData } from './page-data.server'
 
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
@@ -26,6 +27,8 @@ const owner = {
 
 const row = {
   id: 'app',
+  kind: applicationPreview.kind,
+  operations: applicationPreview.operations,
   name: 'Inventory',
   ownerUserId: 'owner',
   status: 'running',

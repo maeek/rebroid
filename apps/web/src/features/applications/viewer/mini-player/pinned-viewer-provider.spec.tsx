@@ -32,7 +32,7 @@ const surface = {
   kind: 'main',
   name: 'Main display',
   src: '/viewer/display?sessionId=session-1&audio=1',
-  popoutUrl: '/viewer/apps/app-1',
+  popoutUrl: '/viewer/devices/app-1',
   displaySize
 } as const
 

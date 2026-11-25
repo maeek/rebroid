@@ -56,6 +56,14 @@ export const CastingSessionsSection = ({
   } = controller
   const ownerNames = useMemo(() => new Map(owners.map(owner => [owner.id, owner.name])), [owners])
   const columns = useMemo(() => createCastingSessionColumns({ appsById, ownerNames }), [appsById, ownerNames])
+  const deviceNames = new Map(applications.map(device => [device.id, device.name]))
+  for (const session of sessions) {
+    if (session.provider === 'external' && session.applicationId) {
+      deviceNames.set(session.applicationId, session.deviceName ?? session.applicationId)
+    }
+  }
+  const canEndSelected = controller.health.ok || selectedSessions.every(session => session.provider === 'external')
+  const canEndPending = controller.health.ok || pendingEndSessions.every(session => session.provider === 'external')
 
   return (
     <>
@@ -65,7 +73,7 @@ export const CastingSessionsSection = ({
         contentClassName='gap-4'
       >
         <DataGridWorkspace
-          disabled={loading || !controller.health.ok}
+          disabled={loading || (!controller.health.ok && !sessions.some(session => session.provider === 'external'))}
           search={search}
           searchPlaceholder='Search sessions'
           onSearchChange={setSearch}
@@ -102,7 +110,7 @@ export const CastingSessionsSection = ({
               </FormField>
               <FormField
                 controlId='casting-session-application'
-                label='Application'
+                label='Device'
                 layout='vertical'
               >
                 <Select
@@ -116,13 +124,13 @@ export const CastingSessionsSection = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='all'>Any application</SelectItem>
-                    {applications.map(application => (
+                    <SelectItem value='all'>Any device</SelectItem>
+                    {Array.from(deviceNames, ([id, name]) => (
                       <SelectItem
-                        key={application.id}
-                        value={application.id}
+                        key={id}
+                        value={id}
                       >
-                        {application.name}
+                        {name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -166,8 +174,8 @@ export const CastingSessionsSection = ({
               ? [
                   {
                     id: 'application',
-                    label: 'Application',
-                    value: appsById.get(applicationFilter)?.name ?? applicationFilter,
+                    label: 'Device',
+                    value: deviceNames.get(applicationFilter) ?? applicationFilter,
                     onRemove: () => setApplicationFilter('all')
                   }
                 ]
@@ -193,7 +201,7 @@ export const CastingSessionsSection = ({
             <Button
               type='button'
               variant='ghost'
-              disabled={busy !== null || !controller.health.ok || selectedSessions.length === 0}
+              disabled={busy !== null || !canEndSelected || selectedSessions.length === 0}
               onClick={() => setPendingEndSessions(selectedSessions)}
             >
               End {selectedSessions.length || ''} session{selectedSessions.length === 1 ? '' : 's'}
@@ -217,8 +225,9 @@ export const CastingSessionsSection = ({
             minWidth='76rem'
             emptyState={
               <DataGridEmptyState
+                artwork='external-devices'
                 title='No viewer sessions'
-                description='Open an app viewer to start a display session.'
+                description='Open a managed device or a verified external device in the viewer to start a session.'
               />
             }
             rowContextMenu={row => {
@@ -227,7 +236,7 @@ export const CastingSessionsSection = ({
                 <>
                   {hasBulkSelection ? (
                     <ContextMenuItem
-                      disabled={busy !== null || !controller.health.ok}
+                      disabled={busy !== null || !canEndSelected}
                       onSelect={() => setPendingEndSessions(selectedSessions)}
                     >
                       <IconTrash className='size-4' />
@@ -235,7 +244,11 @@ export const CastingSessionsSection = ({
                     </ContextMenuItem>
                   ) : null}
                   <ContextMenuItem
-                    disabled={busy !== null || !controller.health.ok || !activeStatuses.has(row.original.status)}
+                    disabled={
+                      busy !== null ||
+                      (!controller.health.ok && row.original.provider !== 'external') ||
+                      !activeStatuses.has(row.original.status)
+                    }
                     onSelect={() => setPendingEndSessions([row.original])}
                   >
                     <IconTrash className='size-4' />
@@ -265,12 +278,12 @@ export const CastingSessionsSection = ({
             ? 'End display session?'
             : `End ${pendingEndSessions.length} display sessions?`
         }
-        description='Selected viewers disconnect. Their apps keep running and viewers can reconnect.'
+        description='This disconnects the selected viewers. Their devices remain running.'
         tone='warning'
         confirmLabel={pendingEndSessions.length === 1 ? 'End session' : 'End sessions'}
         pendingLabel='Ending…'
         pending={busy !== null}
-        confirmDisabled={!controller.health.ok}
+        confirmDisabled={!canEndPending}
         onOpenChange={open => {
           if (!open) setPendingEndSessions([])
         }}

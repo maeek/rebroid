@@ -11,7 +11,7 @@ export const workflowGridQueryFromSearchParams = (searchParams: WorkflowGridSear
     ...paginationFromSearchParams(searchParams),
     q: firstSearchParamValue(searchParams.q)?.trim() || undefined,
     tag: firstSearchParamValue(searchParams.tag)?.trim() || undefined,
-    targetApplicationId: firstSearchParamValue(searchParams.targetApplicationId)?.trim() || undefined,
+    targetDeviceId: firstSearchParamValue(searchParams.targetDeviceId)?.trim() || undefined,
     status: validatedSearchParam(searchParams.status, statuses),
     lastRun: validatedSearchParam(searchParams.lastRun, lastRuns),
     sort: firstSearchParamValue(searchParams.sort)?.trim() || undefined

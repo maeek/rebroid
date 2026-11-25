@@ -7,6 +7,7 @@ import {
   IconCalendarTime,
   IconCast,
   IconChartHistogram,
+  IconDevices,
   IconHistory,
   IconNetwork,
   IconPlugConnected,
@@ -19,6 +20,7 @@ import {
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import type { NavigationHealthId } from './platform-health-context'
+import type { ShellUser } from './shell-user'
 import type { FeatureFlagKey } from '@/shared/contracts/feature-flags'
 
 export type NavigationVariant = 'sidebar' | 'rail' | 'drawer'
@@ -33,14 +35,19 @@ export type NavigationItem = {
 }
 
 export const appsNavigationItem: NavigationItem = { name: 'All apps', Icon: IconApps, href: '/apps' }
+export const externalDevicesNavigationItem: NavigationItem = {
+  name: 'All devices',
+  Icon: IconDevices,
+  href: '/devices'
+}
+export const canBrowseDevices = (user: ShellUser, enabled: boolean) =>
+  enabled && (user.isPlatformAdmin || user.canUseExternalDevices || user.canEnrollExternalDevices)
 export const workflowsNavigationItem: NavigationItem = {
   name: 'Workflows',
   Icon: IconRobot,
   href: '/automations',
   shortcut: { href: '/automations/create', label: 'Create workflow' }
 }
-
-export const appSections = [appsNavigationItem]
 
 export const automationSections: NavigationItem[] = [
   workflowsNavigationItem,

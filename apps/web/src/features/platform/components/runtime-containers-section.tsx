@@ -211,6 +211,8 @@ export const RuntimeContainersSection = ({
             }}
             emptyState={
               <DataGridEmptyState
+                artwork='inventory'
+                artworkSize='page'
                 title='No containers'
                 description='No containers are available in the current Docker inventory.'
               />
@@ -246,7 +248,7 @@ export const RuntimeContainersSection = ({
                   </ContextMenuItem>
                   {row.original.applicationId && !row.original.orphaned ? (
                     <ContextMenuItem asChild>
-                      <Link href={`/app/${row.original.applicationId}?logs=1`}>
+                      <Link href={`/apps/${row.original.applicationId}?logs=1`}>
                         <IconTerminal2 className='size-4' />
                         Logs
                       </Link>

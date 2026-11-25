@@ -365,21 +365,17 @@ describe('Create app failure feedback', () => {
     expect(toast).not.toHaveBeenCalled()
 
     fireEvent.click(submit)
-    await waitFor(() => expect(push).toHaveBeenCalledExactlyOnceWith(`/app/${appId}`))
+    await waitFor(() => expect(push).toHaveBeenCalledExactlyOnceWith(`/apps/${appId}`))
     expect(submitCreateApplicationAction).toHaveBeenCalledTimes(2)
     expect(submitCreateApplicationAction).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ name: 'Tablet landscape', uploadedApkId: savedApk.id })
     )
-    expect(sendBff).toHaveBeenCalledExactlyOnceWith(
-      `/api/bff/applications/${appId}/icon`,
-      { icon: customIcon },
-      'PATCH'
-    )
+    expect(sendBff).toHaveBeenCalledExactlyOnceWith(`/api/bff/devices/${appId}/icon`, { icon: customIcon }, 'PATCH')
     expect(screen.getByRole('button', { name: 'Opening app…' })).toBeDisabled()
     expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'App icon saved' }))
 
-    iconWrite.resolve(`/api/app-icons/${appId}?v=revision`)
+    iconWrite.resolve(`/api/device-icons/${appId}?v=revision`)
     await waitFor(() => expect(toast).toHaveBeenCalledWith({ title: 'App icon saved', variant: 'success' }))
   })
 
@@ -390,7 +386,7 @@ describe('Create app failure feedback', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), { target: { value: 'Tablet landscape' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create app' }))
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith(`/app/${appId}`))
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`/apps/${appId}`))
     expect(toast).toHaveBeenCalledWith({
       title: 'App creation started',
       description: 'Track provisioning on the app page.',

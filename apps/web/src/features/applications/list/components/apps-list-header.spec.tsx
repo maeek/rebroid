@@ -6,7 +6,7 @@ import { AppsListHeader } from './apps-list-header'
 describe('app creation affordances', () => {
   it('keeps creation available to authorized users', () => {
     render(<AppsListHeader canCreate />)
-    expect(screen.getByRole('link', { name: 'Create app' })).toHaveAttribute('href', '/apps/create')
+    expect(screen.getByRole('link', { name: 'Create app' })).toHaveAttribute('href', '/apps/new')
   })
 
   it('does not offer creation to users without permission', () => {

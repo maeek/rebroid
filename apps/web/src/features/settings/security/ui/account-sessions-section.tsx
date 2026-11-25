@@ -140,6 +140,7 @@ export const AccountSessionsSection = ({
             loading={loading ? { rowCount: 1 } : false}
             emptyState={
               <DataGridEmptyState
+                artwork='accounts'
                 title='No active sessions'
                 description='New sign-ins will appear here.'
               />

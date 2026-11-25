@@ -20,7 +20,7 @@ export const referenceOptionId = (value: AutomationValueRef) => {
 export const valueRefFromReferenceId = (id: string, references: AutomationReferenceOption[]): AutomationValueRef => {
   const selected = references.find(option => option.id === id)
   if (!selected || selected.value.source === 'runContext') {
-    return { source: 'runContext', key: selected?.value.key ?? 'targetApplicationId' }
+    return { source: 'runContext', key: selected?.value.key ?? 'targetDeviceId' }
   }
   return {
     source: 'stepOutput',

@@ -11,7 +11,7 @@ export const recordApplicationAudit = (
     actorLabel: actorUserId,
     category: 'application',
     action,
-    resourceType: 'application',
+    resourceType: 'device',
     resourceId: app.id,
     resourceLabel: app.name,
     details

@@ -8,7 +8,7 @@ import { ProtectedNavigation } from './protected-navigation'
 import type { OrchestratorHealth, ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
 
-const navigation = vi.hoisted(() => ({ pathname: '/apps' }))
+const navigation = vi.hoisted(() => ({ pathname: '/devices' }))
 vi.mock('next/navigation', () => ({
   usePathname: () => navigation.pathname
 }))
@@ -51,14 +51,15 @@ const feature = (key: FeatureFlagState['key'], enabled: boolean): FeatureFlagSta
   conflicts: []
 })
 
-const sidebar = (optionalServicesEnabled = true, canManage = true) => (
+const sidebar = (optionalServicesEnabled = true, canManage = true, externalDevicesEnabled = false) => (
   <FeatureFlagsProvider
     manifest={{
       revision: 1,
       features: [
         feature('feature.ocr', optionalServicesEnabled),
         feature('feature.firewall', optionalServicesEnabled),
-        feature('feature.workflows', optionalServicesEnabled)
+        feature('feature.workflows', optionalServicesEnabled),
+        feature('feature.external-devices', externalDevicesEnabled)
       ]
     }}
   >
@@ -70,7 +71,8 @@ const sidebar = (optionalServicesEnabled = true, canManage = true) => (
           avatarDataUrl: null,
           isPlatformAdmin: true,
           canCreateApp: canManage,
-          canManageWorkflows: canManage
+          canManageWorkflows: canManage,
+          canEnrollExternalDevices: canManage
         }}
         recentAppsQuery={{ data: [], isLoading: false, mutate: vi.fn() }}
       />
@@ -97,8 +99,31 @@ describe('platform health navigation', () => {
     mockPoll()
     render(sidebar(true, false))
     expect(screen.getByRole('link', { name: 'All apps' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Register device' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Create app' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Workflows' })).toBeNull()
+  })
+
+  it('highlights Devices independently of Apps', () => {
+    mockPoll()
+    navigation.pathname = '/devices'
+    render(sidebar(false, true, true))
+    expect(screen.getByRole('link', { name: 'All devices' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'All apps' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('removes the entire Devices section for an administrator when the feature turns off', () => {
+    mockPoll()
+    navigation.pathname = '/devices'
+    const { rerender } = render(sidebar(true, true, true))
+    expect(screen.getByRole('link', { name: 'All devices' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Register device' })).toBeVisible()
+
+    rerender(sidebar(true, true, false))
+    expect(screen.queryByText('Devices', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'All devices' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Register device' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'All apps' })).toBeVisible()
   })
 
   it('places each automation creation shortcut on its destination row', () => {

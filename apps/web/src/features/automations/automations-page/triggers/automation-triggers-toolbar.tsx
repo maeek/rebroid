@@ -51,7 +51,7 @@ export const AutomationTriggersToolbar = ({
     onResetFilters={() =>
       onUpdateGrid({
         tag: undefined,
-        targetApplicationId: undefined,
+        targetDeviceId: undefined,
         enabled: undefined,
         status: undefined,
         lastRun: undefined,

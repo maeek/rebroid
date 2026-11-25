@@ -55,7 +55,7 @@ describe('audit log workspace', () => {
       screen.getByRole('link', { name: 'Export CSV' }).getAttribute('href')!,
       'https://example.test'
     )
-    expect(exportUrl.searchParams.get('resourceType')).toBe('application')
+    expect(exportUrl.searchParams.get('resourceType')).toBe('device')
     expect(exportUrl.searchParams.get('resourceId')).toBe('app-reports')
   })
 
@@ -64,7 +64,7 @@ describe('audit log workspace', () => {
       <ActivityEventsTable
         {...previewActivityProps}
         application={{ id: 'app-reports', name: 'Reports worker' }}
-        filters={{ resourceType: 'application', resourceId: 'app-reports' }}
+        filters={{ resourceType: 'device', resourceId: 'app-reports' }}
         result={{ ...previewActivityProps.result, events: [], total: 0 }}
       />
     )
@@ -72,7 +72,7 @@ describe('audit log workspace', () => {
     expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Export CSV' })).toHaveAttribute(
       'href',
-      '/api/activity/export?resourceType=application&resourceId=app-reports&sort=createdAt%3Adesc'
+      '/api/activity/export?resourceType=device&resourceId=app-reports&sort=createdAt%3Adesc'
     )
   })
 
@@ -129,7 +129,7 @@ describe('audit log workspace', () => {
     expect(screen.queryByRole('dialog', { name: 'Update trigger' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Export CSV' })).toHaveAttribute(
       'href',
-      '/api/activity/export?resourceType=application&resourceId=app-b&sort=createdAt%3Adesc'
+      '/api/activity/export?resourceType=device&resourceId=app-b&sort=createdAt%3Adesc'
     )
   })
 })

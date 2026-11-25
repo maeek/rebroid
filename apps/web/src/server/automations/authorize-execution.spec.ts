@@ -19,7 +19,7 @@ vi.mock('@/server/orchestrator/automations/client', () => ({
 }))
 const input = {
   ownerUserId: 'user',
-  targetApplicationId: 'app',
+  targetDeviceId: 'app',
   operation: 'attach',
   definition: { spec: { steps: [{ uses: 'android.wait', with: {} }] } }
 } as Parameters<typeof authorizeAutomationExecution>[0]
@@ -137,9 +137,9 @@ describe('execution authorization', () => {
       { id: 'closed', ownerUserId: 'user', status: 'stopped' },
       { id: 'foreign', ownerUserId: 'someone-else', status: 'provisioning' }
     ] as never)
-    vi.mocked(workflows.listActiveRuns).mockResolvedValue([{ targetApplicationId: 'other' }] as never)
+    vi.mocked(workflows.listActiveRuns).mockResolvedValue([{ targetDeviceId: 'other' }] as never)
     await expect(authorizeAutomationExecution({ ...input, operation: 'start' })).rejects.toThrow('quota')
-    vi.mocked(workflows.listActiveRuns).mockResolvedValue([{ targetApplicationId: 'app' }] as never)
+    vi.mocked(workflows.listActiveRuns).mockResolvedValue([{ targetDeviceId: 'app' }] as never)
     await expect(authorizeAutomationExecution({ ...input, operation: 'start' })).resolves.toMatchObject({
       maxOpenApps: 1
     })

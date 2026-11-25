@@ -93,7 +93,7 @@ export function AutomationTriggersPage({
     [initialApplications]
   )
   const targetById = useMemo(() => new Map(targetApps.map(app => [app.id, app])), [targetApps])
-  const selectedApplication = form ? targetById.get(form.targetApplicationId) : undefined
+  const selectedApplication = form ? targetById.get(form.targetDeviceId) : undefined
   const tagSuggestions = useMemo(
     () =>
       buildAutomationTagCatalog(triggersPage.facets.tags, [
@@ -126,23 +126,23 @@ export function AutomationTriggersPage({
   }, [createRequested, loading, saving, formOpen])
 
   const openEdit = (trigger: AutomationTrigger) => {
-    const app = targetById.get(trigger.targetApplicationId)
+    const app = targetById.get(trigger.targetDeviceId)
     const next = editTriggerFormState({ trigger, app })
     setForm(next)
     setBaselineForm(next)
     setFormOpen(true)
   }
 
-  const updateTargetApplication = (targetApplicationId: string) => {
-    const app = targetById.get(targetApplicationId)
+  const updateTargetApplication = (targetDeviceId: string) => {
+    const app = targetById.get(targetDeviceId)
     setForm(current =>
       current
         ? applyTriggerTargetApplication(
             current,
-            targetApplicationId,
+            targetDeviceId,
             app,
             automationById.get(current.automationId),
-            targetById.get(current.targetApplicationId)
+            targetById.get(current.targetDeviceId)
           )
         : current
     )
@@ -155,7 +155,7 @@ export function AutomationTriggersPage({
             current,
             automationById.get(automationId),
             automationById.get(current.automationId),
-            targetById.get(current.targetApplicationId)
+            targetById.get(current.targetDeviceId)
           )
         : current
     )

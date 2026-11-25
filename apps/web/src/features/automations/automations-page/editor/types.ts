@@ -34,7 +34,7 @@ export interface AutomationTriggersPageProps {
   targetApps: TriggerApplication[]
   canRun?: boolean
   canCreateApp?: boolean
-  initialApplications: ApplicationName[]
+  initialApplications: Array<ApplicationName & { external?: boolean }>
   initialAutomations: AutomationOption[]
   triggersPage: AutomationTriggersGridPage
   gridQuery: AutomationTriggersGridQuery

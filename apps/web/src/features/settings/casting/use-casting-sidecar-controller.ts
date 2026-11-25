@@ -18,12 +18,14 @@ import type { SortingState } from '@tanstack/react-table'
 export const useCastingSidecarController = ({
   initialHealth,
   initialSessions,
+  externalEnabled = false,
   applications,
   refreshKey,
   onRefreshComplete
 }: {
   initialHealth: ServiceHealth
   initialSessions: DisplaySidecarSession[]
+  externalEnabled?: boolean
   applications: CastingApplication[]
   refreshKey: number
   onRefreshComplete?: (succeeded: boolean) => void
@@ -69,10 +71,14 @@ export const useCastingSidecarController = ({
     setSelectedIds(current => retainVisibleSelectedIds(sortedSessions, current))
   }, [sortedSessions])
 
-  const updateDisplayState = useCallback(async (nextHealth: ServiceHealth) => {
-    setHealth(nextHealth)
-    if (nextHealth.ok) setSessions(await listDisplaySidecarSessionsAction())
-  }, [])
+  const updateDisplayState = useCallback(
+    async (nextHealth: ServiceHealth) => {
+      setHealth(nextHealth)
+      if (nextHealth.ok) setSessions(await listDisplaySidecarSessionsAction())
+      else if (externalEnabled) setSessions(await listDisplaySidecarSessionsAction(false))
+    },
+    [externalEnabled]
+  )
 
   const refresh = useCallback(async () => {
     setBusy('refresh')
@@ -141,15 +147,17 @@ export const useCastingSidecarController = ({
   }
 
   const endSessions = async () => {
-    if (!health.ok) return
-    const targets = pendingEndSessions
+    const targets = pendingEndSessions.filter(session => health.ok || session.provider === 'external')
     if (targets.length === 0) return
     setBusy(targets.length === 1 ? targets[0].id : 'bulk')
     try {
       const results = await Promise.allSettled(
-        targets.map(async session =>
-          activeStatuses.has(session.status) ? releaseDisplaySidecarSessionAction(session.id) : session
-        )
+        targets.map(async session => {
+          if (!activeStatuses.has(session.status)) return session
+          if (session.provider !== 'external') return releaseDisplaySidecarSessionAction(session.id)
+          const released = await releaseDisplaySidecarSessionAction(session.id, true)
+          return { ...session, status: released.status, lastActivityAt: released.lastActivityAt }
+        })
       )
       const endedById = new Map(
         results.flatMap(result => (result.status === 'fulfilled' ? [[result.value.id, result.value] as const] : []))

@@ -85,6 +85,25 @@ describe('account access revocation', () => {
     expect(hasPendingViewerRevocation(userId)).toBe(false)
   })
 
+  it('retries the external provider independently after managed revocation completes', async () => {
+    vi.stubEnv('EXTERNAL_ADB_BROKER_SECRET', 'test-broker-secret')
+    revoke
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('broker unavailable'))
+
+    await expect(setUserDisabledAction(userId, true)).resolves.toMatchObject({ ok: true, data: { disabled: true } })
+    expect(hasPendingViewerRevocation(userId, 'managed')).toBe(false)
+    expect(hasPendingViewerRevocation(userId, 'external')).toBe(true)
+
+    resetDatabaseForTests()
+    revoke.mockClear()
+    await runDueWebMaintenance(Date.now() + 60_000)
+    expect(revoke).toHaveBeenCalledExactlyOnceWith([userId], expect.any(AbortSignal), 'external')
+    expect(hasPendingViewerRevocation(userId, 'external')).toBe(false)
+  })
+
   it('sends the affected owners together in each group revocation pass', async () => {
     const group = await userService.createGroup({ name: 'Viewer group' }, await administrator())
     await userService.updateUser(userId, { groupIds: [group.id] }, await administrator())

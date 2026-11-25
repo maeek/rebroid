@@ -85,7 +85,7 @@ export const AppAutomationRunAction = ({
     setRunning(true)
     try {
       const result = await runAutomationAction(selectedWorkflow.id, {
-        targetApplicationId: app.id,
+        targetDeviceId: app.id,
         profileMode,
         profileName: profileName.trim() || 'default',
         startPolicy: startIfNeeded ? 'start-if-needed' : 'require-running'

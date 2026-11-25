@@ -252,7 +252,7 @@ export const CreateAppForm = ({
         setFailure({ message: unconfirmedAppCreationMessage, requestId: result.requestId })
         return
       }
-      const destination = `/app/${createdApp.id}`
+      const destination = `/apps/${createdApp.id}`
       setCreationPhase('opening')
       topLoader.setProgress(1)
       toast({
@@ -262,7 +262,7 @@ export const CreateAppForm = ({
       })
       router.push(destination)
       if (iconPreview) {
-        void sendBff<string | null>(`/api/bff/applications/${createdApp.id}/icon`, { icon: iconPreview }, 'PATCH').then(
+        void sendBff<string | null>(`/api/bff/devices/${createdApp.id}/icon`, { icon: iconPreview }, 'PATCH').then(
           savedIcon => {
             if (!savedIcon) return
             if (window.location.pathname === destination) router.refresh()

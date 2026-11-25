@@ -27,6 +27,7 @@ import { PageContent } from '@/shared/ui/page/page-layout'
 import { formatPlatformBytes, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-section'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
+import { StateView } from '@/shared/ui/state-view'
 import type { PlatformImageDetails } from '@/shared/contracts/platform'
 
 const RuntimeImageActions = ({
@@ -215,7 +216,11 @@ export const RuntimeImagePageContent = ({
             />
           </Visible>
           <Visible when={!loading && details?.relatedContainers.length === 0}>
-            <p className='text-sm text-foreground-muted'>No local containers reference this image.</p>
+            <StateView
+              kind='empty'
+              artwork='inventory'
+              title='No local containers reference this image.'
+            />
           </Visible>
         </PlatformResourceSection>
 

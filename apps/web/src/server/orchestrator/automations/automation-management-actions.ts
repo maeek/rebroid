@@ -10,6 +10,7 @@ import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-
 import {
   assertAutomationPermission,
   assertDefinitionPermissions,
+  assertExternalCommandPermission,
   listPermittedDraftCommands,
   recordAutomationAudit,
   requireAutomationUser,
@@ -35,13 +36,15 @@ const eventLine = (event: AutomationRunEvent) => {
 const promptFromAdHocRun = ({
   events,
   runId,
-  targetApplicationId,
+  targetDeviceId,
+  external,
   targetProfileMode,
   targetProfileName
 }: {
   events: AutomationRunEvent[]
   runId: string
-  targetApplicationId: string
+  targetDeviceId: string
+  external: boolean
   targetProfileMode: string | null
   targetProfileName: string | null
 }) => {
@@ -68,9 +71,13 @@ const promptFromAdHocRun = ({
     'Use concrete automation commands. Do not use ai.run. Keep the workflow focused on the actions and checks that made the run succeed.',
     '',
     `Run id: ${runId}`,
-    `Target application id: ${targetApplicationId}`,
-    `Target profile mode: ${targetProfileMode ?? 'default'}`,
-    `Target profile name: ${targetProfileName ?? 'default'}`,
+    `Target device id: ${targetDeviceId}`,
+    ...(external
+      ? ['Target device kind: external ADB']
+      : [
+          `Target profile mode: ${targetProfileMode ?? 'default'}`,
+          `Target profile name: ${targetProfileName ?? 'default'}`
+        ]),
     '',
     `Original request:\n${(userPrompt || 'Ad-hoc AI run').slice(0, 8_000)}`,
     '',
@@ -103,6 +110,8 @@ export const draftWorkflowFromAdHocRunAction = async ({
   const user = await requireAutomationUser('automations:manage')
   assertAutomationPermission(user, 'automations:run-ai')
   const run = await orchestratorAutomationsClient.getRun(user.ownerUserId, runId)
+  const external = run.targetKind === 'external'
+  if (external) assertExternalCommandPermission(user, 'ai.run')
   if (run.status !== 'success') {
     throw new Error('Only successful AI runs can be saved as workflow drafts.')
   }
@@ -117,7 +126,8 @@ export const draftWorkflowFromAdHocRunAction = async ({
     prompt: promptFromAdHocRun({
       events,
       runId: run.id,
-      targetApplicationId: run.targetApplicationId,
+      targetDeviceId: run.targetDeviceId,
+      external,
       targetProfileMode: run.targetProfileMode,
       targetProfileName: run.targetProfileName
     }),
@@ -125,9 +135,10 @@ export const draftWorkflowFromAdHocRunAction = async ({
     modelId,
     visionProviderId,
     visionModelId,
-    allowedTools: await listPermittedDraftCommands(user)
+    allowedTools: external ? await listPermittedDraftCommands(user, true) : await listPermittedDraftCommands(user)
   })
-  await assertDefinitionPermissions(user, draft.definition)
+  if (external) await assertDefinitionPermissions(user, draft.definition, true)
+  else await assertDefinitionPermissions(user, draft.definition)
   recordAutomationAudit(user.ownerUserId, 'automation.ai.draft-from-run', run.automationId, 'Ad-hoc AI automation', {
     runId
   })

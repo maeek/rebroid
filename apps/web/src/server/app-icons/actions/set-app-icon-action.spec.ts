@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { PATCH } from '@/app/api/bff/applications/[id]/icon/route'
+import { PATCH } from '@/app/api/bff/devices/[id]/icon/route'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { removeStoredAppIcon, setInitialStoredAppIcon } from '../store'
@@ -20,8 +20,9 @@ it('requires ownership for both icon mutations, including administrators and sto
   >)
   vi.mocked(orchestratorAppCatalogClient.getViewerRuntime).mockResolvedValue({
     ownerUserId: 'other',
-    containerId: null,
-    status: 'stopped'
+    deviceId: id,
+    kind: 'managed',
+    runtimeId: null
   })
   expect((await setAppIconAction(id, null)).ok).toBe(false)
   const response = await PATCH(new Request('https://example.test', { method: 'PATCH' }), {
@@ -33,8 +34,9 @@ it('requires ownership for both icon mutations, including administrators and sto
   expect(setInitialStoredAppIcon).not.toHaveBeenCalled()
   vi.mocked(orchestratorAppCatalogClient.getViewerRuntime).mockResolvedValue({
     ownerUserId: 'owner',
-    containerId: null,
-    status: 'stopped'
+    deviceId: id,
+    kind: 'managed',
+    runtimeId: null
   })
   expect((await setAppIconAction(id, null)).ok).toBe(true)
   expect(removeStoredAppIcon).toHaveBeenCalledWith(id)

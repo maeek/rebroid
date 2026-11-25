@@ -60,7 +60,7 @@ export const getProtectedViewerShellUrl = (
     query.set('transport', options.transport)
   }
 
-  return `/viewer/apps/${applicationId}${query.size > 0 ? `?${query.toString()}` : ''}`
+  return `/viewer/devices/${applicationId}${query.size > 0 ? `?${query.toString()}` : ''}`
 }
 
 export const getProtectedDisplaySidecarUrl = ({

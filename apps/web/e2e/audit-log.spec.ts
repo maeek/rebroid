@@ -94,7 +94,7 @@ test('audit filters are searchable and labeled; app scope keeps global actions o
   const href = await page.getByRole('link', { name: 'Export CSV' }).getAttribute('href')
   const url = new URL(href!, 'https://example.test')
   expect(url.searchParams.get('resourceId')).toBe('preview-app')
-  expect(url.searchParams.get('resourceType')).toBe('application')
+  expect(url.searchParams.get('resourceType')).toBe('device')
 })
 
 test('audit loading retains toolbar and table header geometry', async ({ page }) => {

@@ -43,7 +43,7 @@ describe('active workflow run page data', () => {
         id: 'run',
         automationId: 'workflow',
         workflowName: 'Inventory',
-        targetApplicationId: 'target',
+        targetDeviceId: 'target',
         status: 'queued',
         createdAt: '2026-11-12T12:00:00Z'
       }

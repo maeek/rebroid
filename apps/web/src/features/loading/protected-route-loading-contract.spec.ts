@@ -6,9 +6,12 @@ const protectedRoot = resolve(process.cwd(), 'src/app/(protected)')
 
 const renderableRoutes = [
   '(standard)/(apk-review)/platform/apks',
-  '(standard)/app/[slug]',
-  '(standard)/apps',
-  '(standard)/apps/create',
+  '(standard)/apps/[slug]',
+  '(standard)/apps/(inventory)',
+  '(standard)/apps/new',
+  '(standard)/devices/new',
+  '(standard)/devices/(inventory)',
+  '(standard)/devices/external/[id]',
   '(standard)/automations',
   '(standard)/automations/[id]',
   '(standard)/automations/[id]/traces',
@@ -44,7 +47,8 @@ const renderableRoutes = [
   '(standard)/security/users/[id]',
   '(standard)/system/resources',
   'account/required-password-change',
-  'viewer/apps/[id]'
+  'viewer/devices/[id]',
+  'viewer/devices/external/[id]'
 ] as const
 
 const dataGridLoadingOwners = [
@@ -77,7 +81,7 @@ describe('protected route loading contract', () => {
       expect(existsSync(loadingPath), `${route} loading state`).toBe(true)
 
       const source = readFileSync(loadingPath, 'utf8').trim()
-      if (route === '(standard)/app/[slug]') {
+      if (route === '(standard)/apps/[slug]') {
         expect(source).toContain('<AppPageSkeleton activity={<AppActivityLoading />} />')
         expect(source).not.toContain('className')
       } else {
@@ -99,6 +103,12 @@ describe('protected route loading contract', () => {
 
     const layout = readFileSync(resolve(protectedRoot, '(standard)/platform/layout.tsx'), 'utf8')
     expect(layout).toContain('await requireAdmin()')
+  })
+
+  it('keeps the device inventory loader out of the detail and create routes', () => {
+    const devices = resolve(protectedRoot, '(standard)/devices')
+    expect(existsSync(resolve(devices, 'loading.tsx'))).toBe(false)
+    expect(existsSync(resolve(devices, '(inventory)/loading.tsx'))).toBe(true)
   })
 
   it('constructs loading DataGrid functions inside client boundaries', () => {

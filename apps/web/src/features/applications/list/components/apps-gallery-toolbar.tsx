@@ -183,7 +183,7 @@ export const AppsGalleryToolbar = ({
       selectionMode={isManaging}
       bulkActions={bulkActions}
       manageActions={
-        canSelect && (canStop || canDelete) ? (
+        canSelect && (isManaging || canStop || canDelete) ? (
           <SelectAppsButton
             isManaging={isManaging}
             onClick={isManaging ? exitManageMode : () => startManaging()}
@@ -255,7 +255,9 @@ export const AppsGalleryWorkspace = ({
       />
     }
     filterTitle='Filter apps'
-    filterDescription={ownership === undefined ? 'Narrow the gallery by app status.' : 'Filter by status or ownership.'}
+    filterDescription={
+      ownership === undefined ? 'Narrow the gallery by device status.' : 'Filter by status or ownership.'
+    }
     onResetFilters={() => {
       onStatusChange('all')
       onOwnershipChange('all')

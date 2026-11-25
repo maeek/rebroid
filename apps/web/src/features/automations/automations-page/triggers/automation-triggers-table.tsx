@@ -5,6 +5,7 @@ import { IconEdit, IconLoader2, IconPlayerPlayFilled, IconTrash } from '@tabler/
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { MutationSwitch } from '@/components/ui/mutation-switch'
 import { cn } from '@/lib/utils'
+import { externalDeviceHref } from '@/shared/model/applications/external-device-links'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
@@ -26,7 +27,7 @@ const triggerEmptyState = (missingApps: boolean, missingWorkflows: boolean, canC
   let action: StateViewAction | undefined
   if (missingWorkflows) action = { label: 'New workflow', href: '/automations/create' }
   else if (missingApps)
-    action = canCreateApp ? { label: 'Create app', href: '/apps/create' } : { label: 'View apps', href: '/apps' }
+    action = canCreateApp ? { label: 'Create app', href: '/apps/new' } : { label: 'View apps', href: '/apps' }
   let description = 'Create a trigger to run a workflow on a schedule.'
   if (missingApps && missingWorkflows) description = 'A trigger needs a workflow and an app profile.'
   else if (missingWorkflows) description = 'Create a workflow before scheduling it with a trigger.'
@@ -34,6 +35,8 @@ const triggerEmptyState = (missingApps: boolean, missingWorkflows: boolean, canC
   return (
     <DataGridEmptyState
       headingLevel={2}
+      artwork='trigger'
+      artworkSize='page'
       title='No triggers yet'
       description={description}
       actions={action ? [action] : undefined}
@@ -105,7 +108,7 @@ export function AutomationTriggersTable({
   onToggleEnabled,
   toggleFeedback
 }: {
-  applicationById: Map<string, ApplicationName>
+  applicationById: Map<string, ApplicationName & { external?: boolean }>
   automationById: Map<string, AutomationOption>
   busyId: string | null
   canCreateApp: boolean
@@ -180,17 +183,23 @@ export function AutomationTriggersTable({
         meta: { compactSlot: 'details', label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
         cell: ({ row }) => {
           const trigger = row.original
-          const application = applicationById.get(trigger.targetApplicationId)
+          const application = applicationById.get(trigger.targetDeviceId)
           return (
             <div className='grid gap-1 text-sm text-foreground-muted'>
               <ResourceLink
-                href={`/app/${encodeURIComponent(trigger.targetApplicationId)}`}
+                href={
+                  application?.external
+                    ? externalDeviceHref(trigger.targetDeviceId)
+                    : `/apps/${encodeURIComponent(trigger.targetDeviceId)}`
+                }
                 className='truncate'
               >
-                {application?.name ?? trigger.targetApplicationId}
+                {application?.name ?? trigger.targetDeviceId}
               </ResourceLink>
               <span className='truncate'>
-                {trigger.profileName ?? 'default'} / {trigger.profileMode ?? 'persistent'}
+                {application?.external
+                  ? 'Verified attachment required'
+                  : `${trigger.profileName ?? 'default'} / ${trigger.profileMode ?? 'persistent'}`}
               </span>
             </div>
           )

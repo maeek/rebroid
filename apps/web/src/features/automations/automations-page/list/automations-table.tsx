@@ -137,7 +137,7 @@ export function AutomationsTable({
         enableSorting: false,
         meta: { label: 'Apps', skeleton: { kind: 'text', width: 'w-36' } },
         cell: ({ row }) => {
-          const appIds = row.original.targetApplicationIds
+          const appIds = row.original.targetDeviceIds
           return (
             <div className='flex flex-wrap items-center gap-x-3 gap-y-1 text-sm'>
               {appIds.length === 0 ? (
@@ -146,7 +146,7 @@ export function AutomationsTable({
                 appIds.map(id => (
                   <ResourceLink
                     key={id}
-                    href={`/app/${encodeURIComponent(id)}`}
+                    href={`/apps/${encodeURIComponent(id)}`}
                     className='max-w-full truncate'
                     title={appNameById.get(id) ?? id}
                   >
@@ -247,6 +247,8 @@ export function AutomationsTable({
           emptyState={
             <DataGridEmptyState
               headingLevel={2}
+              artwork='workflow'
+              artworkSize='page'
               title='No workflows yet'
               description='Create a workflow to reuse a sequence of device actions.'
             />

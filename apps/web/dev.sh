@@ -23,4 +23,11 @@ if [ "${REBROID_KEEP_NEXTAUTH_URL:-false}" != "true" ]; then
   unset NEXTAUTH_URL AUTH_URL
 fi
 
-exec corepack pnpm exec next dev --experimental-https --hostname "$DEV_HOST" -p "$PORT"
+set -- next dev --experimental-https --hostname "$DEV_HOST" -p "$PORT"
+if [ -n "${DEV_HTTPS_KEY:-}${DEV_HTTPS_CERT:-}" ]; then
+  : "${DEV_HTTPS_KEY:?Set DEV_HTTPS_KEY with DEV_HTTPS_CERT}"
+  : "${DEV_HTTPS_CERT:?Set DEV_HTTPS_CERT with DEV_HTTPS_KEY}"
+  set -- "$@" --experimental-https-key "$DEV_HTTPS_KEY" --experimental-https-cert "$DEV_HTTPS_CERT"
+fi
+
+exec corepack pnpm exec "$@"

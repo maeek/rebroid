@@ -152,6 +152,7 @@ export function AutomationRunEventsPanel({
           <StateView
             scope='section'
             kind={waitingForEvents ? 'loading' : 'empty'}
+            artwork='activity'
             title={waitingForEvents ? 'Waiting for events' : emptyEventTitle}
             description={active ? 'Events will appear as the workflow runs.' : emptyEventDescription}
           />

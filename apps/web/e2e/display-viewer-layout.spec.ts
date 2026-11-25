@@ -218,7 +218,7 @@ test('the mobile device view fits a narrow, short viewport and retains both fram
   await exit.click()
   await expect(device).toBeFocused()
   await expect(mobileNavigation).toBeVisible()
-  await page.evaluate(() => history.replaceState(null, '', '/app/inventory-worker'))
+  await page.evaluate(() => history.replaceState(null, '', '/apps/inventory-worker'))
   await expect(bottomApps).toHaveAttribute('aria-current', 'location')
   const accent = await page.evaluate(() => {
     const sample = document.createElement('span')

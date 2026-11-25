@@ -188,6 +188,8 @@ export const ProvidersGrid = ({
           loading={loading ? { rowCount: 5 } : false}
           emptyState={
             <DataGridEmptyState
+              artwork='models'
+              artworkSize='page'
               title='No providers configured'
               description='Add a provider to connect your models.'
             />

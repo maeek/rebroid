@@ -315,7 +315,7 @@ describe('AiAgentToolsSection', () => {
     expect(await screen.findByText('Dynamic chip')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('font-normal')
     expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({
-      targetApplicationId: app.id,
+      targetDeviceId: app.id,
       providerId: 'planner-provider',
       modelId: 'planner:exact'
     })

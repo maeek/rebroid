@@ -46,7 +46,7 @@ describe('platform destination loading states', () => {
     ['features', FeaturesPageLoading, 'Feature management', 'OCR perception', 'AdministrationFeature management'],
     ['connections', PlatformServicesPageSkeleton, 'Services', 'Connection', 'SystemServices'],
     ['providers', AiProvidersPageSkeleton, 'AI', 'Providers', 'AdministrationAI'],
-    ['casting', CastingPageLoading, 'Casting', 'Connection', 'AdministrationCasting'],
+    ['casting', CastingPageLoading, 'Casting', 'Managed display connection', 'AdministrationCasting'],
     ['ocr', OcrPageLoading, 'OCR perception', 'Settings', 'AdministrationOCR perception']
   ] as const)('renders the %s page chrome instead of overview content', (_, Component, title, content, breadcrumb) => {
     renderLoading(<Component />)

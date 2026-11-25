@@ -14,6 +14,8 @@ const names = [
 
 export const galleryPreviewApplications: ApplicationGalleryRow[] = names.map((name, index) => ({
   id: `gallery-app-${index}`,
+  kind: applicationPreview.kind,
+  operations: applicationPreview.operations,
   name,
   status: index === 0 ? 'error' : 'stopped',
   lifecycleStage: applicationPreview.status.lifecycleStage,

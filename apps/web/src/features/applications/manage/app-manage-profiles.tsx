@@ -17,6 +17,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export const AppManageProfiles = () => {
@@ -101,7 +102,11 @@ export const AppProfilesSection = ({
     contentClassName='gap-3'
   >
     <Visible when={!loading && profiles.length === 0}>
-      <p className='text-sm text-foreground-muted'>No saved persistent profiles are available yet.</p>
+      <StateView
+        kind='empty'
+        artwork='accounts'
+        title='No saved persistent profiles are available yet.'
+      />
     </Visible>
     {(loading
       ? Array.from({ length: 3 }, (_, index) => ({ name: String(index), mode: 'persistent' as const }))

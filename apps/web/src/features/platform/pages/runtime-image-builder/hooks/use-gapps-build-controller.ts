@@ -72,7 +72,7 @@ export const useGappsBuildController = ({ presetResponse, initialJob, uploadedAp
     activeJob,
     androidVersion,
     presets: presetResponse.presets,
-    createAppHref: `/apps/create?${createAppQuery.toString()}`,
+    createAppHref: `/apps/new?${createAppQuery.toString()}`,
     currentPhaseIndex,
     isClearing,
     isCancelling,

@@ -19,7 +19,7 @@ vi.mock('./features', () => ({ loadFeatureFlags: vi.fn() }))
 describe('protected layout feature reads', () => {
   beforeEach(() => {
     vi.mocked(getAuthenticatedUser).mockResolvedValue({ passwordChangeRequired: false } as PublicUser)
-    vi.mocked(headers).mockResolvedValue(new Headers({ 'x-pathname': '/apps' }))
+    vi.mocked(headers).mockResolvedValue(new Headers({ 'x-pathname': '/devices' }))
     vi.mocked(loadFeatureFlags).mockResolvedValue(null)
     vi.mocked(redirect).mockImplementation(path => {
       throw new Error(path)

@@ -246,7 +246,7 @@ describe('automation YAML completions', () => {
           - conditions:
               - value:
                   source: runContext
-                  key: targetApplicationId
+                  key: targetDeviceId
                 operator: exists
       then:
         - `,

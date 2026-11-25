@@ -185,7 +185,7 @@ test('create app aligns with the Apps action on mobile in ready and loading stat
       await expect(heading).toHaveCount(1)
       expect((await heading.boundingBox())!.width).toBeLessThanOrEqual(1)
 
-      const submit = page.getByRole('button', { name: 'Create app', exact: true })
+      const submit = page.getByRole('button', { name: 'Create device', exact: true })
       const action = (await submit.boundingBox())!
       const nav = (await breadcrumb.boundingBox())!
       const header = (await submit.locator('xpath=ancestor::header').boundingBox())!

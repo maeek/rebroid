@@ -7,7 +7,7 @@ const run = {
   automationName: 'Check inventory',
   automationTriggerId: null,
   ownerUserId: 'owner-1',
-  targetApplicationId: 'preview-app',
+  targetDeviceId: 'preview-app',
   targetProfileName: 'default',
   targetProfileMode: 'persistent',
   trigger: 'manual',
@@ -23,7 +23,7 @@ const run = {
 }
 
 test('app run history refresh stays beside search while the request is pending', async ({ page }) => {
-  const history = '**/api/bff/applications/preview-app/workflow-runs?*'
+  const history = '**/api/bff/devices/preview-app/workflow-runs?*'
   let holdRefresh: Promise<void> | undefined
   await page.route(history, async route => {
     await holdRefresh
@@ -70,7 +70,7 @@ test('app run history survives reload and opens summary and events beside the sa
   const narrow = info.project.name === 'mobile-chromium'
   await page.setViewportSize({ width: narrow ? 390 : 1440, height: 960 })
   const appUrl = '/skeleton-contract-test?editor=app-resource&view=workflows'
-  const history = '**/api/bff/applications/preview-app/workflow-runs'
+  const history = '**/api/bff/devices/preview-app/workflow-runs'
   await page.route(`${history}?*`, route =>
     route.fulfill({ json: { ok: true, data: { items: [run], total: 1, pageSize: 25 }, requestId: 'test' } })
   )
@@ -186,7 +186,7 @@ test('Summary follows a cold workflow run and retains its live events across tab
   await page.routeWebSocket('**/test-workflow-events', connection => socket.resolve(connection))
   const ok = (data: unknown) => ({ json: { ok: true, requestId: 'test', data } })
   let status = 'queued'
-  await page.route(`**/api/bff/applications/preview-app/workflow-runs/${id}`, route =>
+  await page.route(`**/api/bff/devices/preview-app/workflow-runs/${id}`, route =>
     route.fulfill(
       ok({
         ...run,

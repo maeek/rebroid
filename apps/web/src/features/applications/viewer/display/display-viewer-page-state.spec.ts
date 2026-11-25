@@ -46,7 +46,7 @@ it('shows a terminal grant failure immediately after a long boot', async () => {
   await expect(resolveDisplayViewerPageState({ id })).resolves.toMatchObject({
     kind: 'splash',
     title: 'Viewer access unavailable',
-    appHref: '/app/app'
+    appHref: '/apps/app'
   })
 })
 
@@ -84,7 +84,7 @@ it('links to the accessible app without requesting a grant when it is stopped', 
   await expect(resolveDisplayViewerPageState({ id })).resolves.toMatchObject({
     kind: 'splash',
     title: 'App is stopped',
-    appHref: '/app/app'
+    appHref: '/apps/app'
   })
   expect(openSession).not.toHaveBeenCalled()
 })

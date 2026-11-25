@@ -15,7 +15,7 @@ export type ActivityFilterEntry = {
 
 export type ActivityEventsTableProps = {
   loading?: boolean
-  application?: { id: string; name: string }
+  application?: { id: string; name: string; href?: string }
   result: AuditEventPage
   filters: AuditFilterValues
   sorting: AuditEventSort[]

@@ -11,7 +11,7 @@ export const loadApplicationActivity = async (applicationId: string, searchParam
   const settings = await getWebSettings()
   const filters = {
     ...auditFiltersFromSearchParams(searchParams),
-    resourceType: 'application',
+    resourceType: 'device',
     resourceId: applicationId
   }
   const sorting = auditSortFromSearchParams(searchParams)

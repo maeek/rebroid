@@ -47,7 +47,7 @@ vi.mock('./automation-yaml-editor-section', () => ({
 }))
 
 const definition: AutomationDefinition = {
-  apiVersion: 'rebroid.io/automation/v1',
+  apiVersion: 'rebroid.io/automation/v2',
   kind: 'AndroidAutomation',
   metadata: { name: 'Saved workflow' },
   spec: { steps: [{ id: 'start', uses: 'debug.log', with: { message: 'Start' } }] }

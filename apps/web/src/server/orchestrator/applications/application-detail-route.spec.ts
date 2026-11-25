@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { GET } from '@/app/api/bff/applications/[id]/detail/route'
+import { GET } from '@/app/api/bff/devices/[id]/detail/route'
 import { getCurrentUser } from '@/server/auth/authorization'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { emptyRequest } from '@/server/orchestrator/request'
@@ -23,7 +23,7 @@ describe('application detail refresh', () => {
     errors: { lastError: null, application: null }
   }
   const refresh = (known = `${revision}.0`) =>
-    GET(new Request(`https://rebroid.example/api/bff/applications/${id}/detail?revision=${known}`), {
+    GET(new Request(`https://rebroid.example/api/bff/devices/${id}/detail?revision=${known}`), {
       params: Promise.resolve({ id })
     })
 
@@ -40,7 +40,7 @@ describe('application detail refresh', () => {
   it('uses the authorized revision and redacts the lifecycle projection', async () => {
     const response = await refresh()
     const [path, init] = vi.mocked(emptyRequest).mock.calls[0]
-    expect(path).toBe(`/apps/${id}/detail?revision=${revision}`)
+    expect(path).toBe(`/devices/${id}/detail?revision=${revision}`)
     expect(init?.signal).toBeInstanceOf(AbortSignal)
     expect(response.headers.get('cache-control')).toBe('private, no-store')
     expect(response.status).toBe(200)
@@ -51,7 +51,7 @@ describe('application detail refresh', () => {
 
   it('refreshes configuration after the backend-detail permission changes', async () => {
     expect((await refresh(`${revision}.1`)).status).toBe(200)
-    expect(emptyRequest).toHaveBeenCalledWith(`/apps/${id}/detail`, expect.anything())
+    expect(emptyRequest).toHaveBeenCalledWith(`/devices/${id}/detail`, expect.anything())
   })
 
   it('rejects an expired account or a changed owner', async () => {

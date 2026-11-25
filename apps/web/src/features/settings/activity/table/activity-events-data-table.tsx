@@ -170,6 +170,8 @@ export const ActivityEventsDataTable = () => {
       }}
       emptyState={
         <DataGridEmptyState
+          artwork='activity'
+          artworkSize={scopedToApp ? 'panel' : 'page'}
           title='No activity yet'
           description='Recorded events will appear here after actions finish. You can also widen the date range.'
         />

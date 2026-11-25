@@ -20,6 +20,7 @@ import { PageContent } from '@/shared/ui/page/page-layout'
 import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-section'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
+import { StateView } from '@/shared/ui/state-view'
 import type { PlatformNetworkDetails } from '@/shared/contracts/platform'
 
 type RuntimeNetworkDetailProps = {
@@ -157,7 +158,11 @@ export const RuntimeNetworkPageContent = ({
             />
           </Visible>
           <Visible when={!loading && details?.relatedContainers.length === 0}>
-            <p className='text-sm text-foreground-muted'>No local containers are attached to this network.</p>
+            <StateView
+              kind='empty'
+              artwork='inventory'
+              title='No local containers are attached to this network.'
+            />
           </Visible>
         </PlatformResourceSection>
 

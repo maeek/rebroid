@@ -173,7 +173,7 @@ export const ApplicationViewerProvider = ({
       const revision = currentApp?.detailRevision
       const query = revision ? `?${new URLSearchParams({ revision })}` : ''
       const result = await getBff<ApplicationDetailRefresh>(
-        `/api/bff/applications/${encodeURIComponent(currentAppId!)}/detail${query}`,
+        `/api/bff/devices/${encodeURIComponent(currentAppId!)}/detail${query}`,
         signal
       )
       return { ...result, revision }

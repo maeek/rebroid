@@ -9,13 +9,14 @@ import {
   enqueueWebMaintenance,
   type AppDeletionJob
 } from '@/server/persistence/web-maintenance-repository'
+import { externalDeviceClient } from '../../../external-devices/client'
 import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 
 const trackApplicationDeletion = (applicationId: string, requestId: string) => {
   const id = randomUUID()
   // A restart after dispatch can leave the outcome unknown. Give the request time to finish before polling.
-  return enqueueWebMaintenance({ id, kind: 'app-deletion', applicationId, requestId }, Date.now() + 60_000)
+  return enqueueWebMaintenance({ id, kind: 'device-deletion', applicationId, requestId }, Date.now() + 60_000)
     ? id
     : undefined
 }
@@ -52,10 +53,14 @@ export const requestTrackedApplicationDeletion = (applicationId: string, removeD
   })
 
 export const cleanDeletedApplicationMetadata = async (
-  { applicationId, requestId, createdAt }: AppDeletionJob & { createdAt: number },
+  { applicationId, requestId, createdAt, kind }: AppDeletionJob & { createdAt: number },
   signal: AbortSignal
 ) => {
   try {
+    if (kind === 'external-device-deletion') {
+      await externalDeviceClient.get(applicationId, { userId: 'maintenance', administrator: true }, signal)
+      return Date.now() - createdAt >= 24 * 60 * 60_000
+    }
     const app = await orchestratorAppCatalogClient.getApplication(applicationId, signal)
     if (Date.now() - createdAt < 24 * 60 * 60_000 || app.status.currentStatus === 'removing') return false
     logger.warn('application.delete_cleanup_not_removing', { requestId, applicationId })

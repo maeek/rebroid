@@ -18,7 +18,7 @@ export const PlatformRecentApps = () => {
   const queryClient = useQueryClient()
   const { data, isPending, isError } = useQuery({
     queryKey: recentlyOpenedAppsQueryKey,
-    queryFn: ({ signal }) => getBff<RecentApp[]>('/api/bff/applications/recent', signal),
+    queryFn: ({ signal }) => getBff<RecentApp[]>('/api/bff/devices/recent', signal),
     refetchInterval: query => {
       const apps = query.state.data
       if (apps?.some(app => app.status === 'running' && app.canViewSnapshot)) return 5_000
@@ -51,17 +51,17 @@ export const PlatformRecentAppsContent = ({
   let content: ReactNode = (
     <p className={`${panelSurfaceClassName} p-4 text-sm text-foreground-muted`}>
       {error
-        ? 'Recently opened apps could not be loaded. Refresh Overview to try again.'
-        : 'Apps you open will appear here for quick access.'}
+        ? 'Recently opened devices could not be loaded. Refresh Overview to try again.'
+        : 'Apps and devices you open will appear here for quick access.'}
     </p>
   )
   if (loading) {
     content = (
       <div
         role='status'
-        aria-label='Loading recently opened apps'
+        aria-label='Loading recently opened devices'
       >
-        <AppGalleryGrid label='Recently opened apps'>
+        <AppGalleryGrid label='Recently opened devices'>
           {Array.from({ length: 5 }, (_, index) => (
             <AppGalleryCard key={index} />
           ))}
@@ -70,7 +70,7 @@ export const PlatformRecentAppsContent = ({
     )
   } else if (apps?.length) {
     content = (
-      <AppGalleryGrid label='Recently opened apps'>
+      <AppGalleryGrid label='Recently opened devices'>
         {apps.map(app => (
           <AppGalleryCard
             key={app.id}

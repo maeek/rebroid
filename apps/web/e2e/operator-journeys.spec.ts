@@ -100,7 +100,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByText('Runtime update pending')).toBeVisible()
     await expect(
       page.getByRole('navigation', { name: 'App sections' }).getByRole('link', { name: 'Diagnostics', exact: true })
-    ).toHaveAttribute('href', '/app/preview-app?view=diagnostics')
+    ).toHaveAttribute('href', '/apps/preview-app?view=diagnostics')
     await expect(page.getByRole('link', { name: 'Open viewer' })).toHaveCount(0)
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
@@ -153,7 +153,7 @@ test('failed execution has a full-page trace with a summary panel, steps, and ev
   await expect(page.getByRole('heading', { level: 1, name: /Daily inventory check/ })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
     'href',
-    '/app/preview-app?view=workflows&run=preview-run'
+    '/apps/preview-app?view=workflows&run=preview-run'
   )
   const summary = page.getByRole('region', { name: 'Run summary' })
   await expect(summary).toContainText('preview-authorization-request')
@@ -174,7 +174,7 @@ test('failed execution has a full-page trace with a summary panel, steps, and ev
 })
 
 test('the app workflow summary leads with the failed action and keeps the ID in the run summary', async ({ page }) => {
-  await page.route('**/api/bff/applications/preview-app/workflow-runs?*', route =>
+  await page.route('**/api/bff/devices/preview-app/workflow-runs?*', route =>
     route.fulfill({
       json: {
         ok: true,
@@ -195,7 +195,7 @@ test('the app workflow summary leads with the failed action and keeps the ID in 
       }
     })
   )
-  await page.route('**/api/bff/applications/preview-app/workflow-runs/preview-run', route =>
+  await page.route('**/api/bff/devices/preview-app/workflow-runs/preview-run', route =>
     route.fulfill({
       json: {
         ok: true,
@@ -277,7 +277,7 @@ test('app activity reuses the audit grid with scoped export and event inspection
   const href = await page.getByRole('link', { name: 'Export CSV' }).getAttribute('href')
   const exported = new URL(href!, 'http://localhost')
   expect(exported.searchParams.get('resourceId')).toBe('preview-app')
-  expect(exported.searchParams.get('resourceType')).toBe('application')
+  expect(exported.searchParams.get('resourceType')).toBe('device')
   await expect(page.getByRole('button', { name: 'Activity actions' })).toHaveCount(0)
   await row.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Details', exact: true }).click()
@@ -335,11 +335,11 @@ test('resource navigation stays flat and streaming controls open beside the view
   const navigation = page.getByRole('navigation', { name: 'App sections' })
   await expect(navigation.getByRole('link', { name: 'Configuration' })).toHaveAttribute(
     'href',
-    '/app/preview-app?view=configuration'
+    '/apps/preview-app?view=configuration'
   )
   await expect(navigation.getByRole('link', { name: 'AI agent' })).toHaveAttribute(
     'href',
-    '/app/preview-app?view=ai-agent'
+    '/apps/preview-app?view=ai-agent'
   )
   await expect(navigation.getByRole('link', { name: 'Diagnostics' })).toBeVisible()
   await expect(page.getByRole('tablist', { name: 'Runtime tools' })).toHaveCount(0)
@@ -832,11 +832,11 @@ test('embedded Files keeps folder navigation, filtering, and details in one work
     modifiedAt: null,
     itemCount: null
   }
-  await page.route('**/api/bff/applications/preview-app/runtime/files?*', route => {
+  await page.route('**/api/bff/devices/preview-app/runtime/files?*', route => {
     const path = new URL(route.request().url()).searchParams.get('path')
     return route.fulfill({ json: { ok: true, requestId: 'preview', data: path === '/data' ? [directory] : [file] } })
   })
-  await page.route('**/api/bff/applications/preview-app/runtime/files/upload?*', route =>
+  await page.route('**/api/bff/devices/preview-app/runtime/files/upload?*', route =>
     route.fulfill({
       json: {
         ok: true,

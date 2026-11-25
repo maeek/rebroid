@@ -110,7 +110,7 @@ const stepSkeletonSuggestions = (
         `${childIndent}    - conditions:`,
         `${childIndent}        - value:`,
         `${childIndent}            source: runContext`,
-        `${childIndent}            key: \${2:targetApplicationId}`,
+        `${childIndent}            key: \${2:targetDeviceId}`,
         `${childIndent}          operator: exists`,
         `${childIndent}then:`,
         `${nestedItemIndent}- $0`

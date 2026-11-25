@@ -36,7 +36,7 @@ export const BuildSection = ({
       settingDefault={isSettingDefault}
       onCancel={onCancelBuild}
       onSetAsDefault={onSetAsDefault}
-      createAppHref={`/apps/create?${new URLSearchParams({ image: activeJob?.targetImage ?? '' }).toString()}`}
+      createAppHref={`/apps/new?${new URLSearchParams({ image: activeJob?.targetImage ?? '' }).toString()}`}
       loading={loading}
     />
     {activeJob && !starting ? (

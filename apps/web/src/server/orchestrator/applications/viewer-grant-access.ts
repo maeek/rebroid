@@ -16,9 +16,10 @@ import { sanitizeAndroidApplicationForUser, sanitizeScrcpySessionForUser } from 
 import { viewerCapabilitiesFor } from './viewer-capabilities'
 import { orchestratorAppViewerClient } from './viewer-client'
 import type { CurrentUserContext } from './actions/common/action-helpers'
+import type { ViewerRevocationKind } from '@/server/persistence/web-maintenance-repository'
 
-export const assertViewerRevocationComplete = (userId: string) => {
-  if (hasPendingViewerRevocation(userId)) {
+export const assertViewerRevocationComplete = (userId: string, kind?: ViewerRevocationKind) => {
+  if (hasPendingViewerRevocation(userId, kind)) {
     throw new PublicActionError('Viewer access is being updated. Try again shortly.', {
       code: 'upstream_unavailable',
       status: 503

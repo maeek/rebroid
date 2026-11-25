@@ -6,14 +6,14 @@ import { useAiAgentModelSettings } from './use-ai-agent-model-settings'
 import { useAiAgentRunActions } from './use-ai-agent-run-actions'
 import { useAiAgentRunStream } from './use-ai-agent-run-stream'
 import { useAiAgentTranscriptScroll } from './use-ai-agent-transcript-scroll'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AiAgentTarget } from './ai-agent-target'
 import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const useAiAgentChatSession = ({
   app,
   onRunStarted
 }: {
-  app: AppDefinition
+  app: AiAgentTarget
   onRunStarted?: (run: AutomationRun) => void
 }) => {
   const [prompt, setPrompt] = useState('')
@@ -29,6 +29,7 @@ export const useAiAgentChatSession = ({
 
   const { historyStatus, retryHistory } = useAiAgentHistory({
     appId: app.id,
+    attachmentId: app.attachmentId,
     conversationVersionRef,
     runSequencesRef,
     setTurns

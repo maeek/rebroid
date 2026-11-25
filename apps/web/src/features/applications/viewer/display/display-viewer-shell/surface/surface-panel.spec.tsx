@@ -50,7 +50,7 @@ it('offers an in-place retry with pending feedback and replaces only the failed 
     kind: 'main',
     name: 'Main display',
     src: '/viewer?sessionId=same-session',
-    popoutUrl: '/app/viewer',
+    popoutUrl: '/devices/viewer',
     displaySize: { width: 1080, height: 2340 }
   }
   const viewer = (surfaceRefreshVersion: number) => (

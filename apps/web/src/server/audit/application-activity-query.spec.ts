@@ -34,7 +34,7 @@ describe('application activity', () => {
     expect(listAuditEvents).toHaveBeenCalledWith(
       expect.objectContaining({
         resourceId: 'app-1',
-        resourceType: 'application',
+        resourceType: 'device',
         search: 'start'
       }),
       { page: 2, pageSize: 10, sorting: [{ id: 'action', desc: false }] }

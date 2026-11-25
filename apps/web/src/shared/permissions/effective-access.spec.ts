@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { administratorsGroupId, resolveEffectiveAccess } from './effective-access'
-import { defaultUserQuota, normalizeGroupQuota } from './permissions'
+import { administratorsGroupId, defaultUserGroupId, resolveEffectiveAccess } from './effective-access'
+import { defaultUserPermissions, defaultUserQuota, normalizeGroupQuota } from './permissions'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 
 const groups: UserGroup[] = [
@@ -41,6 +41,18 @@ const groups: UserGroup[] = [
 ]
 
 describe('effective access', () => {
+  it('requires an explicit group grant for enrollment and use outside Administrators', () => {
+    const standard = { ...groups[0], id: defaultUserGroupId, permissions: defaultUserPermissions }
+    const enrollers: UserGroup = { ...groups[1], permissions: { 'devices:enroll-external': true } }
+
+    const defaults = resolveEffectiveAccess([standard], [standard.id]).decisions
+    expect(defaults['devices:enroll-external']).toBeUndefined()
+    expect(defaults['devices:use-external']).toBeUndefined()
+
+    const delegated = resolveEffectiveAccess([standard, enrollers], [standard.id, enrollers.id]).decisions
+    expect(delegated['devices:enroll-external']?.allowed).toBe(true)
+    expect(delegated['devices:use-external']).toBeUndefined()
+  })
   it('maps inherited group permissions by selected groups', () => {
     expect(resolveEffectiveAccess(groups, ['operators', 'auditors']).decisions).toMatchObject({
       'applications:start': { allowed: true, groupName: 'Auditors' },

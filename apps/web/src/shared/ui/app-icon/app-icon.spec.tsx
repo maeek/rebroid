@@ -7,7 +7,7 @@ it('shows the default icon when the custom image fails to load', () => {
     <AppIcon
       appId='app-1'
       appName='żappka'
-      icon='/api/app-icons/app-1'
+      icon='/api/device-icons/app-1'
     />
   )
 
@@ -19,8 +19,8 @@ it('shows the default icon when the custom image fails to load', () => {
     <AppIcon
       appId='app-1'
       appName='żappka'
-      icon='/api/app-icons/app-1?v=new'
+      icon='/api/device-icons/app-1?v=new'
     />
   )
-  expect(screen.getByAltText('').getAttribute('src')).toMatch(/\/api\/app-icons\/app-1\?v=new$/)
+  expect(screen.getByAltText('').getAttribute('src')).toMatch(/\/api\/device-icons\/app-1\?v=new$/)
 })

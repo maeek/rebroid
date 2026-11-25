@@ -16,7 +16,7 @@ import type { AndroidApplication } from '@/shared/contracts/application'
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }))
 vi.mock('@/features/applications/detail/application-viewer-context', () => ({ useApplicationViewerApp: vi.fn() }))
 vi.mock('@/features/applications/detail/app-resource-navigation', () => ({
-  AppResourceNavigation: () => <a href='/app/preview-app'>Overview</a>
+  AppResourceNavigation: () => <a href='/devices/preview-app'>Overview</a>
 }))
 vi.mock('@/features/applications/viewer/actions/app-viewer-delete-action', () => ({
   AppViewerDeleteAction: () => null
@@ -38,7 +38,7 @@ vi.mock('@/shared/model/settings/use-resource-limit-bounds', () => ({
 }))
 
 const replacement = 'data:image/png;base64,AQ=='
-const originalUrl = '/api/app-icons/preview-app'
+const originalUrl = '/api/device-icons/preview-app'
 const updatedUrl = `${originalUrl}?v=updated`
 
 const renderConfiguration = (savedIcon: string | null, settings: Partial<AppDefinition> = {}) => {

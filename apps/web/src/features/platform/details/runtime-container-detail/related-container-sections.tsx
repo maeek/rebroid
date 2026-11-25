@@ -63,7 +63,7 @@ export const RelatedResourcesSection = () => {
     <RelatedResourcesLayout>
       {container.applicationId ? (
         <ResourceLink
-          href={`/app/${encodeURIComponent(container.applicationId)}`}
+          href={`/apps/${encodeURIComponent(container.applicationId)}`}
           kind='Application'
           name={container.applicationName || 'Open application'}
           metadata={container.applicationId}

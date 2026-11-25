@@ -1,7 +1,13 @@
+import {
+  managedAndroidDeviceKind,
+  managedAndroidDeviceOperations
+} from '@rebroid/android-application-core/android-device'
 import type { AndroidApplication } from '@/shared/contracts/application'
 
 export const applicationPreview: AndroidApplication = {
   id: 'preview-app',
+  kind: managedAndroidDeviceKind,
+  operations: [...managedAndroidDeviceOperations],
   name: 'Inventory worker',
   ownerUserId: 'preview-owner',
   status: {

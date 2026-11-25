@@ -62,7 +62,7 @@ export const AppViewerActions = ({
               size='icon-md'
               aria-label='Manage application settings'
             >
-              <Link href={`/app/${app?.id}?view=configuration`}>
+              <Link href={`/apps/${app?.id}?view=configuration`}>
                 <IconSettings className='size-4' />
               </Link>
             </Button>

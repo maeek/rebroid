@@ -11,7 +11,11 @@ export const AppsListHeader = ({ canCreate = false, loading = false }: { canCrea
         className={compactPageActionClassName}
         disabled
       >
-        <IconPlus className='size-4' /> Create app
+        <IconPlus
+          aria-hidden
+          className='size-4'
+        />{' '}
+        Create app
       </Button>
     )
   } else if (canCreate) {
@@ -20,8 +24,12 @@ export const AppsListHeader = ({ canCreate = false, loading = false }: { canCrea
         asChild
         className={compactPageActionClassName}
       >
-        <Link href='/apps/create'>
-          <IconPlus className='size-4' /> Create app
+        <Link href='/apps/new'>
+          <IconPlus
+            aria-hidden
+            className='size-4'
+          />{' '}
+          Create app
         </Link>
       </Button>
     )

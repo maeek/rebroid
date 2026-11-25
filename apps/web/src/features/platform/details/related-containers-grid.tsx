@@ -126,6 +126,7 @@ export const RelatedContainersGrid = ({
         minWidth='48rem'
         emptyState={
           <DataGridEmptyState
+            artwork='inventory'
             title='No related containers'
             description='No containers currently use this resource.'
           />

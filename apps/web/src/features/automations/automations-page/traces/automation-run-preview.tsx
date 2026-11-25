@@ -7,7 +7,7 @@ const run: AutomationRun = {
   automationId: 'preview-workflow',
   automationTriggerId: null,
   ownerUserId: 'preview-owner',
-  targetApplicationId: 'preview-app',
+  targetDeviceId: 'preview-app',
   targetProfileMode: 'persistent',
   targetProfileName: 'default',
   trigger: 'manual',

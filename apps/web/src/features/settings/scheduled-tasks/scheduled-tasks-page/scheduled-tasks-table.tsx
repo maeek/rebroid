@@ -307,6 +307,8 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
             loading={loading ? { rowCount: 5, selectable: true, rowMenu: true } : false}
             emptyState={
               <DataGridEmptyState
+                artwork='workflow'
+                artworkSize='page'
                 title='No scheduled tasks yet'
                 description='Create a task to run maintenance on a schedule.'
               />

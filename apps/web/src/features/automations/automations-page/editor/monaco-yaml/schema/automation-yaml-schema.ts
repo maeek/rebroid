@@ -149,7 +149,7 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
     type: 'object',
     required: ['apiVersion', 'kind', 'metadata', 'spec'],
     properties: {
-      apiVersion: { enum: ['rebroid.io/automation/v1'] },
+      apiVersion: { enum: ['rebroid.io/automation/v2'] },
       kind: { enum: ['AndroidAutomation'] },
       metadata: {
         type: 'object',

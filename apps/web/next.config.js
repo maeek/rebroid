@@ -44,6 +44,22 @@ const nextConfig = {
         permanent: true
       },
       {
+        source: '/devices/external',
+        destination: '/devices',
+        permanent: false
+      },
+      {
+        source: '/devices/:slug((?!new$|external$)[^/]+)',
+        destination: '/apps/:slug',
+        permanent: false
+      },
+      {
+        source: '/devices/new',
+        has: [{ type: 'query', key: 'kind', value: 'managed' }],
+        destination: '/apps/new',
+        permanent: false
+      },
+      {
         source: '/security/network-policies',
         destination: '/security/firewall',
         permanent: true

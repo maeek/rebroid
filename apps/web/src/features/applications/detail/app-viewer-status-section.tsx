@@ -39,7 +39,7 @@ export const AppViewerStatusSection = ({
                 variant='outline'
                 size='sm'
               >
-                <Link href={`/app/${encodeURIComponent(app.id)}?view=diagnostics`}>Inspect failure</Link>
+                <Link href={`/apps/${encodeURIComponent(app.id)}?view=diagnostics`}>Inspect failure</Link>
               </Button>
             ) : undefined
           }

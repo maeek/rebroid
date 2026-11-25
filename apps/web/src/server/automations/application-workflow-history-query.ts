@@ -7,10 +7,10 @@ import type {
   ApplicationWorkflowRunPage
 } from '@/shared/contracts/application-workflow-history'
 
-const workflowHistoryQuery = async (targetApplicationId: string) => {
+const workflowHistoryQuery = async (targetDeviceId: string) => {
   const user = await getCurrentUserContext('api')
   assertAutomationPermission(user, 'automations:run')
-  return new URLSearchParams({ ownerUserId: user.ownerUserId, targetApplicationId })
+  return new URLSearchParams({ ownerUserId: user.ownerUserId, targetDeviceId })
 }
 
 export const listApplicationWorkflowRuns = async (

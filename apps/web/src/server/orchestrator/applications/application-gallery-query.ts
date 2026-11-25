@@ -23,8 +23,21 @@ export const listApplicationGallery = async (user: GalleryUser): Promise<Applica
       ])
     : null
   return visible.map(
-    ({ id, name, ownerUserId, status, lifecycleStage, containerImage, apkPackageName, updatedAt }) => ({
+    ({
       id,
+      kind,
+      operations,
+      name,
+      ownerUserId,
+      status,
+      lifecycleStage,
+      containerImage,
+      apkPackageName,
+      updatedAt
+    }) => ({
+      id,
+      kind,
+      operations,
       name,
       ownerUserId,
       status,

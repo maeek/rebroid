@@ -23,14 +23,15 @@ beforeEach(() => {
   vi.mocked(orchestratorAutomationsClient.getTrigger).mockResolvedValue({
     id: 'trigger',
     automationId: 'workflow',
-    targetApplicationId: 'app',
+    targetDeviceId: 'app',
     profileName: 'saved',
     profileMode: 'persistent'
   } as AutomationTrigger)
   vi.mocked(orchestratorAppCatalogClient.getViewerRuntime).mockResolvedValue({
     ownerUserId: 'owner',
-    status: 'stopped',
-    containerId: null
+    deviceId: 'app',
+    kind: 'managed',
+    runtimeId: null
   })
 })
 

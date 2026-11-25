@@ -156,7 +156,7 @@ read_shared_orchestrator_secret() {
 
 export ORCHESTRATOR_API_URL="${ORCHESTRATOR_API_URL:-http://orchestrator:4100}"
 export WEB_DATABASE_PATH="${WEB_DATABASE_PATH:-/app/data/web.sqlite}"
-export WEB_APP_ICONS_PATH="${WEB_APP_ICONS_PATH:-/app/data/app-icons}"
+export WEB_DEVICE_ICONS_PATH="${WEB_DEVICE_ICONS_PATH:-/app/data/device-icons}"
 
 ensure_runtime_permissions
 ensure_tls_certificate

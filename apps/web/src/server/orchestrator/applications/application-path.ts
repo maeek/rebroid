@@ -5,7 +5,7 @@ export const applicationPath = (id: string) => {
   if (!isApplicationId(id)) {
     throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
   }
-  return `/apps/${encodeURIComponent(id)}`
+  return `/devices/${encodeURIComponent(id)}`
 }
 
 export const encodeApplicationPathSegment = (value: string) => {

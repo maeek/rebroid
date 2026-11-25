@@ -41,7 +41,7 @@ const trigger = (id = 'trigger-1', overrides: Partial<AutomationTrigger> = {}): 
     id,
     name: 'Morning run',
     automationId: 'automation-1',
-    targetApplicationId: 'app-1',
+    targetDeviceId: 'app-1',
     profileMode: null,
     profileName: null,
     enabled: true,
@@ -63,7 +63,7 @@ describe('automation triggers page model', () => {
     expect(newTriggerFormState({ automation, app: app() })).toMatchObject({
       name: 'Daily smoke test on Pixel 9',
       automationId: 'automation-1',
-      targetApplicationId: 'app-1',
+      targetDeviceId: 'app-1',
       profileMode: 'persistent',
       profileName: 'default',
       enabled: true,
@@ -84,7 +84,7 @@ describe('automation triggers page model', () => {
       id: 'trigger-1',
       name: 'Morning run',
       automationId: 'automation-1',
-      targetApplicationId: 'app-1',
+      targetDeviceId: 'app-1',
       profileMode: 'persistent',
       profileName: 'default',
       enabled: true,
@@ -105,7 +105,7 @@ describe('automation triggers page model', () => {
     } as unknown as Partial<AndroidApplication>)
 
     expect(applyTriggerTargetApplication(form, 'app-2', nextApp)).toMatchObject({
-      targetApplicationId: 'app-2',
+      targetDeviceId: 'app-2',
       profileMode: 'temporary',
       profileName: 'qa'
     })
@@ -132,7 +132,7 @@ describe('automation triggers page model', () => {
     expect(triggerFormSavePayload(form)).toMatchObject({
       name: 'Trim me',
       automationId: 'automation-1',
-      targetApplicationId: 'app-1',
+      targetDeviceId: 'app-1',
       profileName: 'default',
       triggerType: 'schedule',
       triggerConfig: {
@@ -172,7 +172,7 @@ describe('automation triggers page model', () => {
         gridQuery: {
           q: 'smoke',
           tag: 'nightly',
-          targetApplicationId: 'app-1',
+          targetDeviceId: 'app-1',
           enabled: undefined,
           status: undefined,
           lastRun: 'all',
@@ -184,7 +184,7 @@ describe('automation triggers page model', () => {
         patch: { q: '', enabled: 'true', page: 1 }
       })
     ).toBe(
-      '/automations/triggers?tag=nightly&targetApplicationId=app-1&enabled=true&sort=updatedAt%3Adesc&page=1&pageSize=50'
+      '/automations/triggers?tag=nightly&targetDeviceId=app-1&enabled=true&sort=updatedAt%3Adesc&page=1&pageSize=50'
     )
   })
 
@@ -194,7 +194,7 @@ describe('automation triggers page model', () => {
         gridQuery: {
           q: 'night',
           tag: 'nightly',
-          targetApplicationId: 'app-1',
+          targetDeviceId: 'app-1',
           enabled: 'true',
           status: 'failed',
           lastRun: '7d'
@@ -202,7 +202,7 @@ describe('automation triggers page model', () => {
         pageSize: 20,
         patch: {
           tag: undefined,
-          targetApplicationId: undefined,
+          targetDeviceId: undefined,
           enabled: undefined,
           status: undefined,
           lastRun: undefined,

@@ -23,12 +23,16 @@ export const repairDisplaySidecarAction = async () =>
     { fallbackMessage: 'Could not restart the display sidecar.', logLabel: 'Display sidecar restart' }
   )
 
-export const listDisplaySidecarSessionsAction = async () => {
+export const listDisplaySidecarSessionsAction = async (includeManaged = true) => {
   await requireAdmin()
-  return orchestratorDiagnosticsClient.listDisplaySidecarSessions()
+  return includeManaged
+    ? orchestratorDiagnosticsClient.listDisplaySidecarSessions()
+    : orchestratorDiagnosticsClient.listDisplaySidecarSessions(undefined, false)
 }
 
-export const releaseDisplaySidecarSessionAction = async (id: string) => {
+export const releaseDisplaySidecarSessionAction = async (id: string, external = false) => {
   await requireAdmin()
-  return orchestratorDiagnosticsClient.releaseDisplaySidecarSession(id)
+  return external
+    ? orchestratorDiagnosticsClient.releaseDisplaySidecarSession(id, undefined, true)
+    : orchestratorDiagnosticsClient.releaseDisplaySidecarSession(id)
 }

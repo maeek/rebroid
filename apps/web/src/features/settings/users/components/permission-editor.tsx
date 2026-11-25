@@ -164,6 +164,7 @@ export const PermissionEditor = ({
             loading={loading}
             emptyState={
               <DataGridEmptyState
+                artwork='search'
                 title='No matching permissions'
                 filtered={Boolean(search.trim()) || category !== 'all'}
                 onReset={category !== 'all' ? () => setCategory('all') : undefined}

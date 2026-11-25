@@ -17,7 +17,7 @@ const run = (override: Partial<AutomationRun> = {}): AutomationRun => ({
   automationId: 'automation',
   automationTriggerId: null,
   ownerUserId: 'owner',
-  targetApplicationId: 'app',
+  targetDeviceId: 'app',
   targetProfileMode: null,
   targetProfileName: null,
   trigger: 'manual',
