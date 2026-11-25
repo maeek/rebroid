@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,30 @@ const columns: ColumnDef<TestRow>[] = [
 ]
 
 describe('DataGrid row activation', () => {
+  it.each(['Select row', 'Select current page'])('preserves focus when toggling %s', name => {
+    const SelectableGrid = () => {
+      const [selectedIds, setSelectedIds] = useState(new Set<string>())
+      return (
+        <DataGrid
+          columns={columns}
+          data={rows}
+          totalItems={1}
+          pageIndex={0}
+          pageSize={20}
+          getRowId={row => row.id}
+          selection={{ selectedIds, onSelectedIdsChange: setSelectedIds }}
+        />
+      )
+    }
+    render(<SelectableGrid />)
+    const checkbox = screen.getByRole('checkbox', { name })
+    checkbox.focus()
+    fireEvent.click(checkbox)
+    expect(checkbox).toHaveFocus()
+    expect(checkbox).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Select row' })).toBeChecked()
+  })
+
   it('preserves row-action focus when selection and menu callbacks update', () => {
     const grid = (selectedIds: Set<string>) => (
       <DataGrid

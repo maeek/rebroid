@@ -58,24 +58,17 @@ export const useDataGridTable = <TData>({
   const [scrollEnd, setScrollEnd] = useState(false)
   const resolvedSorting = onSortingChange ? sorting : internalSorting
   const resolvedColumnVisibility = onColumnVisibilityChange ? (columnVisibility ?? {}) : internalColumnVisibility
+  const hasSelection = Boolean(selection)
   const resolvedColumns = useMemo(
     () => [
-      ...(selection || loadingState?.selectable
-        ? [
-            selection
-              ? selectionColumn({
-                  selection,
-                  getRowId,
-                  lastSelectedIndexRef
-                })
-              : loadingSelectionColumn<TData>()
-          ]
+      ...(hasSelection || loadingState?.selectable
+        ? [hasSelection ? selectionColumn<TData>() : loadingSelectionColumn<TData>()]
         : []),
       ...columns,
       spacerColumn<TData>(),
       ...(rowContextMenu || loadingState?.rowMenu ? [rowMenuColumn<TData>(rowQuickAction)] : [])
     ],
-    [columns, getRowId, loadingState?.rowMenu, loadingState?.selectable, rowContextMenu, rowQuickAction, selection]
+    [columns, hasSelection, loadingState?.rowMenu, loadingState?.selectable, rowContextMenu, rowQuickAction]
   )
 
   useEffect(() => {
@@ -116,6 +109,7 @@ export const useDataGridTable = <TData>({
   const table = useReactTable({
     data,
     columns: resolvedColumns,
+    meta: { gridSelection: selection ? { selection, lastSelectedIndexRef } : undefined },
     defaultColumn: {
       minSize: 72,
       size: 160,

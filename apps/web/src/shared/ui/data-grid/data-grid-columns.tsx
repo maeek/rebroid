@@ -3,7 +3,14 @@ import { IconDotsVertical } from '@tabler/icons-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RowActions, RowActionButton } from '@/components/ui/row-actions'
 import type { DataGridSelectionState } from './data-grid'
-import type { CellContext, ColumnDef, Row } from '@tanstack/react-table'
+import type { CellContext, ColumnDef, HeaderContext, Row, RowData } from '@tanstack/react-table'
+
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TData extends RowData> {
+    gridSelection?: { selection: DataGridSelectionState; lastSelectedIndexRef: RefObject<number | null> }
+  }
+}
 
 const openContextMenuFromButton = (event: MouseEvent<HTMLButtonElement>) => {
   event.preventDefault()
@@ -18,15 +25,78 @@ const openContextMenuFromButton = (event: MouseEvent<HTMLButtonElement>) => {
   )
 }
 
-export const selectionColumn = <TData,>({
-  selection,
-  getRowId,
-  lastSelectedIndexRef
-}: {
-  selection: DataGridSelectionState
-  getRowId: (row: TData) => string
-  lastSelectedIndexRef: RefObject<number | null>
-}): ColumnDef<TData> => ({
+const SelectionHeader = <TData,>({ table }: HeaderContext<TData, unknown>) => {
+  'use no memo'
+
+  const selection = table.options.meta?.gridSelection?.selection
+  if (!selection) return null
+  const ids = table
+    .getRowModel()
+    .rows.map(row => row.id)
+    .filter(id => selection.canSelectId?.(id) !== false)
+  const allSelected = ids.length > 0 && ids.every(id => selection.selectedIds.has(id))
+  return (
+    <div className='flex min-h-5 items-center justify-center'>
+      <Checkbox
+        className='relative touch:after:absolute touch:after:-inset-3.5'
+        checked={allSelected}
+        indeterminate={!allSelected && ids.some(id => selection.selectedIds.has(id))}
+        disabled={selection.disabled || ids.length === 0}
+        aria-label='Select current page'
+        onCheckedChange={checked => {
+          if (selection.disabled) return
+          const next = new Set(selection.selectedIds)
+          for (const id of ids) {
+            if (checked === true) next.add(id)
+            else next.delete(id)
+          }
+          selection.onSelectedIdsChange(next)
+        }}
+      />
+    </div>
+  )
+}
+
+const SelectionCell = <TData,>({ row, table }: CellContext<TData, unknown>) => {
+  'use no memo'
+
+  const selectionMeta = table.options.meta?.gridSelection
+  if (!selectionMeta) return null
+  const { selection, lastSelectedIndexRef } = selectionMeta
+  const { id } = row
+  if (selection.canSelectId?.(id) === false) return null
+  return (
+    <div className='flex min-h-10 items-center justify-center'>
+      <Checkbox
+        className='relative touch:after:absolute touch:after:-inset-3.5'
+        checked={selection.selectedIds.has(id)}
+        disabled={selection.disabled}
+        aria-label='Select row'
+        onClick={event => {
+          if (selection.disabled) return
+          const next = new Set(selection.selectedIds)
+          if (event.shiftKey && lastSelectedIndexRef.current !== null) {
+            const rows = table.getRowModel().rows
+            const start = Math.min(lastSelectedIndexRef.current, row.index)
+            const end = Math.max(lastSelectedIndexRef.current, row.index)
+            for (const rangeRow of rows.slice(start, end + 1)) {
+              if (selection.canSelectId?.(rangeRow.id) !== false) next.add(rangeRow.id)
+            }
+          } else if (next.has(id)) {
+            next.delete(id)
+          } else {
+            next.add(id)
+          }
+          lastSelectedIndexRef.current = row.index
+          selection.onSelectedIdsChange(next)
+        }}
+        onCheckedChange={() => undefined}
+      />
+    </div>
+  )
+}
+
+export const selectionColumn = <TData,>(): ColumnDef<TData> => ({
   id: '__select',
   enableHiding: false,
   enableSorting: false,
@@ -34,67 +104,8 @@ export const selectionColumn = <TData,>({
   minSize: 48,
   maxSize: 48,
   enableResizing: false,
-  header: ({ table }) => {
-    const ids = table
-      .getRowModel()
-      .rows.map(row => getRowId(row.original))
-      .filter(id => selection.canSelectId?.(id) !== false)
-    const allSelected = ids.length > 0 && ids.every(id => selection.selectedIds.has(id))
-    return (
-      <div className='flex min-h-5 items-center justify-center'>
-        <Checkbox
-          className='relative touch:after:absolute touch:after:-inset-3.5'
-          checked={allSelected}
-          indeterminate={!allSelected && ids.some(id => selection.selectedIds.has(id))}
-          disabled={selection.disabled || ids.length === 0}
-          aria-label='Select current page'
-          onCheckedChange={checked => {
-            if (selection.disabled) return
-            const next = new Set(selection.selectedIds)
-            for (const id of ids) {
-              if (checked === true) next.add(id)
-              else next.delete(id)
-            }
-            selection.onSelectedIdsChange(next)
-          }}
-        />
-      </div>
-    )
-  },
-  cell: ({ row, table }) => {
-    const id = getRowId(row.original)
-    if (selection.canSelectId?.(id) === false) return null
-    return (
-      <div className='flex min-h-10 items-center justify-center'>
-        <Checkbox
-          className='relative touch:after:absolute touch:after:-inset-3.5'
-          checked={selection.selectedIds.has(id)}
-          disabled={selection.disabled}
-          aria-label='Select row'
-          onClick={event => {
-            if (selection.disabled) return
-            const next = new Set(selection.selectedIds)
-            if (event.shiftKey && lastSelectedIndexRef.current !== null) {
-              const rows = table.getRowModel().rows
-              const start = Math.min(lastSelectedIndexRef.current, row.index)
-              const end = Math.max(lastSelectedIndexRef.current, row.index)
-              for (const rangeRow of rows.slice(start, end + 1)) {
-                const rangeId = getRowId(rangeRow.original)
-                if (selection.canSelectId?.(rangeId) !== false) next.add(rangeId)
-              }
-            } else if (next.has(id)) {
-              next.delete(id)
-            } else {
-              next.add(id)
-            }
-            lastSelectedIndexRef.current = row.index
-            selection.onSelectedIdsChange(next)
-          }}
-          onCheckedChange={() => undefined}
-        />
-      </div>
-    )
-  }
+  header: SelectionHeader,
+  cell: SelectionCell
 })
 
 export const loadingSelectionColumn = <TData,>(): ColumnDef<TData> => ({
