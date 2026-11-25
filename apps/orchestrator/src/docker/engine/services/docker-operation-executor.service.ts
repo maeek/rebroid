@@ -183,8 +183,7 @@ export class DockerOperationExecutor {
         this.metrics.queueDockerOperation('long', -1);
         this.notifyDispatched(options);
         return this.observe('long', operationName, description, async () => {
-          // Legacy callers budget execution only; scoped startup work also
-          // charges queue residence against its explicit deadline.
+          // An explicit deadline includes queue time. Otherwise the timeout starts at dispatch.
           const executionDeadline =
             deadline ?? new OperationDeadline(timeoutMs);
           const scope = dockerOperationScope({
