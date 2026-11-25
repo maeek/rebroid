@@ -3,17 +3,23 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Headers,
   HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBody, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { externalDeviceVerificationProofs } from '@rebroid/android-application-core/android-device';
+import {
+  externalDeviceVerificationProofs,
+  isExternalAdbTcpAllowlistEntry,
+  maxExternalAdbTcpEndpoints,
+} from '@rebroid/android-application-core/android-device';
 import { z } from 'zod';
 import {
   ApiOpenAppQuota,
@@ -26,6 +32,7 @@ import {
   ExternalDeviceTcpCheckDto,
   ExternalDeviceVerificationInstructionsDto,
   ExternalTcpEndpointDto,
+  ExternalTcpPolicyDto,
   ForgottenExternalDeviceDto,
   RegisterExternalAndroidDeviceDto,
   VerifyExternalAndroidDeviceDto,
@@ -55,6 +62,16 @@ const verification = z.strictObject({
   proof: z.enum(externalDeviceVerificationProofs),
 });
 const tcpCheck = z.strictObject({ endpoint: z.string().max(21) });
+const tcpPolicy = z.strictObject({
+  revision: z
+    .number()
+    .int()
+    .min(0)
+    .max(Number.MAX_SAFE_INTEGER - 1),
+  endpoints: z
+    .array(z.string().max(21).refine(isExternalAdbTcpAllowlistEntry))
+    .max(maxExternalAdbTcpEndpoints),
+});
 type ActorHeaders = Record<string, string | string[] | undefined>;
 
 const actorFrom = (headers: ActorHeaders): ExternalDeviceActor => {
@@ -68,6 +85,11 @@ const actorFrom = (headers: ActorHeaders): ExternalDeviceActor => {
     canUse: headers['x-rebroid-device-use'] === 'true',
   };
 };
+
+function assertAdministrator(headers: ActorHeaders) {
+  if (!actorFrom(headers).administrator)
+    throw new ForbiddenException('Platform administrator required.');
+}
 
 @ApiTags('external-devices')
 @ApiHeader({ name: 'x-rebroid-device-user', required: true })
@@ -109,6 +131,27 @@ export class ExternalAndroidDevicesController {
     return this.devices.checkTcpEndpoint(
       input.data.endpoint,
       actorFrom(headers),
+    );
+  }
+
+  @Get('tcp-policy')
+  @ApiOkResponse({ type: ExternalTcpPolicyDto })
+  readTcpPolicy(@Headers() headers: ActorHeaders) {
+    assertAdministrator(headers);
+    return this.devices.readTcpPolicy();
+  }
+
+  @Put('tcp-policy')
+  @ApiBody({ type: ExternalTcpPolicyDto })
+  @ApiOkResponse({ type: ExternalTcpPolicyDto })
+  updateTcpPolicy(@Body() body: unknown, @Headers() headers: ActorHeaders) {
+    assertAdministrator(headers);
+    const input = tcpPolicy.safeParse(body);
+    if (!input.success)
+      throw new BadRequestException('Invalid allowed TCP endpoints.');
+    return this.devices.updateTcpPolicy(
+      input.data.revision,
+      input.data.endpoints,
     );
   }
 

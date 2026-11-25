@@ -4,6 +4,12 @@ import {
   Injectable,
   Optional,
 } from "@nestjs/common";
+import {
+  createExternalAdbTcpAllowlist,
+  isExternalAdbTcpAllowlistEntry,
+  maxExternalAdbTcpEndpoints,
+  type ExternalAdbTcpPolicy,
+} from "@rebroid/android-application-core/android-device";
 import { SidecarConfigService } from "./sidecar-config.service";
 
 export const displayFeatureKeys = [
@@ -17,6 +23,7 @@ type DisplayFeatureKey = (typeof displayFeatureKeys)[number];
 export interface SidecarFeatureSnapshot {
   revision: number;
   features: Array<{ key: DisplayFeatureKey; effective: boolean }>;
+  tcpPolicy?: ExternalAdbTcpPolicy;
 }
 
 @Injectable()
@@ -24,8 +31,14 @@ export class SidecarFeatureService {
   private revision = -1;
   private enabled = new Set<DisplayFeatureKey>();
   private observedAt = 0;
+  private tcpPolicyRevision = 0;
+  private tcpApproved: (endpoint: string) => boolean;
 
-  constructor(@Optional() private readonly config?: SidecarConfigService) {}
+  constructor(@Optional() private readonly config?: SidecarConfigService) {
+    this.tcpApproved = createExternalAdbTcpAllowlist(
+      config?.externalAdbTcpEndpoints ?? [],
+    );
+  }
 
   private keys() {
     return this.config?.externalAdbEnabled
@@ -61,6 +74,29 @@ export class SidecarFeatureService {
       });
     }
 
+    const policy = snapshot.tcpPolicy;
+    if (policy !== undefined) {
+      if (
+        !this.config?.externalAdbEnabled ||
+        !policy ||
+        !Number.isSafeInteger(policy.revision) ||
+        policy.revision < 1 ||
+        !Array.isArray(policy.endpoints) ||
+        policy.endpoints.length > maxExternalAdbTcpEndpoints ||
+        !policy.endpoints.every(
+          (endpoint) =>
+            typeof endpoint === "string" &&
+            isExternalAdbTcpAllowlistEntry(endpoint),
+        )
+      ) {
+        throw new BadRequestException("The external TCP policy is invalid.");
+      }
+      // Concurrent refreshes can arrive out of order after a policy edit.
+      if (policy.revision > this.tcpPolicyRevision) {
+        this.tcpApproved = createExternalAdbTcpAllowlist(policy.endpoints);
+        this.tcpPolicyRevision = policy.revision;
+      }
+    }
     this.enabled = new Set(
       features.filter(({ effective }) => effective).map(({ key }) => key),
     );
@@ -92,6 +128,10 @@ export class SidecarFeatureService {
       this.config?.externalAdbEnabled &&
       this.isEnabled("feature.external-devices"),
     );
+  }
+
+  isExternalTcpApproved(endpoint: string) {
+    return this.tcpApproved(endpoint);
   }
 
   assertWebrtcEnabled() {

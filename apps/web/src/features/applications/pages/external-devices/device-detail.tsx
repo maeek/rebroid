@@ -175,6 +175,7 @@ export async function ExternalDeviceDetail({
 }) {
   if (!z.uuid().safeParse(id).success) notFound()
   const user = await getCurrentUserContext()
+  const manifestPromise = loadFeatureFlags()
   const device = await externalDeviceClient
     .get(id, { userId: user.ownerUserId, administrator: user.isPlatformAdmin })
     .catch(error => {
@@ -186,7 +187,7 @@ export async function ExternalDeviceDetail({
   const canUse = owned && hasPermission(user.permissions, 'devices:use-external')
   const canEnroll = owned && hasPermission(user.permissions, 'devices:enroll-external')
   const canRun = canUse && hasPermission(user.permissions, 'automations:run')
-  const manifest = await loadFeatureFlags()
+  const manifest = await manifestPromise
   const enabled = (key: FeatureFlagKey) => manifest?.features.some(flag => flag.key === key && flag.effective) === true
   const workflowsEnabled = canRun && enabled('feature.workflows')
   const views: ExternalDeviceView[] = ['overview', 'connection']
@@ -280,6 +281,7 @@ export async function ExternalDeviceDetail({
         )}
         <AppWorkflowsSection
           appId={id}
+          canViewFullTrace={hasPermission(user.permissions, 'automations:manage')}
           launch={null}
         />
       </>

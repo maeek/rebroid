@@ -140,12 +140,9 @@ keep their original names and contents.
 
 ## Stored state
 
-The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema
-changes require a clean database. The commands below delete data when `--execute` is supplied.
-The Android device cutover changes both the orchestrator and web schemas. Use a clean stack on a
-dedicated engine for rehearsal. Stop writes and take a restorable backup before resetting an
-existing installation. Preview the reported paths and resources and have the operator review them
-before executing the reset. Older database schemas are rejected at startup.
+Web and orchestrator initialize fresh databases at startup. Prerelease schemas have no in-place upgrade path.
+When resetting an existing installation, stop writes and take a restorable backup. Preview the
+affected paths and engine resources with the operator before supplying `--execute`.
 The web service stores device icons under `data/device-icons`. Set `WEB_DEVICE_ICONS_PATH` to
 override the directory.
 The Compose broker owns the separate `external-adb-keys` volume. To keep the configured

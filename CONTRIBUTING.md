@@ -8,8 +8,7 @@ changing service boundaries, and [AGENTS.md](AGENTS.md) for repository-specific 
 
 Use Node.js 24 and pnpm through Corepack. Run commands from the repository root unless noted.
 The display sidecar tests use Go 1.24 and local UDP sockets for WebRTC loopback.
-Full Android operation still requires a supported native Linux rootful engine and binder devices;
-a local UI/API development environment does not provide those host capabilities.
+Running managed Redroid containers requires a supported rootful Linux engine and binder devices.
 
 ```bash
 corepack enable
@@ -35,7 +34,7 @@ Before starting services:
 - Check the orchestrator's engine socket path. `DOCKER_HOST=unix:///var/run/docker.sock` is an explicit
   option; `dev.sh` also checks `DOCKER_SOCKET_PATH` and common local socket locations.
 
-Start each service in its own terminal, infrastructure first:
+Start the services your change exercises, each in its own terminal:
 
 ```bash
 ./apps/firewall-agent/dev.sh
@@ -58,8 +57,8 @@ certificate paths relative to `apps/web` or to absolute paths. The certificate s
 `localhost`, and `127.0.0.1`. Open `https://<LAN-IP>:3000` on a device that trusts the certificate's
 issuing CA.
 
-The orchestrator dev script disables firewall bootstrap so API/UI work can start on hosts without
-a working firewall backend. Enforcement still requires the supported Linux host and privileges.
+The orchestrator dev launcher defaults firewall bootstrap to off. API/UI development can run
+without the firewall agent. Testing enforcement requires the agent on a supported Linux host.
 OCR development is described in its [workspace README](apps/ocr-sidecar/README.md).
 For running the full container stack, use the [deployment guide](docs/deployment.md).
 
@@ -120,22 +119,22 @@ The checks are also available individually as `pnpm test:ocr`, `pnpm test:compos
 `pnpm test:gapps-patcher`. Set `CONTAINER_ENGINE` to select the engine executable and
 `OCR_TEST_PYTHON` to select the Python interpreter from your OCR test environment.
 
-Scrcpy startup/cleanup changes require the [manual Redroid matrix](docs/display-streaming.md#manual-verification).
+For changes to ADB or scrcpy lifecycle ordering, follow the [Redroid verification requirements](docs/display-streaming.md#protected-scrcpy-lifecycle).
 Model tests use recorded fixtures. While Rebroid is in prerelease, update the initial SQLite schema
 in the owning service. Follow the [state reset procedures](docs/operations.md#stored-state) to test
 schema changes against existing local state.
 
 ### OpenAPI contracts
 
-After changing a DTO or controller, run the updated service locally with Swagger enabled (`ENABLE_API_DOCS=true`).
-Fetch its document and regenerate the TypeScript schema from the repository root. Choose the command for the service you changed.
+When a change affects the published API, run the updated service locally with Swagger enabled
+(`ENABLE_API_DOCS=true`). From the repository root, fetch its document and regenerate its types:
 
 ```bash
 pnpm openapi:generate --contract=orchestrator --fetch
 pnpm openapi:generate --contract=display-sidecar --fetch
 ```
 
-Include both `openapi.json` and `src/schema.ts` in the change. Without `--fetch`, generation reads the committed JSON.
+Commit any resulting changes to `openapi.json` and `src/schema.ts`. Without `--fetch`, generation reads the committed JSON.
 `pnpm openapi:check` checks the generated types against that JSON offline. Run the owning service's contract tests for API behavior.
 
 ## Dependency updates

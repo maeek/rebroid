@@ -86,9 +86,8 @@ and records ordered events. Conditional status updates prevent canceled or compl
 from being overwritten by late work. Interrupted automation runs fail after restart.
 
 AI tasks use a repeated observe, decide, validate, and act loop. Screenshots, Android UI evidence,
-and optional OCR ground each decision. Provider transport and server flavor are configured
-separately. AI shell access is denied by default; a permitted escalation grants allowlisted,
-read-only commands for one follow-up run.
+and optional OCR ground each decision. [AI automation](../apps/orchestrator/src/automations/ai/README.md)
+describes provider selection and the authorization required for a one-run shell escalation.
 
 The [orchestrator guide](orchestrator-architecture.md) covers lifecycle and automation coordination.
 
@@ -110,8 +109,8 @@ Each process owns its database and files. SQLite is configured for local use; th
 coordination layer. Application lifecycle recovery follows persisted job reservations. Automation
 runs and interrupted image patch jobs fail instead of replaying partially completed work.
 
-Pre-release schemas have no in-place upgrade path. Use the documented
-[state reset procedures](operations.md#stored-state) when a schema changes.
+For existing state that is incompatible with a prerelease schema, follow the
+[state reset procedures](operations.md#stored-state).
 
 ## Feature configuration
 
@@ -124,8 +123,8 @@ receives the external-devices flag. Each instance requires synchronized, enabled
 The [feature registry](../apps/orchestrator/src/feature-flags/feature-flag.registry.ts) defines
 defaults, deployment prerequisites and what happens to active work when a feature is disabled.
 For example, workflow runs drain, external attachments retire, and new viewers can use WebSocket
-when WebRTC is off. Keep cancellation, revocation and cleanup available. Admission still requires
-a healthy service, an authenticated caller and the relevant permissions.
+when WebRTC is off. Keep cancellation, revocation and cleanup available. Enabling a feature
+preserves its operation-specific permission and admission checks.
 
 Create app and the app's Network tab hide network access controls while the firewall feature is off. New apps
 use unrestricted access, which requires the corresponding permission. The orchestrator API can

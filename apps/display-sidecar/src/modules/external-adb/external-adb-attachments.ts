@@ -128,7 +128,8 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
     endpoint: string,
   ): Promise<{ status: ExternalAdbTcpCheckStatus }> {
     this.assertEnabled();
-    if (!this.allowedTcp(endpoint)) return { status: "not_allowed" };
+    const blocked = this.tcpBlockReason(endpoint);
+    if (blocked) return { status: blocked };
 
     const existing = this.tcpChecks.get(endpoint);
     if (existing) return { status: await existing };
@@ -179,7 +180,7 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
       throw new ConflictException(
         "External ADB attachment is already reserved.",
       );
-    if (transport === "tcp" && !this.allowedTcp(selector)) {
+    if (transport === "tcp" && this.tcpBlockReason(selector)) {
       throw new ForbiddenException(
         "TCP endpoint is outside the configured device list.",
       );
@@ -205,6 +206,10 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
     try {
       const daemon = await this.daemon.open();
       if (!this.current(row)) return row.connection;
+      if (!this.isAttemptApproved(row)) {
+        this.lose(row, "verification_required");
+        return row.connection;
+      }
       row.daemon = daemon;
       if (transport === "tcp") {
         const [host, port] = selector.split(":");
@@ -337,7 +342,9 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
     const row = this.verified.get(attachmentId);
     if (
       row &&
-      (!row.daemon?.alive || Math.min(row.expires, row.monitorBy) <= Date.now())
+      (!this.isAttemptApproved(row) ||
+        !row.daemon?.alive ||
+        Math.min(row.expires, row.monitorBy) <= Date.now())
     ) {
       this.lose(row, "transport_unavailable");
     }
@@ -388,6 +395,10 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
         for (const row of rows) this.lose(row, "verification_required");
         return;
       }
+      for (const row of rows) {
+        if (!this.isAttemptApproved(row))
+          this.lose(row, "verification_required");
+      }
       const daemons = new Set(
         rows.flatMap((row) => (row.daemon ? [row.daemon] : [])),
       );
@@ -411,6 +422,8 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
 
   private applyInventory(row: Attempt, inventory: AdbTransport[]) {
     if (!this.current(row)) return;
+    if (!this.isAttemptApproved(row))
+      return this.lose(row, "verification_required");
     if (!row.daemon?.alive) return this.lose(row, "broker_unavailable");
     if (row.monitorBy <= Date.now())
       return this.lose(row, "broker_unavailable");
@@ -575,12 +588,19 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
     }
   }
 
-  private allowedTcp(selector: string) {
+  private isAttemptApproved(row: Attempt) {
+    return (
+      row.transport !== "tcp" ||
+      this.features.isExternalTcpApproved(row.selector)
+    );
+  }
+
+  private tcpBlockReason(selector: string) {
     if (
       !isExternalAdbTcpEndpoint(selector) ||
-      !this.config.externalAdbTcpEndpoints.has(selector)
+      !this.features.isExternalTcpApproved(selector)
     )
-      return false;
+      return "not_allowed";
 
     // The broker's directly attached network contains internal services.
     const internal = new BlockList();
@@ -591,7 +611,8 @@ export class ExternalAdbAttachments implements OnModuleDestroy {
         internal.addSubnet(address.address, prefix, "ipv4");
       }
     }
-    return !internal.check(selector.split(":")[0], "ipv4");
+    if (internal.check(selector.split(":")[0], "ipv4"))
+      return "network_blocked";
   }
 
   private eligibleUsb(row: AdbTransport) {

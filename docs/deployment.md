@@ -74,27 +74,17 @@ After starting the stack, enable **External devices** under
 **Administration → Feature management**. Turning the flag off retires active attachments and
 keeps registrations available for cleanup.
 
-TCP enrollment defaults to an empty allowlist. To enroll TCP devices, set the same approved
-IPv4 addresses and ports on both services in a Compose override. If you previously set
-`EXTERNAL_ADB_TCP_ENDPOINTS` in your deployment environment, pass it to both services in
-the override. For example, save this as `deploy/compose.tcp.yaml`:
+TCP enrollment defaults to an empty allowlist. In **Administration → External ADB**, use
+**Allow network** to approve an IPv4 CIDR such as `10.20.0.0/24`. A range covers every valid
+TCP port in that network. Use `/32` for one IPv4 address. Existing address-and-port entries
+continue to grant access to their exact endpoint. Each confirmed change saves the list.
+The first change replaces the list sourced from `EXTERNAL_ADB_TCP_ENDPOINTS`. The orchestrator
+persists the saved list and synchronizes it to the broker. Removing an entry retires attachments
+whose endpoints are no longer covered once the broker receives the change. Deployments can
+supply the environment list to both services until an administrator saves a list in the console.
 
-```yaml
-services:
-  orchestrator:
-    environment:
-      EXTERNAL_ADB_TCP_ENDPOINTS: "${EXTERNAL_ADB_TCP_ENDPOINTS:?Set approved IPv4 addresses and ports}"
-  external-adb:
-    environment:
-      EXTERNAL_ADB_TCP_ENDPOINTS: "${EXTERNAL_ADB_TCP_ENDPOINTS:?Set approved IPv4 addresses and ports}"
-```
-
-```bash
-EXTERNAL_ADB_TCP_ENDPOINTS=192.168.1.20:5555 docker compose -f deploy/compose.yaml -f deploy/compose.tcp.yaml up -d --build
-```
-
-The broker rejects TCP targets on its directly attached service network. Use a trusted device
-network or an authenticated tunnel for legacy TCP ADB.
+The broker rejects TCP targets on its directly attached networks, including targets listed in
+the console. Use a routed device network or an authenticated tunnel for legacy TCP ADB.
 
 For host USB on native Linux, add `deploy/compose.usb.yaml`. Set `EXTERNAL_ADB_USB_PORTS`
 to the approved port paths reported by native ADB. Set `EXTERNAL_ADB_USB_GID` to the numeric

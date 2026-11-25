@@ -3,6 +3,38 @@ import test from "node:test";
 import { SidecarFeatureService } from "./sidecar-feature.service";
 import type { SidecarConfigService } from "./sidecar-config.service";
 
+test("an empty external TCP policy supersedes deployment endpoints and stale refreshes", () => {
+  const endpoint = "192.168.1.20:5555";
+  const service = new SidecarFeatureService({
+    externalAdbEnabled: true,
+    externalAdbTcpEndpoints: new Set([endpoint]),
+  } as SidecarConfigService);
+  const snapshot = {
+    revision: 1,
+    features: [
+      { key: "feature.display-virtual", effective: false },
+      { key: "feature.display-webrtc", effective: false },
+      { key: "feature.external-devices", effective: true },
+    ],
+  } satisfies Parameters<SidecarFeatureService["apply"]>[0];
+  service.apply(snapshot);
+  assert.equal(service.isExternalTcpApproved(endpoint), true);
+  service.apply({
+    ...snapshot,
+    tcpPolicy: { revision: 1, endpoints: ["192.168.1.0/24"] },
+  });
+  assert.equal(service.isExternalTcpApproved("192.168.1.21:6666"), true);
+  assert.equal(service.isExternalTcpApproved("192.168.2.21:6666"), false);
+  service.apply({ ...snapshot, tcpPolicy: { revision: 2, endpoints: [] } });
+  service.apply({
+    ...snapshot,
+    tcpPolicy: { revision: 1, endpoints: [endpoint] },
+  });
+  service.apply(snapshot);
+  assert.equal(service.isExternalTcpApproved(endpoint), false);
+  assert.equal(service.isExternalTcpApproved("192.168.1.21:6666"), false);
+});
+
 test("external broker requires its own effective flag in the feature snapshot", () => {
   const service = new SidecarFeatureService({
     externalAdbEnabled: true,

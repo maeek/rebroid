@@ -43,6 +43,26 @@ describe('OrchestratorSettingsStore', () => {
     await rm(directory, { recursive: true, force: true });
   });
 
+  it('persists an empty external TCP override and rejects concurrent stale edits', async () => {
+    const settings = new SettingsService(store, {} as never);
+    const endpoint = '192.168.1.20:5555';
+    await expect(settings.readExternalAdbTcpPolicy()).resolves.toBeUndefined();
+    await expect(
+      settings.updateExternalAdbTcpPolicy(0, [endpoint]),
+    ).resolves.toEqual({ revision: 1, endpoints: [endpoint] });
+    await expect(
+      settings.updateExternalAdbTcpPolicy(0, []),
+    ).rejects.toMatchObject({ status: 409 });
+    await settings.updateExternalAdbTcpPolicy(1, []);
+    await expect(settings.readExternalAdbTcpPolicy()).resolves.toEqual({
+      revision: 2,
+      endpoints: [],
+    });
+    expect(await settings.getSettings()).not.toHaveProperty(
+      'externalAdbTcpPolicy',
+    );
+  });
+
   it('publishes private settings even when an earlier temporary file has different permissions', async () => {
     const previousTemporary = `${settingsPath}.tmp`;
     await writeFile(previousTemporary, 'interrupted previous save');

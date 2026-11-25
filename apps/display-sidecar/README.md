@@ -15,23 +15,13 @@ Follow the [local setup](../../CONTRIBUTING.md#local-development), then run from
 ./apps/display-sidecar/dev.sh
 ```
 
-The script builds the service/viewer and starts port `8000`. Local ADB/scrcpy access must be available.
-The image bundles checksum-verified scrcpy 5.0.1 and the WebRTC bridge. Use the
-[Compose deployment](../../docs/deployment.md) for complete runtime wiring.
+The launcher builds the service and viewer. Live streaming needs an ADB target and the scrcpy
+server artifact. The [Compose image](Dockerfile) bundles the server and WebRTC bridge.
 
 ## Configuration and access
 
-[`.env.example`](.env.example) contains local examples;
-[`sidecar-config.service.ts`](src/modules/shared/sidecar-config.service.ts) validates the full configuration.
-
-| Setting                                                                | Purpose                                                  |
-| ---------------------------------------------------------------------- | -------------------------------------------------------- |
-| `DISPLAY_SIDECAR_SHARED_SECRET` / `DISPLAY_SIDECAR_SHARED_SECRET_FILE` | Internal session/control authentication.                 |
-| `DISPLAY_WEBRTC_UDP_PORT`                                        | Published media port, default `40000`.            |
-| `DISPLAY_WEBRTC_ICE_HOST`                                              | Browser-reachable ICE host override.                     |
-| `DISPLAY_SESSION_TTL_SECONDS`                                          | Sliding session lifetime, default 900 seconds.           |
-| `DISPLAY_SESSION_MAX_ACTIVE`                                           | Session capacity, default 64.                            |
-| `SCRCPY_VIDEO_ENCODER`                                                 | Explicit encoder chosen through host/image benchmarking. |
+See [local examples](.env.example) and the [sidecar configuration](src/modules/shared/sidecar-config.service.ts)
+for media ports, session limits and encoder settings.
 
 Internal APIs require a shared secret. The managed sidecar reads `/app/secrets/rebroid-shared-secret`.
 The external ADB broker reads its dedicated credential at `/run/rebroid-external-adb/broker-secret`.
@@ -54,8 +44,7 @@ pnpm --filter @rebroid/display-sidecar build
 ```
 
 Run `go test ./...` from `apps/display-sidecar/webrtc-bridge` for bridge changes.
-Scrcpy startup/cleanup changes require the [manual Redroid matrix](../../docs/display-streaming.md#manual-verification).
-A transport disconnect must never tear down the shared ADB/scrcpy source.
+For changes to ADB or scrcpy lifecycle ordering, follow the [Redroid verification requirements](../../docs/display-streaming.md#protected-scrcpy-lifecycle).
 
 ### Android text entry
 

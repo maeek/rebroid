@@ -24,6 +24,17 @@ export class ExternalDeviceTcpCheckDto {
   status!: ExternalAdbTcpCheckStatus;
 }
 
+export class ExternalTcpPolicyDto {
+  @ApiProperty({ minimum: 0 })
+  revision!: number;
+
+  @ApiProperty({
+    type: [String],
+    description: 'IPv4 CIDR ranges and individual IPv4 address:port entries.',
+  })
+  endpoints!: string[];
+}
+
 class ExternalDeviceConnectionDto implements ExternalDeviceConnection {
   @ApiProperty({ enum: externalDeviceStates })
   state!: ExternalDeviceState;
@@ -101,6 +112,10 @@ export class ExternalDeviceAvailabilityDto {
   enabled!: boolean;
   @ApiProperty({ enum: externalDeviceAvailabilityStates })
   status!: (typeof externalDeviceAvailabilityStates)[number];
+  @ApiPropertyOptional({
+    enum: ['configured', 'not_configured', 'unavailable'],
+  })
+  usb?: 'configured' | 'not_configured' | 'unavailable';
 }
 
 export class ExternalDeviceCandidateDto {

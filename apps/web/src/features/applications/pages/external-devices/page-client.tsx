@@ -53,7 +53,8 @@ export function ExternalDevicesPage({
     if (openRegistration) router.replace(href)
     else router.push(href)
   }
-  const description = administrator
+  const canEnrollUsb = administrator && availability?.usb === 'configured'
+  const description = canEnrollUsb
     ? 'Connect Android devices over USB or ADB over TCP.'
     : 'Connect Android devices using an approved ADB address and port.'
   return (
@@ -135,7 +136,8 @@ export function ExternalDevicesPage({
       {canRegister ? (
         <ExternalDeviceRegistrationDialog
           open={registrationOpen}
-          canEnrollUsb={administrator}
+          canEnrollUsb={canEnrollUsb}
+          canManageBroker={administrator}
           onClose={closeRegistration}
           onRegistered={openRegisteredDevice}
         />

@@ -4,6 +4,11 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { isDrmRenderDevice } from '@rebroid/android-application-core/redroid-runtime';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
+import {
+  isExternalAdbTcpAllowlistEntry,
+  maxExternalAdbTcpEndpoints,
+  type ExternalAdbTcpPolicy,
+} from '@rebroid/android-application-core/android-device';
 import { writePrivateFile } from '../common/write-private-file';
 import { SerialQueue } from '../common/serial-queue';
 import { SettingsSubscribers } from './settings-subscribers';
@@ -36,6 +41,7 @@ export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
   aiProviders: AutomationAiProvider[];
   featureFlags: PersistedFeatureFlags;
   dockerOperationLimits?: DockerOperationLimits;
+  externalAdbTcpPolicy?: ExternalAdbTcpPolicy;
 };
 
 @Injectable()
@@ -150,10 +156,40 @@ export class OrchestratorSettingsStore {
         value.dockerOperationLimits,
       ),
       aiProviders: normalizeAiProviders(value.aiProviders),
+      externalAdbTcpPolicy: this.normalizeExternalAdbTcpPolicy(
+        value.externalAdbTcpPolicy,
+      ),
       featureFlags: this.normalizeFeatureFlags(
         value.featureFlags,
         defaults.featureFlags,
       ),
+    };
+  }
+
+  private normalizeExternalAdbTcpPolicy(policy?: ExternalAdbTcpPolicy) {
+    if (policy === undefined) return undefined;
+    // A malformed saved override must not restore deployment approvals.
+    if (
+      !policy ||
+      !Number.isSafeInteger(policy.revision) ||
+      policy.revision < 1 ||
+      !Array.isArray(policy.endpoints)
+    ) {
+      throw new Error('Invalid stored external ADB TCP policy.');
+    }
+    if (
+      policy.endpoints.length > maxExternalAdbTcpEndpoints ||
+      !policy.endpoints.every(
+        (endpoint) =>
+          typeof endpoint === 'string' &&
+          isExternalAdbTcpAllowlistEntry(endpoint),
+      )
+    ) {
+      throw new Error('Invalid stored external ADB TCP endpoints.');
+    }
+    return {
+      revision: policy.revision,
+      endpoints: [...new Set(policy.endpoints)],
     };
   }
 

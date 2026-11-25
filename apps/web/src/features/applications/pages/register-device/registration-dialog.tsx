@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from 'react'
 import { isExternalAdbTcpEndpoint } from '@rebroid/android-application-core/android-device'
 import { IconDeviceMobile, IconNetwork, IconRefresh } from '@tabler/icons-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,6 +25,8 @@ import { externalDeviceBffPath } from '@/shared/contracts/external-device'
 import { isApplicationId } from '@/shared/model/application-id'
 import type { ExternalDevice, ExternalTcpCheck, ExternalUsbCandidate } from '@/shared/contracts/external-device'
 
+const defaultTcpPort = '5555'
+
 const connectionTypes = [
   { value: 'usb', label: 'USB', description: 'Phone plugged into the host', Icon: IconDeviceMobile },
   { value: 'tcp', label: 'ADB over TCP', description: 'Device on the network', Icon: IconNetwork }
@@ -37,8 +40,13 @@ const tcpCheckNotices = {
   },
   not_allowed: {
     tone: 'warning',
-    title: 'Endpoint blocked',
-    description: 'Use an IP address and port approved for this deployment.'
+    title: 'Endpoint not approved',
+    description: 'An administrator must allow this address in the External ADB TCP allowlist.'
+  },
+  network_blocked: {
+    tone: 'warning',
+    title: 'Broker network is protected',
+    description: 'Use an address on a device network outside the broker’s own network.'
   },
   refused: {
     tone: 'warning',
@@ -61,18 +69,20 @@ export function ExternalDeviceRegistrationDialog({
   open,
   onClose,
   onRegistered,
-  canEnrollUsb
+  canEnrollUsb,
+  canManageBroker = false
 }: {
   open: boolean
   onClose: () => void
   onRegistered: (device: ExternalDevice) => void
   canEnrollUsb: boolean
+  canManageBroker?: boolean
 }) {
   const formId = useId()
-  const [selection, setTransport] = useState<'usb' | 'tcp'>('usb')
+  const [selection, setTransport] = useState<'usb' | 'tcp'>('tcp')
   const transport = canEnrollUsb ? selection : 'tcp'
   const [address, setAddress] = useState('')
-  const [port, setPort] = useState('')
+  const [port, setPort] = useState(defaultTcpPort)
   const endpoint = `${address.trim()}:${port.trim()}`
   const [addressError, setAddressError] = useState('')
   const addressInput = useRef<HTMLInputElement>(null)
@@ -80,7 +90,8 @@ export function ExternalDeviceRegistrationDialog({
   const [candidateId, setCandidateId] = useState('')
   const [pending, setPending] = useState<'scan' | 'check' | 'register'>()
   const [scanError, setScanError] = useState('')
-  const [tcpCheckNotice, setTcpCheckNotice] = useState<{ tone: NoticeTone; title: string; description: string }>()
+  const [tcpCheck, setTcpCheck] = useState<ExternalTcpCheck['status']>()
+  const [tcpCheckError, setTcpCheckError] = useState('')
   const [error, setError] = useState('')
 
   const validateTcpEndpoint = () => {
@@ -93,16 +104,13 @@ export function ExternalDeviceRegistrationDialog({
   const checkTcp = async () => {
     if (pending || !validateTcpEndpoint()) return
     setPending('check')
-    setTcpCheckNotice(undefined)
+    setTcpCheck(undefined)
+    setTcpCheckError('')
     try {
       const result = await sendBff<ExternalTcpCheck>(`${externalDeviceBffPath}/tcp-check`, { endpoint })
-      setTcpCheckNotice(tcpCheckNotices[result.status])
+      setTcpCheck(result.status)
     } catch (cause) {
-      setTcpCheckNotice({
-        tone: 'danger',
-        title: 'Connection check unavailable',
-        description: cause instanceof Error ? cause.message : 'Try checking the connection again.'
-      })
+      setTcpCheckError(cause instanceof Error ? cause.message : 'Try checking the connection again.')
     } finally {
       setPending(undefined)
     }
@@ -161,18 +169,22 @@ export function ExternalDeviceRegistrationDialog({
       }}
       onOpenChangeComplete={nextOpen => {
         if (nextOpen) return
-        setTransport('usb')
+        setTransport('tcp')
         setAddress('')
-        setPort('')
+        setPort(defaultTcpPort)
         setAddressError('')
         setCandidates(undefined)
         setCandidateId('')
         setScanError('')
-        setTcpCheckNotice(undefined)
+        setTcpCheck(undefined)
+        setTcpCheckError('')
         setError('')
       }}
     >
-      <DialogContent data-editor-dialog=''>
+      <DialogContent
+        data-editor-dialog=''
+        className='sm:max-w-2xl'
+      >
         <DialogHeader>
           <DialogTitle>Register device</DialogTitle>
           <DialogDescription>After registration, verify the device from its Connection page.</DialogDescription>
@@ -246,7 +258,8 @@ export function ExternalDeviceRegistrationDialog({
                     onChange={event => {
                       setAddress(event.target.value)
                       setAddressError('')
-                      setTcpCheckNotice(undefined)
+                      setTcpCheck(undefined)
+                      setTcpCheckError('')
                     }}
                   />
                 </FormField>
@@ -262,13 +275,13 @@ export function ExternalDeviceRegistrationDialog({
                     min={1}
                     max={65535}
                     autoComplete='off'
-                    placeholder='5555…'
                     value={port}
                     readOnly={pending === 'check'}
                     onChange={event => {
                       setPort(event.target.value)
                       setAddressError('')
-                      setTcpCheckNotice(undefined)
+                      setTcpCheck(undefined)
+                      setTcpCheckError('')
                     }}
                   />
                 </FormField>
@@ -284,7 +297,28 @@ export function ExternalDeviceRegistrationDialog({
               >
                 Check connection
               </MutationButton>
-              {tcpCheckNotice ? <Notice {...tcpCheckNotice} /> : null}
+              {tcpCheck ? (
+                <Notice
+                  {...tcpCheckNotices[tcpCheck]}
+                  actions={
+                    tcpCheck === 'not_allowed' && canManageBroker ? (
+                      <Button
+                        asChild
+                        variant='secondary'
+                      >
+                        <Link href='/platform/external-adb#allowed-endpoints'>TCP allowlist</Link>
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : null}
+              {tcpCheckError ? (
+                <Notice
+                  tone='danger'
+                  title='Connection check unavailable'
+                  description={tcpCheckError}
+                />
+              ) : null}
             </div>
           ) : (
             <div className='grid gap-3'>

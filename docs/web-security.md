@@ -64,6 +64,11 @@ key in its own volume and uses a dedicated shared secret for internal API calls.
 enrollment require the enrollment privilege, and viewing or automation requires the owner's
 use privilege and a current verified attachment. The public edge exposes the external viewer
 paths. Broker readiness responses exclude keys, paths, endpoints, and device serials.
+Only platform administrators can read or change the external TCP allowlist. The broker accepts
+policy revisions over its authenticated internal API and continues to reject addresses on its own
+directly attached networks. CIDR entries permit all valid ports in the range and remain subject
+to the broker's network restrictions. After synchronization, attachments retire when their
+endpoints are no longer covered by any entry.
 
 The `docker:open-terminal` privilege is derived from built-in Administrators membership.
 Group policy cannot delegate it. The orchestrator validates the terminal WebSocket Origin

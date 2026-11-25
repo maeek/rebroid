@@ -171,7 +171,7 @@ function translateBrokerFailure(error: unknown): never {
       status: 503
     })
   if (error.details?.code === 'external_adb_endpoint_forbidden')
-    throw invalid('Use an IP address and port approved for this deployment.')
+    throw invalid('An administrator must allow this address in External ADB.')
   if (error.details?.code === 'external_adb_already_registered')
     throw new PublicActionError('This device is already registered.', {
       code: 'conflict',

@@ -30,6 +30,7 @@ describe('external device enrollment', () => {
   });
   let db: DataSource;
   let service: ExternalAndroidDevicesService;
+  let config: ConfigService;
   const externalEnabled = jest.fn();
   const broker = {
     enabled: true,
@@ -48,6 +49,9 @@ describe('external device enrollment', () => {
   beforeEach(async () => {
     jest.resetAllMocks();
     externalEnabled.mockReturnValue(true);
+    broker.checkReadiness.mockResolvedValue({
+      externalAdb: { usb: 'not_configured' },
+    });
     broker.synchronizeViewerFeatures.mockResolvedValue({ revision: 1 });
     broker.listViewers.mockResolvedValue({ items: [] });
     db = await new SerializedSqliteDataSource({
@@ -61,10 +65,13 @@ describe('external device enrollment', () => {
       migrations: [InitializeSqliteSchema1800000008000],
       migrationsRun: true,
     }).initialize();
+    config = new ConfigService({
+      app: { externalAdb: { tcpEndpoints: [endpoint] } },
+    });
     service = new ExternalAndroidDevicesService(
       db.getRepository(ExternalAndroidDevice),
       broker as unknown as ExternalAdbBrokerClient,
-      new ConfigService({ app: { externalAdb: { tcpEndpoints: [endpoint] } } }),
+      config,
       {
         isEnabled: (key: string) =>
           key === 'feature.resource-quota' || externalEnabled(),
@@ -74,6 +81,25 @@ describe('external device enrollment', () => {
   });
 
   afterEach(async () => db.destroy());
+
+  it('admits devices in an allowed CIDR independently of port', async () => {
+    config.set('app.externalAdb.tcpEndpoints', ['192.168.1.0/24']);
+    await expect(
+      service.register(makeInput(), ownerEnroller),
+    ).resolves.toMatchObject({ ownerUserId: owner.userId });
+    await expect(
+      service.register(
+        { ...makeInput(), endpoint: '192.168.1.21:6666' },
+        ownerEnroller,
+      ),
+    ).resolves.toMatchObject({ ownerUserId: owner.userId });
+    await expect(
+      service.register(
+        { ...makeInput(), endpoint: '192.168.2.21:6666' },
+        ownerEnroller,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+  });
 
   it('checks only approved endpoints for enrollers without registering an attachment', async () => {
     await expect(
@@ -168,6 +194,7 @@ describe('external device enrollment', () => {
     await expect(service.availability()).resolves.toEqual({
       enabled: true,
       status: 'available',
+      usb: 'not_configured',
     });
     expect(broker.connect).not.toHaveBeenCalled();
   });

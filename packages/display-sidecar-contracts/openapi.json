@@ -2459,6 +2459,26 @@
           "effective"
         ]
       },
+      "ExternalTcpPolicyDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "minimum": 1
+          },
+          "endpoints": {
+            "description": "IPv4 CIDR ranges and individual IPv4 address:port entries.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "endpoints"
+        ]
+      },
       "DisplayFeatureSnapshotDto": {
         "type": "object",
         "properties": {
@@ -2471,6 +2491,9 @@
             "items": {
               "$ref": "#/components/schemas/DisplayFeatureStateDto"
             }
+          },
+          "tcpPolicy": {
+            "$ref": "#/components/schemas/ExternalTcpPolicyDto"
           }
         },
         "required": [
@@ -2517,6 +2540,7 @@
             "enum": [
               "reachable",
               "not_allowed",
+              "network_blocked",
               "refused",
               "timed_out",
               "unreachable"

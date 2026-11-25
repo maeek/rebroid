@@ -9,7 +9,7 @@ vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn(), sendBff: vi.fn() }))
 describe('external device registration', () => {
   beforeEach(() => vi.resetAllMocks())
 
-  it('starts with USB discovery and shows an actionable empty result', async () => {
+  it('defaults to TCP and shows an actionable USB discovery result when USB is configured', async () => {
     vi.mocked(getBff).mockResolvedValue([])
     render(
       <ExternalDeviceRegistrationDialog
@@ -20,7 +20,8 @@ describe('external device registration', () => {
       />
     )
 
-    expect(screen.getByRole('radio', { name: 'USB' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'ADB over TCP' })).toBeChecked()
+    fireEvent.click(screen.getByRole('radio', { name: 'USB' }))
     expect(screen.queryByRole('combobox', { name: 'USB device' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Register device' })).toBeDisabled()
     expect(getBff).not.toHaveBeenCalled()
@@ -47,7 +48,7 @@ describe('external device registration', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'ADB over TCP' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Test VM' } })
     fireEvent.change(screen.getByRole('textbox', { name: /IP address/ }), { target: { value: '192.168.1.20' } })
-    fireEvent.change(screen.getByRole('spinbutton', { name: /TCP port/ }), { target: { value: '5555' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /TCP port/ }), { target: { value: '5556' } })
     expect(screen.queryByRole('button', { name: 'Find USB devices' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Register device' }))
 
@@ -55,11 +56,12 @@ describe('external device registration', () => {
       expect(sendBff).toHaveBeenCalledWith(externalDeviceBffPath, {
         name: 'Test VM',
         transport: 'tcp',
-        endpoint: '192.168.1.20:5555'
+        endpoint: '192.168.1.20:5556'
       })
     )
     expect(await screen.findByText('This device is already registered.')).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Test VM')
+    expect(screen.getByRole('spinbutton', { name: /TCP port/ })).toHaveValue(5556)
     expect(onRegistered).not.toHaveBeenCalled()
   })
 
@@ -91,9 +93,9 @@ describe('external device registration', () => {
 
     const check = screen.getByRole('button', { name: 'Check connection' })
     const port = screen.getByRole('spinbutton', { name: /TCP port/ })
+    expect(port).toHaveValue(5555)
     expect(check).toBeDisabled()
     fireEvent.change(screen.getByRole('textbox', { name: /IP address/ }), { target: { value: '192.168.1.20' } })
-    fireEvent.change(port, { target: { value: '5555' } })
     fireEvent.click(check)
 
     expect(await screen.findByText('TCP port reachable')).toBeVisible()
@@ -107,5 +109,27 @@ describe('external device registration', () => {
     expect(await screen.findByText('Connection refused')).toBeVisible()
     expect(sendBff).toHaveBeenNthCalledWith(2, `${externalDeviceBffPath}/tcp-check`, { endpoint: '192.168.1.20:5556' })
     expect(onRegistered).not.toHaveBeenCalled()
+  })
+
+  it('links administrators to the allowlist when a TCP endpoint needs approval', async () => {
+    vi.mocked(sendBff).mockResolvedValue({ status: 'not_allowed' })
+    render(
+      <ExternalDeviceRegistrationDialog
+        open
+        onClose={vi.fn()}
+        canEnrollUsb={false}
+        canManageBroker
+        onRegistered={vi.fn()}
+      />
+    )
+    fireEvent.change(screen.getByRole('textbox', { name: /IP address/ }), { target: { value: '192.168.1.20' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /TCP port/ }), { target: { value: '5555' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Check connection' }))
+
+    expect(await screen.findByText('Endpoint not approved')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'TCP allowlist' })).toHaveAttribute(
+      'href',
+      '/platform/external-adb#allowed-endpoints'
+    )
   })
 })

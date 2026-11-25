@@ -12,7 +12,8 @@ import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
-  isExternalAdbTcpEndpoint,
+  createExternalAdbTcpAllowlist,
+  isExternalAdbTcpAllowlistEntry,
   type ExternalDeviceConnection,
   type ExternalDeviceVerificationProof,
 } from '@rebroid/android-application-core/android-device';
@@ -161,16 +162,16 @@ export class ExternalAndroidDevicesService
       return { enabled: false, status: 'feature_disabled' };
     try {
       const signal = AbortSignal.timeout(1500);
-      await Promise.all([
+      const [readiness] = await Promise.all([
         this.broker.checkReadiness(signal),
         this.broker.synchronizeViewerFeatures(signal),
       ]);
+      return this.isEnabled()
+        ? { enabled: true, status: 'available', usb: readiness.externalAdb.usb }
+        : { enabled: false, status: 'feature_disabled' };
     } catch {
       return { enabled: false, status: 'broker_unavailable' };
     }
-    return this.isEnabled()
-      ? { enabled: true, status: 'available' }
-      : { enabled: false, status: 'feature_disabled' };
   }
 
   private isEnabled() {
@@ -238,7 +239,8 @@ export class ExternalAndroidDevicesService
   ): Promise<ExternalDeviceTcpCheckDto> {
     this.requireEnrollment(actor);
     this.assertEnabled();
-    if (!this.isApprovedTcpEndpoint(endpoint)) return { status: 'not_allowed' };
+    if (!(await this.isApprovedTcpEndpoint(endpoint)))
+      return { status: 'not_allowed' };
 
     const signal = AbortSignal.timeout(4_000);
     try {
@@ -264,7 +266,7 @@ export class ExternalAndroidDevicesService
         .selector;
     } else {
       selector = input.endpoint;
-      if (!this.isApprovedTcpEndpoint(selector)) {
+      if (!(await this.isApprovedTcpEndpoint(selector))) {
         throw new BadRequestException({
           code: 'external_adb_endpoint_forbidden',
           message: 'Select an approved TCP endpoint.',
@@ -298,10 +300,36 @@ export class ExternalAndroidDevicesService
     return this.devices.findOneByOrFail({ id: device.id });
   }
 
-  private isApprovedTcpEndpoint(endpoint: string) {
-    const approved =
+  async readTcpPolicy() {
+    const saved = await this.settings?.readExternalAdbTcpPolicy();
+    if (saved) return saved;
+    const endpoints =
       this.config.get<string[]>('app.externalAdb.tcpEndpoints') ?? [];
-    return isExternalAdbTcpEndpoint(endpoint) && approved.includes(endpoint);
+    return {
+      revision: 0,
+      endpoints: [...new Set(endpoints.filter(isExternalAdbTcpAllowlistEntry))],
+    };
+  }
+
+  async updateTcpPolicy(revision: number, endpoints: string[]) {
+    if (!this.settings)
+      throw new ServiceUnavailableException('Settings are unavailable.');
+    const saved = await this.settings.updateExternalAdbTcpPolicy(
+      revision,
+      endpoints,
+    );
+    if (this.broker.enabled) {
+      await this.broker
+        .synchronizeViewerFeatures(AbortSignal.timeout(1500))
+        .catch(() => undefined);
+    }
+    return saved;
+  }
+
+  private async isApprovedTcpEndpoint(endpoint: string) {
+    return createExternalAdbTcpAllowlist(
+      (await this.readTcpPolicy()).endpoints,
+    )(endpoint);
   }
 
   connect(
@@ -317,6 +345,15 @@ export class ExternalAndroidDevicesService
       await this.broker.synchronizeViewerFeatures();
       if (device.attemptId && device.connection.state !== 'offline')
         return this.observe(device);
+      if (
+        device.transport === 'tcp' &&
+        !(await this.isApprovedTcpEndpoint(device.selector))
+      ) {
+        throw new BadRequestException({
+          code: 'external_adb_endpoint_forbidden',
+          message: 'Select an approved TCP endpoint.',
+        });
+      }
       if (device.attemptId) await this.detach(device);
       const attemptId = randomUUID();
       const connection: ExternalDeviceConnection = {

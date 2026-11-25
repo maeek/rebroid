@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
 import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
@@ -22,6 +22,27 @@ export class SettingsService {
 
   async getSettings(): Promise<OrchestratorSettingsDto> {
     return this.store.toPublicSettings(await this.store.getStoredSettings());
+  }
+
+  async readExternalAdbTcpPolicy() {
+    return (await this.store.getStoredSettings()).externalAdbTcpPolicy;
+  }
+
+  async updateExternalAdbTcpPolicy(revision: number, endpoints: string[]) {
+    const updated = await this.store.updateSettings((current) => {
+      if ((current.externalAdbTcpPolicy?.revision ?? 0) !== revision)
+        throw new ConflictException(
+          'The allowed endpoints changed. Reload before saving.',
+        );
+      return {
+        ...current,
+        externalAdbTcpPolicy: {
+          revision: revision + 1,
+          endpoints: [...new Set(endpoints)],
+        },
+      };
+    });
+    return updated.externalAdbTcpPolicy!;
   }
 
   async readAndroidRendering() {

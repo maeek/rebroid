@@ -797,9 +797,15 @@ export interface components {
             key: "feature.display-virtual" | "feature.display-webrtc" | "feature.external-devices";
             effective: boolean;
         };
+        ExternalTcpPolicyDto: {
+            revision: number;
+            /** @description IPv4 CIDR ranges and individual IPv4 address:port entries. */
+            endpoints: string[];
+        };
         DisplayFeatureSnapshotDto: {
             revision: number;
             features: components["schemas"]["DisplayFeatureStateDto"][];
+            tcpPolicy?: components["schemas"]["ExternalTcpPolicyDto"];
         };
         ExternalAdbCandidateDto: {
             /** Format: uuid */
@@ -812,7 +818,7 @@ export interface components {
         };
         ExternalAdbTcpCheckDto: {
             /** @enum {string} */
-            status: "reachable" | "not_allowed" | "refused" | "timed_out" | "unreachable";
+            status: "reachable" | "not_allowed" | "network_blocked" | "refused" | "timed_out" | "unreachable";
         };
         ExternalAdbConnectionDto: {
             /** @enum {string} */

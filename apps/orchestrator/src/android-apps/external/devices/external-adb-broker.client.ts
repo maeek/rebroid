@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
+import { SettingsService } from '../../../settings/settings.service';
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import {
   externalAdbTcpCheckStatuses,
@@ -66,6 +67,7 @@ export class ExternalAdbBrokerClient {
   constructor(
     private readonly config: ConfigService,
     private readonly features: FeatureFlagsService,
+    private readonly settings: SettingsService,
   ) {}
 
   get enabled() {
@@ -83,6 +85,7 @@ export class ExternalAdbBrokerClient {
         externalAdb: z.object({
           adb: z.literal(true),
           keyStorage: z.literal(true),
+          usb: z.enum(['configured', 'not_configured', 'unavailable']),
         }),
       }),
       'GET',
@@ -237,7 +240,8 @@ export class ExternalAdbBrokerClient {
     await this.synchronizeViewerFeatures().catch(() => undefined);
   }
 
-  synchronizeViewerFeatures(signal?: AbortSignal) {
+  async synchronizeViewerFeatures(signal?: AbortSignal) {
+    const tcpPolicy = await this.settings.readExternalAdbTcpPolicy();
     const { revision, features } = this.features.getManifest();
     const webrtc = features.some(
       (feature) =>
@@ -251,6 +255,7 @@ export class ExternalAdbBrokerClient {
       'PUT',
       {
         revision,
+        ...(tcpPolicy && { tcpPolicy }),
         features: [
           { key: 'feature.display-virtual', effective: false },
           { key: 'feature.display-webrtc', effective: webrtc },

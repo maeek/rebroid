@@ -1211,6 +1211,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/devices/external/tcp-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExternalAndroidDevicesController_readTcpPolicy"];
+        put: operations["ExternalAndroidDevicesController_updateTcpPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices/external/{id}": {
         parameters: {
             query?: never;
@@ -3512,6 +3528,8 @@ export interface components {
             enabled: boolean;
             /** @enum {string} */
             status: "not_configured" | "feature_disabled" | "broker_unavailable" | "available";
+            /** @enum {string} */
+            usb?: "configured" | "not_configured" | "unavailable";
         };
         ExternalDeviceConnectionDto: {
             /** @enum {string} */
@@ -3546,7 +3564,12 @@ export interface components {
         };
         ExternalDeviceTcpCheckDto: {
             /** @enum {string} */
-            status: "reachable" | "not_allowed" | "refused" | "timed_out" | "unreachable";
+            status: "reachable" | "not_allowed" | "network_blocked" | "refused" | "timed_out" | "unreachable";
+        };
+        ExternalTcpPolicyDto: {
+            revision: number;
+            /** @description IPv4 CIDR ranges and individual IPv4 address:port entries. */
+            endpoints: string[];
         };
         RegisterExternalAndroidDeviceDto: {
             name: string;
@@ -6731,6 +6754,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExternalDeviceTcpCheckDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_readTcpPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalTcpPolicyDto"];
+                };
+            };
+        };
+    };
+    ExternalAndroidDevicesController_updateTcpPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-rebroid-device-use"?: string;
+                "x-rebroid-device-enroll"?: string;
+                "x-rebroid-device-admin"?: string;
+                "x-rebroid-device-user": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalTcpPolicyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalTcpPolicyDto"];
                 };
             };
         };

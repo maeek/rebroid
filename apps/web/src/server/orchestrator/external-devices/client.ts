@@ -7,6 +7,7 @@ import type {
   ExternalDeviceLogcat,
   ExternalDeviceScreenshot,
   ExternalTcpCheck,
+  ExternalTcpPolicy,
   ExternalUsbCandidate,
   ExternalVerificationInstructions,
   ExternalViewerSession,
@@ -36,6 +37,12 @@ const ownerHeaders = (owner: Owner) => headersFor({ ...owner, canUse: true })
 
 export const externalDeviceClient = {
   availability: () => emptyRequest<ExternalDeviceAvailability>(`${base}/availability`),
+  tcpPolicy: (userId: string) =>
+    emptyRequest<ExternalTcpPolicy>(`${base}/tcp-policy`, { headers: headersFor({ userId, administrator: true }) }),
+  updateTcpPolicy: (input: ExternalTcpPolicy, userId: string) =>
+    jsonRequest<ExternalTcpPolicy>(`${base}/tcp-policy`, 'PUT', input, {
+      headers: headersFor({ userId, administrator: true })
+    }),
   list: (actor: Actor) => emptyRequest<ExternalDevice[]>(base, { headers: headersFor(actor) }),
   get: (id: string, actor: Actor, signal?: AbortSignal) =>
     emptyRequest<ExternalDevice>(path(id), { headers: headersFor(actor), signal }),

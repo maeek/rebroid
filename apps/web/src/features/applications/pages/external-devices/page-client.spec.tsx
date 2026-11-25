@@ -32,7 +32,7 @@ describe('external devices console', () => {
     render(
       <ExternalDevicesPage
         initialDevices={[]}
-        availability={{ enabled: true, status: 'available' }}
+        availability={{ enabled: true, status: 'available', usb: 'not_configured' }}
         administrator
         canEnroll
         canConnect
@@ -44,11 +44,14 @@ describe('external devices console', () => {
 
     fireEvent.click(headerAction)
     const dialog = await screen.findByRole('dialog', { name: 'Register device' })
-    expect(within(dialog).getByRole('radio', { name: 'USB' })).toBeVisible()
+    expect(within(dialog).queryByRole('radio', { name: 'USB' })).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('textbox', { name: /IP address/ })).toBeVisible()
+    fireEvent.change(within(dialog).getByRole('spinbutton', { name: /TCP port/ }), { target: { value: '5556' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Register device' })).toBeNull())
     fireEvent.click(emptyStateAction)
-    expect(await screen.findByRole('dialog', { name: 'Register device' })).toBeVisible()
+    const reopened = within(await screen.findByRole('dialog', { name: 'Register device' }))
+    expect(reopened.getByRole('spinbutton', { name: /TCP port/ })).toHaveValue(5555)
   })
 
   it('takes a successful registration from the sidebar route to Connection', async () => {
