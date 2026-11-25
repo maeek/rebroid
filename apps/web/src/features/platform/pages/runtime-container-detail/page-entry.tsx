@@ -21,17 +21,7 @@ export async function RuntimeContainerDetailPageEntry({
   if (view === 'terminal' && !hasDockerTerminalPrivilege(await getCurrentUser(), dockerOpenTerminal)) notFound()
 
   const result = await readOrchestratorPage(() => loadRuntimeContainerDetailPageData(id, view), { allowMissing: true })
-  if (result.ok) {
-    const { details, pendingLogs } = result.data
-
-    return (
-      <RuntimeContainerDetail
-        view={view}
-        details={details}
-        pendingLogs={pendingLogs}
-      />
-    )
-  }
+  if (result.ok) return <RuntimeContainerDetail {...result.data} />
 
   return (
     <StandardPage className='gap-2'>

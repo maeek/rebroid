@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getPlatformContainerLogsAction } from '@/server/orchestrator/platform/container-actions'
+import {
+  getPlatformContainerLogsAction,
+  getPlatformContainerStatsAction
+} from '@/server/orchestrator/platform/container-actions'
 import { actionError, actionOk, type ActionResult } from '@/shared/actions/action-result'
 import { RuntimeContainerDetail } from './runtime-container-detail'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
@@ -64,14 +67,13 @@ const { details } = vi.hoisted(() => ({
   } satisfies PlatformContainerDetails
 }))
 
-vi.mock('./container-detail-context', () => ({
-  ContainerDetailProvider: ({ children }: { children: ReactNode }) => children,
-  useContainerDetailContext: () => ({ details }),
-  useContainerDetailControllerContext: () => ({ setPendingAction: vi.fn() })
+vi.mock('next/navigation', async importOriginal => ({
+  ...(await importOriginal<typeof import('next/navigation')>()),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() })
 }))
-vi.mock('./live-resources-section', () => ({ LiveResourcesSection: () => <div>Live resources</div> }))
 vi.mock('@/server/orchestrator/platform/container-actions', () => ({
-  getPlatformContainerLogsAction: vi.fn()
+  getPlatformContainerLogsAction: vi.fn(),
+  getPlatformContainerStatsAction: vi.fn()
 }))
 vi.mock('./container-action-dialog', () => ({ ContainerActionDialog: () => null }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
@@ -79,13 +81,24 @@ vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 describe('container resource details', () => {
   beforeEach(() => {
     details.container.state = 'exited'
+    vi.mocked(getPlatformContainerStatsAction).mockReturnValue(new Promise(() => {}))
   })
+  const summary = () => ({ container: details.container, startedAt: '2026-01-01' })
   const page = (view: ContainerResourceView = 'overview') =>
     render(
-      <RuntimeContainerDetail
-        view={view}
-        details={details}
-      />
+      <QueryClientProvider client={new QueryClient()}>
+        {view === 'overview' ? (
+          <RuntimeContainerDetail
+            view={view}
+            details={details}
+          />
+        ) : (
+          <RuntimeContainerDetail
+            view={view}
+            summary={summary()}
+          />
+        )}
+      </QueryClientProvider>
     )
 
   it('hides stopped-container metrics and links related resources with raw inspect already visible', () => {
@@ -110,6 +123,14 @@ describe('container resource details', () => {
     details.container.state = 'running'
     page()
     expect(screen.getByText('Live resources')).toBeVisible()
+    expect(getPlatformContainerStatsAction).toHaveBeenCalledWith('container-id')
+  })
+
+  it.each(['logs', 'terminal'] as const)('does not fetch live stats on the %s tab', view => {
+    details.container.state = 'running'
+    page(view)
+    expect(screen.queryByText('Live resources')).not.toBeInTheDocument()
+    expect(getPlatformContainerStatsAction).not.toHaveBeenCalled()
   })
 
   it('opens logs in a dedicated linked destination', () => {
@@ -130,11 +151,13 @@ describe('container resource details', () => {
       .mockResolvedValueOnce(actionOk(log))
       .mockResolvedValueOnce(actionError({ message: 'Docker unavailable', requestId: 'docker-ref' }))
     render(
-      <RuntimeContainerDetail
-        details={details}
-        view='logs'
-        pendingLogs={initial.promise}
-      />
+      <QueryClientProvider client={new QueryClient()}>
+        <RuntimeContainerDetail
+          summary={summary()}
+          view='logs'
+          pendingLogs={initial.promise}
+        />
+      </QueryClientProvider>
     )
 
     expect(screen.getByRole('heading', { name: 'runtime' })).toBeVisible()

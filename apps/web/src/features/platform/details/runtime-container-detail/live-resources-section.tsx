@@ -2,11 +2,9 @@
 
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
+import { useContainerDetailContext } from '@/features/platform/details/runtime-container-detail/container-detail-context'
 import {
-  useContainerDetailContext,
-  useContainerDetailControllerContext
-} from '@/features/platform/details/runtime-container-detail/container-detail-context'
-import {
+  containerStatsRefreshIntervalMs,
   formatByteStatsValue,
   formatCpuStatsValue,
   formatStatsSample,
@@ -15,13 +13,27 @@ import {
   getRefreshIcon,
   isStatsRefreshDisabled
 } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
+import { usePollingQuery } from '@/hooks/use-polling-query'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { getPlatformContainerStatsAction } from '@/server/orchestrator/platform/container-actions'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
+import type { PlatformContainerStats } from '@/shared/contracts/platform'
 
 export const LiveResourcesSection = () => {
-  const { details } = useContainerDetailContext()
-  const { isRefreshingStats, refreshStats, stats, statsError } = useContainerDetailControllerContext()
-  const containerState = details.container.state
+  const { container } = useContainerDetailContext()
+  const containerState = container.state
+  const {
+    data: stats,
+    error,
+    isValidating: isRefreshingStats,
+    mutate: refreshStats
+  } = usePollingQuery<PlatformContainerStats>(
+    ['orchestrator', 'containers', container.id, 'stats'],
+    () => getPlatformContainerStatsAction(container.id),
+    { enabled: containerState === 'running', intervalMs: containerStatsRefreshIntervalMs }
+  )
+  const statsError = error ? getDisplayErrorMessage(error, 'Could not collect live container stats.') : null
 
   return (
     <PlatformResourceSection

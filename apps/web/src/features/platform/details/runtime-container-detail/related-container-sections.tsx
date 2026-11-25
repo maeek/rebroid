@@ -5,8 +5,8 @@ import { IconApps, IconArrowUpRight, IconBox, IconNetwork } from '@tabler/icons-
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
-import { useContainerDetailContext } from './container-detail-context'
 import { getRelatedImageSize, getRelatedImageTags } from './container-detail-utils'
+import type { PlatformContainerDetails } from '@/shared/contracts/platform'
 
 const RelatedResourcesLayout = ({ children }: { children: ReactNode }) => (
   <PlatformResourceSection
@@ -56,8 +56,7 @@ const ResourceLink = ({
   </li>
 )
 
-export const RelatedResourcesSection = () => {
-  const { details } = useContainerDetailContext()
+export const RelatedResourcesSection = ({ details }: { details: PlatformContainerDetails }) => {
   const { container, relatedImage, relatedNetworks } = details
   return (
     <RelatedResourcesLayout>

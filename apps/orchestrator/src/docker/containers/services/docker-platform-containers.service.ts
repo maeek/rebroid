@@ -9,6 +9,7 @@ import {
   PlatformContainer,
   PlatformContainerDetails,
   PlatformContainerLog,
+  PlatformContainerSummary,
 } from '../../docker.types';
 import { platformContainerFromInspect } from '../utils/platform-container.utils';
 import { DockerInventoryService } from '../../inventory/docker-inventory.service';
@@ -75,6 +76,35 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
           (!connected.NetworkID || connected.NetworkID === network.id)
         );
       }),
+    };
+  }
+
+  async getPlatformContainerSummary(
+    containerId: string,
+  ): Promise<PlatformContainerSummary> {
+    const inspect = await this.lifecycle.inspectContainer(containerId);
+    const {
+      id,
+      shortId,
+      names,
+      state,
+      managed,
+      orphaned,
+      applicationId,
+      component,
+    } = platformContainerFromInspect(inspect);
+    return {
+      container: {
+        id,
+        shortId,
+        names,
+        state,
+        managed,
+        orphaned,
+        applicationId,
+        component,
+      },
+      startedAt: inspect.State?.StartedAt || null,
     };
   }
 

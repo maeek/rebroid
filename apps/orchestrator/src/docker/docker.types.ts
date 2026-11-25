@@ -141,6 +141,21 @@ export interface PlatformContainerDetails {
   relatedNetworks: PlatformNetwork[];
 }
 
+export interface PlatformContainerSummary {
+  container: Pick<
+    PlatformContainer,
+    | 'id'
+    | 'shortId'
+    | 'names'
+    | 'state'
+    | 'managed'
+    | 'orphaned'
+    | 'applicationId'
+    | 'component'
+  >;
+  startedAt: string | null;
+}
+
 export interface ServiceHealth {
   ok: boolean;
   status: 'healthy' | 'unhealthy' | 'offline';

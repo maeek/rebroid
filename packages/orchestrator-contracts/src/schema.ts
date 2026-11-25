@@ -2046,6 +2046,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/docker/containers/{id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a Docker container summary for logs and terminal views. */
+        get: operations["DockerMaintenanceContainersController_getContainerSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/docker/containers/{id}/logs": {
         parameters: {
             query?: never;
@@ -4383,6 +4400,20 @@ export interface components {
             };
             relatedImage: components["schemas"]["DockerPlatformImageDto"] | null;
             relatedNetworks: components["schemas"]["DockerPlatformNetworkDto"][];
+        };
+        DockerPlatformContainerHeaderDto: {
+            id: string;
+            shortId: string;
+            names: string[];
+            state: string;
+            managed: boolean;
+            orphaned: boolean;
+            applicationId: string | null;
+            component: string | null;
+        };
+        DockerPlatformContainerSummaryDto: {
+            container: components["schemas"]["DockerPlatformContainerHeaderDto"];
+            startedAt: string | null;
         };
         DockerPlatformContainerLogDto: {
             /** @enum {string} */
@@ -8303,6 +8334,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
+                };
+            };
+        };
+    };
+    DockerMaintenanceContainersController_getContainerSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerPlatformContainerSummaryDto"];
                 };
             };
         };

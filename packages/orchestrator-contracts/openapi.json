@@ -6683,6 +6683,37 @@
         ]
       }
     },
+    "/api/v1/platform/docker/containers/{id}/summary": {
+      "get": {
+        "operationId": "DockerMaintenanceContainersController_getContainerSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerPlatformContainerSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read a Docker container summary for logs and terminal views.",
+        "tags": [
+          "platform-docker"
+        ]
+      }
+    },
     "/api/v1/platform/docker/containers/{id}/logs": {
       "get": {
         "operationId": "DockerMaintenanceContainersController_getContainerLogs",
@@ -14420,6 +14451,66 @@
           "inspect",
           "relatedImage",
           "relatedNetworks"
+        ]
+      },
+      "DockerPlatformContainerHeaderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "shortId": {
+            "type": "string"
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "state": {
+            "type": "string"
+          },
+          "managed": {
+            "type": "boolean"
+          },
+          "orphaned": {
+            "type": "boolean"
+          },
+          "applicationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "component": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "shortId",
+          "names",
+          "state",
+          "managed",
+          "orphaned",
+          "applicationId",
+          "component"
+        ]
+      },
+      "DockerPlatformContainerSummaryDto": {
+        "type": "object",
+        "properties": {
+          "container": {
+            "$ref": "#/components/schemas/DockerPlatformContainerHeaderDto"
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "container",
+          "startedAt"
         ]
       },
       "DockerPlatformContainerLogDto": {

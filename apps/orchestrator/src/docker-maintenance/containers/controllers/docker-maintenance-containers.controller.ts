@@ -17,6 +17,7 @@ import {
   DockerPlatformContainerDto,
   DockerPlatformContainerLogDto,
   DockerPlatformContainerStatsDto,
+  DockerPlatformContainerSummaryDto,
   DockerPlatformRemovalResponseDto,
   DockerPlatformStopResponseDto,
 } from '../../dto/docker-maintenance-response.dto';
@@ -45,6 +46,15 @@ export class DockerMaintenanceContainersController {
   @ApiOkResponse({ type: DockerPlatformContainerDetailsDto })
   async getContainer(@Param('id') id: string) {
     return this.queries.getContainer(id);
+  }
+
+  @Get(':id/summary')
+  @ApiOperation({
+    summary: 'Read a Docker container summary for logs and terminal views.',
+  })
+  @ApiOkResponse({ type: DockerPlatformContainerSummaryDto })
+  getContainerSummary(@Param('id') id: string) {
+    return this.queries.getContainerSummary(id);
   }
 
   @Get(':id/logs')

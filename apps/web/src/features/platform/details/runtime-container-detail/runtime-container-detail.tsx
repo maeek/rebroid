@@ -1,12 +1,9 @@
 'use client'
 
 import { ContainerActionDialog } from '@/features/platform/details/runtime-container-detail/container-action-dialog'
-import {
-  ContainerDetailProvider,
-  useContainerDetailContext
-} from '@/features/platform/details/runtime-container-detail/container-detail-context'
+import { ContainerDetailProvider } from '@/features/platform/details/runtime-container-detail/container-detail-context'
 import { ContainerLogsSection } from '@/features/platform/details/runtime-container-detail/container-logs-section'
-import { ContainerOverviewSection } from '@/features/platform/details/runtime-container-detail/container-overview-section'
+import { ContainerOverviewContent } from '@/features/platform/details/runtime-container-detail/container-overview-section'
 import { LiveResourcesSection } from '@/features/platform/details/runtime-container-detail/live-resources-section'
 import { JsonViewer } from '@/shared/ui/json-viewer'
 import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-section'
@@ -15,40 +12,23 @@ import { ContainerResourceHeader } from './container-resource-header'
 import { RelatedResourcesSection } from './related-container-sections'
 import { ContainerTerminalSection } from './terminal/container-terminal-section'
 import type { ActionResult } from '@/shared/actions/action-result'
-import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
-import type { ContainerResourceView } from '@/shared/model/container-resource-href'
+import type {
+  PlatformContainerDetails,
+  PlatformContainerLog,
+  PlatformContainerSummary
+} from '@/shared/contracts/platform'
 
-export const RuntimeContainerDetail = ({
-  details,
-  pendingLogs,
-  view = 'overview'
-}: {
-  details: PlatformContainerDetails
-  view?: ContainerResourceView
-  pendingLogs?: Promise<ActionResult<PlatformContainerLog>>
-}) => {
-  return (
-    <ContainerDetailProvider details={details}>
-      <RuntimeContainerDetailContent
-        view={view}
-        pendingLogs={pendingLogs}
-      />
-    </ContainerDetailProvider>
-  )
-}
+type RuntimeContainerDetailProps =
+  | { view: 'overview'; details: PlatformContainerDetails }
+  | { view: 'logs'; summary: PlatformContainerSummary; pendingLogs?: Promise<ActionResult<PlatformContainerLog>> }
+  | { view: 'terminal'; summary: PlatformContainerSummary }
 
-const RuntimeContainerDetailContent = ({
-  view,
-  pendingLogs
-}: {
-  view: ContainerResourceView
-  pendingLogs?: Promise<ActionResult<PlatformContainerLog>>
-}) => {
-  const { details } = useContainerDetailContext()
-  const container = details.container
+export const RuntimeContainerDetail = (props: RuntimeContainerDetailProps) => {
+  const { view } = props
+  const container = view === 'overview' ? props.details.container : props.summary.container
 
   return (
-    <>
+    <ContainerDetailProvider container={container}>
       <ContainerDetailLayout
         header={<ContainerResourceHeader />}
         id={container.id}
@@ -58,27 +38,27 @@ const RuntimeContainerDetailContent = ({
           <ContainerLogsSection
             key={container.id}
             containerId={container.id}
-            pendingLogs={pendingLogs}
+            pendingLogs={props.pendingLogs}
           />
         ) : null}
-        {view === 'terminal' ? <ContainerTerminalSection /> : null}
+        {view === 'terminal' ? <ContainerTerminalSection {...props.summary} /> : null}
         {view === 'overview' ? (
           <>
-            <ContainerOverviewSection />
-            <RelatedResourcesSection />
+            <ContainerOverviewContent container={props.details.container} />
+            <RelatedResourcesSection details={props.details} />
 
             {container.state === 'running' ? <LiveResourcesSection /> : null}
 
-            <PlatformLabelsSection labels={container.labels} />
+            <PlatformLabelsSection labels={props.details.container.labels} />
             <JsonViewer
               title='Raw inspect'
-              value={details.inspect}
+              value={props.details.inspect}
             />
           </>
         ) : null}
       </ContainerDetailLayout>
 
       <ContainerActionDialog />
-    </>
+    </ContainerDetailProvider>
   )
 }

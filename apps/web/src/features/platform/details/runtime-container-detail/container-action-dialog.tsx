@@ -13,10 +13,9 @@ import {
 } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
 
 export const ContainerActionDialog = () => {
-  const { details } = useContainerDetailContext()
+  const { container } = useContainerDetailContext()
   const { closeActionDialog, forceRemove, isActing, pendingAction, runAction, setForceRemove } =
     useContainerDetailControllerContext()
-  const container = details.container
   const action = pendingAction ?? 'remove'
   const copy = actionDialogCopy[action]
 

@@ -3,6 +3,7 @@ import type {
   PlatformContainer,
   PlatformContainerDetails,
   PlatformContainerLog,
+  PlatformContainerSummary,
 } from '../docker.types';
 
 export const DOCKER_PLATFORM_CONTAINERS = Symbol('DOCKER_PLATFORM_CONTAINERS');
@@ -17,6 +18,9 @@ export interface DockerPlatformContainersPort {
   getPlatformContainerDetails(
     containerId: string,
   ): Promise<PlatformContainerDetails>;
+  getPlatformContainerSummary(
+    containerId: string,
+  ): Promise<PlatformContainerSummary>;
   getPlatformContainerLogs(
     containerId: string,
     tail?: number,

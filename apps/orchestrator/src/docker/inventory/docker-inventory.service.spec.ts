@@ -131,6 +131,42 @@ describe('Docker display inventory', () => {
     jest.useRealTimers();
   });
 
+  it('reads the summary in one inspection without listing inventory', async () => {
+    const {
+      containers,
+      inspectContainer,
+      listContainers,
+      listImages,
+      listNetworks,
+    } = fixture();
+    const startedAt = '2026-11-25T10:00:00.000000000Z';
+    inspectContainer.mockResolvedValueOnce({
+      ...containerInspect,
+      Config: { ...containerInspect.Config, Labels: container.Labels },
+      State: { ...containerInspect.State, StartedAt: startedAt },
+    });
+
+    await expect(
+      containers.getPlatformContainerSummary(container.Id),
+    ).resolves.toEqual({
+      container: {
+        id: container.Id,
+        shortId: container.Id.slice(0, 12),
+        names: ['app'],
+        state: 'running',
+        managed: true,
+        orphaned: false,
+        applicationId: null,
+        component: null,
+      },
+      startedAt,
+    });
+    expect(inspectContainer).toHaveBeenCalledTimes(1);
+    expect(listContainers).not.toHaveBeenCalled();
+    expect(listImages).not.toHaveBeenCalled();
+    expect(listNetworks).not.toHaveBeenCalled();
+  });
+
   it('shares three list calls across the inventory views and keeps detail inspections fresh', async () => {
     const {
       inventory,

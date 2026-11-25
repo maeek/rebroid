@@ -8,13 +8,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { useContainerDetailContext, useContainerDetailControllerContext } from './container-detail-context'
-import type { PlatformContainerDetails } from '@/shared/contracts/platform'
+import type { PlatformContainerSummary } from '@/shared/contracts/platform'
 
 const ContainerActions = ({
   container,
   onAction
 }: {
-  container?: PlatformContainerDetails['container']
+  container?: PlatformContainerSummary['container']
   onAction?: (action: 'stop' | 'remove') => void
 }) => {
   return (
@@ -42,9 +42,7 @@ const ContainerActions = ({
 }
 
 export const ContainerResourceHeader = () => {
-  const {
-    details: { container }
-  } = useContainerDetailContext()
+  const { container } = useContainerDetailContext()
   const { setPendingAction } = useContainerDetailControllerContext()
   return (
     <ContainerResourceHeading
@@ -63,7 +61,7 @@ export const ContainerResourceHeading = ({
   container,
   actions
 }: {
-  container?: PlatformContainerDetails['container']
+  container?: PlatformContainerSummary['container']
   actions?: ReactNode
 }) => {
   return (

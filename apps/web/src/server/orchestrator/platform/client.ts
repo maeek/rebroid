@@ -9,6 +9,7 @@ import type {
   PlatformContainerDetails,
   PlatformContainerLog,
   PlatformContainerStats,
+  PlatformContainerSummary,
   PlatformImage,
   PlatformImageDetails,
   PlatformImagePull,
@@ -27,6 +28,10 @@ export const orchestratorPlatformClient = {
 
   getPlatformContainer(id: string) {
     return emptyRequest<PlatformContainerDetails>(`/platform/docker/containers/${id}`)
+  },
+
+  getPlatformContainerSummary(id: string) {
+    return emptyRequest<PlatformContainerSummary>(`/platform/docker/containers/${encodeURIComponent(id)}/summary`)
   },
 
   getPlatformContainerLogs(id: string, tail = 500) {

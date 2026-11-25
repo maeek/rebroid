@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import {
   runtimeImageKinds,
   runtimeImageGmsModes,
@@ -220,6 +220,28 @@ export class DockerPlatformContainerDetailsDto {
 
   @ApiProperty({ type: [DockerPlatformNetworkDto] })
   relatedNetworks!: DockerPlatformNetworkDto[];
+}
+
+class DockerPlatformContainerHeaderDto extends PickType(
+  DockerPlatformContainerDto,
+  [
+    'id',
+    'shortId',
+    'names',
+    'state',
+    'managed',
+    'orphaned',
+    'applicationId',
+    'component',
+  ] as const,
+) {}
+
+export class DockerPlatformContainerSummaryDto {
+  @ApiProperty({ type: DockerPlatformContainerHeaderDto })
+  container!: DockerPlatformContainerHeaderDto;
+
+  @ApiProperty({ type: String, nullable: true })
+  startedAt!: string | null;
 }
 
 export class DockerPlatformImageDetailsDto {

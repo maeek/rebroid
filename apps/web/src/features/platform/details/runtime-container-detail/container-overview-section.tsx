@@ -1,6 +1,5 @@
 'use client'
 
-import { useContainerDetailContext } from '@/features/platform/details/runtime-container-detail/container-detail-context'
 import { formatContainerPorts } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { OverflowText } from '@/shared/ui/overflow-text'
@@ -57,13 +56,6 @@ const ContainerRuntimeDetails = ({
       ]}
     />
   )
-}
-
-export const ContainerOverviewSection = () => {
-  const { details } = useContainerDetailContext()
-  const container = details.container
-
-  return <ContainerOverviewContent container={container} />
 }
 
 export const ContainerOverviewContent = ({

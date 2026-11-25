@@ -1,3 +1,6 @@
+import 'server-only'
+import { requireAdmin } from '@/server/auth/authorization'
+import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
 import {
   getPlatformContainerAction,
   getPlatformContainerLogsAction
@@ -5,6 +8,10 @@ import {
 import type { ContainerResourceView } from '@/shared/model/container-resource-href'
 
 export const loadRuntimeContainerDetailPageData = async (id: string, view: ContainerResourceView = 'overview') => {
-  const details = await getPlatformContainerAction(id)
-  return { details, pendingLogs: view === 'logs' ? getPlatformContainerLogsAction(id) : undefined }
+  if (view === 'overview') return { view, details: await getPlatformContainerAction(id) }
+
+  await requireAdmin()
+  const summary = await orchestratorPlatformClient.getPlatformContainerSummary(id)
+  if (view === 'logs') return { view, summary, pendingLogs: getPlatformContainerLogsAction(summary.container.id) }
+  return { view, summary }
 }

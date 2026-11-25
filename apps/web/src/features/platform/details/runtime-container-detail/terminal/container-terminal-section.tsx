@@ -9,17 +9,13 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
-import { useContainerDetailContext } from '../container-detail-context'
 import { useContainerTerminal } from './use-container-terminal'
+import type { PlatformContainerSummary } from '@/shared/contracts/platform'
 import '@xterm/xterm/css/xterm.css'
 
 const userPattern = /^[a-zA-Z0-9_][a-zA-Z0-9_.-]*(?::[a-zA-Z0-9_][a-zA-Z0-9_.-]*)?$/
 
-export const ContainerTerminalSection = () => {
-  const { details } = useContainerDetailContext()
-  const { container } = details
-  const state = details.inspect.State as { StartedAt?: unknown } | undefined
-  const startedAt = typeof state?.StartedAt === 'string' ? state.StartedAt : undefined
+export const ContainerTerminalSection = ({ container, startedAt }: PlatformContainerSummary) => {
   let unavailable: string | undefined
   if (!container.managed || container.component !== 'runtime' || container.orphaned) {
     unavailable = 'Terminal access is available for managed Android runtimes.'
@@ -30,7 +26,7 @@ export const ContainerTerminalSection = () => {
     <ContainerTerminalContent
       key={`${container.id}:${startedAt ?? ''}`}
       containerId={container.id}
-      startedAt={startedAt}
+      startedAt={startedAt ?? undefined}
       unavailable={unavailable}
     />
   )

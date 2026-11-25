@@ -28,7 +28,15 @@ export class DockerMaintenanceContainerQueryService {
     return { ...details, container };
   }
 
-  private async markOrphaned(containers: PlatformContainer[]) {
+  async getContainerSummary(id: string) {
+    const summary = await this.containers.getPlatformContainerSummary(id);
+    const [container] = await this.markOrphaned([summary.container]);
+    return { ...summary, container };
+  }
+
+  private async markOrphaned<
+    T extends Pick<PlatformContainer, 'applicationId' | 'managed' | 'orphaned'>,
+  >(containers: T[]): Promise<T[]> {
     const applicationIds = [
       ...new Set(
         containers.flatMap((container) =>
