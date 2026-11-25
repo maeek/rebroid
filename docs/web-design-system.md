@@ -76,6 +76,10 @@ or unavailable section or page, and `DataGridEmptyState` for empty results. Dist
 dataset, a filtered result, denied access and a failed read. Offer the action that addresses that
 state. Keep grid recovery controls accessible outside the scrolling table.
 
+Export state artwork for its rendered size and compare the graphite gradients and transparent
+edges on light and dark backgrounds. The [shared illustration](../apps/web/src/shared/ui/state-illustration.tsx)
+reserves space while loading and reveals the image and its accent together after decoding.
+
 On initial dependency failure, show the shared page failure. On refresh failure, keep the last
 successful data and drafts, mark them stale and disable actions that need the service. Independent
 diagnostics can remain available. Report successful mutations with the success tone.

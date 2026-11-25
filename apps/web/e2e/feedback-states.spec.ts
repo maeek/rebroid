@@ -1,5 +1,30 @@
 import { expect, test } from '@playwright/test'
 
+test('the illustration and its accent appear together after loading, without moving the heading', async ({ page }) => {
+  let release!: () => void
+  const pending = new Promise<void>(resolve => {
+    release = resolve
+  })
+  await page.route(/\/illustrations\/unavailable\.(avif|webp)$/, async route => {
+    await pending
+    await route.continue()
+  })
+
+  await page.goto('/skeleton-contract-test?editor=failure-unavailable', { waitUntil: 'domcontentloaded' })
+  const artwork = page.locator('[data-slot="state-illustration"]')
+  const heading = page.getByRole('heading', { level: 2 })
+  try {
+    await expect(heading).toBeVisible()
+    await expect(artwork).toHaveCSS('opacity', '0')
+    const before = await heading.boundingBox()
+    release()
+    await expect(artwork).toHaveCSS('opacity', '1')
+    expect(await heading.boundingBox()).toEqual(before)
+  } finally {
+    release()
+  }
+})
+
 test('notification padding lets clicks reach the viewer while toasts remain dismissible', async ({ page }) => {
   await page.goto('/skeleton-contract-test')
 

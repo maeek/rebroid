@@ -29,6 +29,15 @@
         ],
         "createdAt": "2026-11-20T22:04:35.932Z",
         "reason": "Agent review: the rounded stroke draws the resize grip itself and uses the handle text color."
+      },
+      {
+        "rule": "buried-raster",
+        "value": "*",
+        "files": [
+          "apps/display-sidecar/src/modules/display/viewer/index.html"
+        ],
+        "createdAt": "2026-11-25T12:36:23.741Z",
+        "reason": "Codex review: the device is hidden only while decoding to prevent partial image paint. createViewerUi sets data-decoded on success, restoring full opacity."
       }
     ]
   }

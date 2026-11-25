@@ -1,5 +1,8 @@
+'use client'
+
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import styles from './state-illustration.module.css'
 
 export type StateArtwork =
   | 'accounts'
@@ -62,18 +65,37 @@ export const StateIllustration = ({
 
   return (
     <span
+      key={`${kind}-${size}`}
       data-slot='state-illustration'
       aria-hidden='true'
-      className={cn('relative isolate block max-w-full', widths[size], align === 'center' && opticalOffsets[kind])}
+      className={cn(
+        styles.artwork,
+        'relative isolate block max-w-full',
+        widths[size],
+        align === 'center' && opticalOffsets[kind]
+      )}
     >
-      <Image
-        src={`/illustrations/${kind}.webp`}
-        alt=''
-        width={1344}
-        height={768}
-        unoptimized
-        className='block h-auto w-full'
-      />
+      <picture className='block'>
+        {size === 'page' && (
+          <source
+            type='image/avif'
+            media='(min-resolution: 1.25dppx)'
+            srcSet={`/illustrations/${kind}.avif`}
+          />
+        )}
+        <Image
+          src={`/illustrations/${kind}.webp`}
+          alt=''
+          width={392}
+          height={224}
+          unoptimized
+          loading={size === 'page' ? 'eager' : 'lazy'}
+          onLoad={event => {
+            event.currentTarget.dataset.decoded = 'true'
+          }}
+          className='block h-auto w-full'
+        />
+      </picture>
       {indicator && (
         <span
           className='pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary mix-blend-color'

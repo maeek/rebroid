@@ -1,0 +1,6 @@
+/* Next Image calls onLoad after decode, including for images cached before hydration. */
+@media (scripting: enabled) {
+  .artwork:has(img:not([data-decoded])) {
+    opacity: 0;
+  }
+}

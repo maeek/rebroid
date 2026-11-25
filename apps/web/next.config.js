@@ -27,6 +27,14 @@ const nextConfig = {
     }
   },
   headers: async () => [
+    ...(process.env.NODE_ENV === 'production'
+      ? [
+          {
+            source: '/illustrations/:file',
+            headers: [{ key: 'Cache-Control', value: 'public, max-age=3600' }]
+          }
+        ]
+      : []),
     {
       source: '/:path*',
       headers: [
